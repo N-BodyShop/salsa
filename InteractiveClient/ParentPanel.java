@@ -24,7 +24,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	public int start_x, start_y;
 	public String controller, typeOfSelection;
 	public JPanel leftPanel, rightPanel, splitPanel, southPanel;
-	public int currentZLoc;
+	//public int currentZLoc;
 	private Rectangle drawRect = new Rectangle();
 	private boolean mainDrawn, auxDrawn;
 	private int xBoxConstraintOne, xBoxConstraintTwo;
@@ -36,7 +36,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	private byte[] wrbb_red, wrbb_green, wrbb_blue;
 	private int color_start;
 	private long firstClick;
-	public boolean isOpen;
+	public boolean isOpen, mouseDragged;
 	private String colorMapType;
 	public ConfigPanel refConfigPanel;
 	private CommandPane refComPane;
@@ -105,7 +105,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 				cmdisplay.redisplay(wrbb);
 				mainView.messageHub("newColor", true);
 				auxView.messageHub("newColor", true);
-				color_start = e.getX();
+
 			}
 
 			public void mouseMoved(MouseEvent e){}
@@ -185,7 +185,6 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 					mainDrawn = auxDrawn = false;
 					//System.out.println("Adjusting up/down slider!");
 					double theta = Math.PI * (source.getValue() - source.getOldValue()) / 180.0;
-					System.out.println("such degrees: " + theta);
 					mainView.drag(-1, 0, "x", theta);
 					auxView.drag(-1,0,"x",theta);
 					source.setOldValue(source.getValue());
@@ -360,6 +359,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		}else if(command.equals("clear")){
 			ccs.addRequest(new ClearBoxes());
 			ccs.addRequest(new ClearSpheres());
+			refComPane.clearGroups();
+			refComPane.updateGroupList("All Particles");
+			reView();
 		}else if(command.equals("boxes")){
 			typeOfSelection = "boxes";
 			mainDrawn = auxDrawn = false;
@@ -580,6 +582,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	//*******************************************************************************************************//
 
 	public void mousePressed(MouseEvent e){
+		mouseDragged = false;
 		start_x = e.getX();
 		start_y = e.getY();
 		switch(e.getModifiers()){
@@ -612,6 +615,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 				break;
 			case MouseEvent.BUTTON3_MASK:
 				//zoom
+				mouseDragged = true;
 				mainDrawn = auxDrawn = false;
 				if(controller.equals("mainView")){
 					mainView.zoom(e);
@@ -628,6 +632,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 				mainDrawn = auxDrawn = false;
 				Graphics gl = leftPanel.getGraphics();
 				gl.setColor(Color.white);
+				/* draw a corsshair to indicate the center of the simulation space */
 				gl.drawLine((leftPanel.getWidth()/2)-30, (leftPanel.getHeight()/2),(leftPanel.getWidth()/2)+30,(leftPanel.getHeight()/2));
 				gl.drawLine((leftPanel.getWidth()/2), (leftPanel.getHeight()/2)-30,(leftPanel.getWidth()/2),(leftPanel.getHeight()/2)+30);
 				gl = rightPanel.getGraphics();
@@ -645,13 +650,13 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 				start_y = e.getY();
 				break;
 			case MouseEvent.BUTTON3_MASK | InputEvent.SHIFT_MASK:
-				//translate origin in z direction until config.min.z or config.max.z
+				//translate origin in z direction
 				mainDrawn = auxDrawn = false;
 				if(controller.equals("mainView")){
 					repaint();
 					Graphics g = rightPanel.getGraphics();
 					g.setColor(Color.white);
-					g.drawLine((rightPanel.getWidth()/2) - 30, currentZLoc, (rightPanel.getWidth()/2) + 30, currentZLoc);
+					g.drawLine((rightPanel.getWidth()/2) - 30, rightPanel.getHeight()/2, (rightPanel.getWidth()/2) + 30, rightPanel.getHeight()/2);
 
 					mainView.zTranslate(e);
 					auxView.update(mainView.x, mainView.y, mainView.z, mainView.origin, true);
@@ -660,7 +665,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 					repaint();
 					Graphics glx = leftPanel.getGraphics();
 					glx.setColor(Color.white);
-					glx.drawLine((leftPanel.getWidth()/2) - 30, currentZLoc, (leftPanel.getWidth()/2) + 30, currentZLoc);
+					glx.drawLine((leftPanel.getWidth()/2) - 30, leftPanel.getHeight()/2, (leftPanel.getWidth()/2) + 30, leftPanel.getHeight()/2);
 					auxView.zTranslate(e);
 					mainView.update(auxView.x, auxView.y, auxView.z, auxView.origin, true);
 				}
@@ -775,10 +780,12 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 				break;
 			case MouseEvent.BUTTON3_MASK:
 				//popup menu
-				if(controller.equals("mainView")){
-					rightClickMenu.show(leftPanel, e.getX(), e.getY());
-				}else{
-					rightClickMenu.show(rightPanel, e.getX(), e.getY());
+				if(!mouseDragged){
+					if(controller.equals("mainView")){
+						rightClickMenu.show(leftPanel, e.getX(), e.getY());
+					}else{
+						rightClickMenu.show(rightPanel, e.getX(), e.getY());
+					}
 				}
 				break;
 			case MouseEvent.BUTTON3_MASK | InputEvent.SHIFT_MASK:
@@ -860,7 +867,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	/**************************************************************************************************/
 	/*
-	 * This function converts pixel values on screen, specified by mouse actions, into simulation space units
+	 * This function converts pixel values on screen, specified by mouse actions, into simulation space units.
 	 * The arrays xSimnNumbers, ySimNumbers, and zSimNumbers store the x, y, and z values of all points corresponding
 	 * to the box or sphere being drawn.  The box points follow the illustration below
 	 *
@@ -1028,7 +1035,11 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 	
 	/**************************************************************************************************/
-
+	/*
+	 * this method uses the simNumbers in xSimNumbers, ySimNumbers, and zSimNumbers, in conjunction with
+	 * the vector information of the two views to locate the points of a selection box or sphere in
+	 * actual simulation space
+	 */
 	public void setPosVectors(){
 		//System.out.println("Begin posVector process");
 		if(typeOfSelection.equals("boxes")){
@@ -1080,7 +1091,10 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 	
 	/**************************************************************************************************/
-
+	/*
+	 * this method encodes the position vectors of a selection box or sphere into binary, for use by
+	 * the server
+	 */
 	private byte[] encodeVectors() {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
 		try {
@@ -1112,7 +1126,12 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	public void mouseClicked(MouseEvent e){}
 
 	//*******************************************************************************************************//
-
+	/*
+	 * the variables leftPanel and rightPanel are listening in on this method, which sets the variable
+	 * 'controller' to the appropriate view, either "mainView" or "auxView" depending on which panel
+	 * the mouse enters into
+	 * TODO: this method should implement some sort of border or indicator of which panel has control
+	 */
 	public void mouseEntered(MouseEvent e){
 		if(controller.equals((((MainView)((JPanel)e.getComponent()).getComponent(0)).getSignature()))){
 			//do nothing
@@ -1137,14 +1156,18 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	public void mouseMoved(MouseEvent e){}
 
 	//*******************************************************************************************************//
-
+	/*
+	 * called from CommandParser to zoom the views
+	 */
 	public void zoom(double arg){
 		mainView.zoom(arg);
 		auxView.zoom(arg);
 	}
 
 	//*******************************************************************************************************//
-
+	/*
+	 * called from CommandParser to rotate the views
+	 */
 	public void rotateNumeric(double amount, String direction){
 		mainDrawn = auxDrawn = false;
 		double theta = amount * Math.PI / 180;
@@ -1172,7 +1195,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 
 	//*******************************************************************************************************//
-
+	/*
+	 * called indirectly from CommandParser to pan the views
+	 */
 	public void panNumeric(double amount, String direction){
 		mainDrawn = auxDrawn = false;
 		mainView.numericPan(amount, direction);
@@ -1190,7 +1215,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 
 	//*******************************************************************************************************//
-
+	/*
+	 * draw a set of x, y, and z vectors corresponding to the x, y, and z vectors of both the mainView and auxView
+	 */
 	public void drawVex(){
 		//need four xPixel values
 		Double xPixOrigin, yPixOrigin, xPixDraw, yPixDraw;
@@ -1416,6 +1443,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	/*												  */
 	/**************************************************************************************************/
 
+	/*
+	 * returns a standard color map
+	 */
 	private ColorModel createWRBBColorModel() {
 		int cmap_size=254;
 		wrbb_red = new byte[256];
@@ -1474,9 +1504,16 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	/**************************************************************************************************/
 
+	/*
+	 * returns a colormap that is simply the current map translated according to mousedrags
+	 */
 	private ColorModel resetWRBB(MouseEvent e){
 		//System.out.println("Resetting colors");
+		System.out.println("color_start is: " + color_start);
+		System.out.println("e.getX() is: " + e.getX());
 		int diff = color_start - e.getX();
+		diff = (int) (254.0 * diff / (mainView.width + auxView.width));
+		color_start = e.getX();
 		byte[] transferRed = new byte[254];
 		byte[] transferGreen = new byte[254];
 		byte[] transferBlue = new byte[254];
@@ -1497,6 +1534,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	/**************************************************************************************************/
 
+	/*
+	 * returns a color map that is simply the current color map inverted
+	 */
 	private ColorModel invertWRBB(){
 		byte[] transferRed = new byte[254];
 		byte[] transferGreen = new byte[254];
@@ -1514,6 +1554,10 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		return new IndexColorModel(8, 256, wrbb_red, wrbb_green, wrbb_blue);
 	}
 	
+	/**************************************************************************************************/
+	/*
+	 * returns a new rainbow colormap for the particles to be colored with
+	 */
 	private ColorModel rainbowWRBB(){
 		int i,j;
 		double slope;
@@ -1546,13 +1590,13 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			rainbow_green[i] = (byte)(255 - (int)(slope * (double)(i - 93) + 0.5));
 			rainbow_blue[i] = (byte)255;
 		}
+
 		/*
-		for (i = 125, j = 0; j < 129; i++, j++) {
-			rainbow_red[i] = rainbow_red[j];
-			rainbow_green[i] = rainbow_green[j];
-			rainbow_blue[i] = rainbow_blue[j];
-		}
-		*/
+		 * at this point, the rainbow color map only has 125 elements in it, so what this method does
+		 * is, it sets two indexes in wrbb arrays for every one color in the 125 colors stored in the
+		 * rainbow arrays, resulting in 250 indexes of wrbb filled...the last couple indexes at the end are
+		 * taken care of in the while loop that follows
+		 */
 		for(i = 1, j = 1; i < 125; i++, j = j+2){
 			wrbb_red[j] = rainbow_red[i];
 			wrbb_red[j+1] = rainbow_red[i];

@@ -8,7 +8,7 @@ import java.net.*;
 /**
  * Input Panel extends JPanel and sets up/modifies the input tab of the CommandPane program
   */
-public class InputPanel extends JPanel implements ActionListener, MouseListener {
+public class InputPanel extends JPanel implements ActionListener, MouseListener, KeyListener {
 	private CommandPane refComPane;
 	private JPanel infoDisplay;
 	private JTextField userField;
@@ -39,6 +39,10 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 		passField = new JPasswordField();
 		hostField = new JTextField("localhost");
 		portField = new JTextField("1235");
+		userField.addKeyListener(this);
+		passField.addKeyListener(this);
+		hostField.addKeyListener(this);
+		portField.addKeyListener(this);
 
 		JPanel connectPanel = new JPanel(new BorderLayout());
 		connectPanel.setBorder(BorderFactory.createTitledBorder("Connect"));
@@ -60,6 +64,7 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 		connect.setActionCommand("CONNECT");
 		connect.addActionListener(this);
 		connectPanel.add(connect, BorderLayout.SOUTH);
+
 
 		/* set up infoDisplay panel */
 		infoDisplay = new JPanel();
@@ -94,7 +99,18 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 		add(infoDisplay);
 
 	}
-	
+
+//*****************************************************************************************************************
+
+	public void keyPressed(KeyEvent e){}
+	public void keyReleased(KeyEvent e){}
+	public void keyTyped(KeyEvent e){
+		if(e.getKeyChar() == '\n'){
+			System.out.println("Enter pressed!");
+			connect.doClick();
+		}
+	}
+
 //*****************************************************************************************************************
 	/**
 	 * this method is almost an exact copy of code found in InteractiveClient.java, which
@@ -144,7 +160,9 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 	}
 	
 //*****************************************************************************************************************
-
+	/*
+	 * give classes access to the list of simulations
+	 */
 	public DefaultListModel getSimList(){
 		return model;
 	}
@@ -177,7 +195,9 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 	public void mouseExited(MouseEvent e){}
 
 //*****************************************************************************************************************
-
+	/*
+	 * helper method, for adding simulation names to the DefaultListModel
+	 */
 	private void parseBytes(byte[] data){
 		String r = new String(data);
 		char[] word = new char[0];
@@ -202,7 +222,10 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 	}
 	
 //*****************************************************************************************************************
-
+	/*
+	 * helper method, to expand the array that is keeping track of the current String, which will
+	 * eventually be added to the DefaultListModel
+	 */
 	private char[] expand(char[] tooShort){
 		if(tooShort.length==0){
 			return new char[1];
@@ -253,6 +276,7 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 				refComPane.updateStatus("Simulation loaded: " + selectedSim);
 				refComPane.clearGroups();
 				refComPane.updateGroupList("All Particles");
+
 			}
 		}
 	}

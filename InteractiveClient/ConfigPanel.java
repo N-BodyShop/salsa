@@ -137,6 +137,10 @@ public class ConfigPanel extends JPanel implements ActionListener {
 	public void packFrame(){
 		theFrame.pack();
 	}
+	
+	public void reView(){
+		theParent.reView();
+	}
 
 
 }

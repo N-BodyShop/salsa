@@ -296,6 +296,8 @@ public class CommandPane implements ActionListener, ItemListener {
 	public void clearGroups(){
 		if(groups.getItemCount()>0){
 			groups.removeAllItems();
+			numGroups = 0;
+			groupNames = new String[numGroups];
 		}
 	}
 	
@@ -325,6 +327,10 @@ public class CommandPane implements ActionListener, ItemListener {
 	 * @param e the ItemEvent fired
 	 */
 	public void itemStateChanged(ItemEvent e){
+		if(e.getStateChange()==ItemEvent.SELECTED){
+			//System.out.println("ITEM STATE CHANGED: " + getCurrentListItem() + " WAS SELECTED!");
+			ccs.addRequest(new Statistics(getCurrentListItem()));
+		}
 		try{
 			if(getCurrentListItem().equals(profilePanel.getLabel())){
 				//do nothing, they're the same
@@ -348,6 +354,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		return (String)groups.getSelectedItem();
 	}
 	
+//*****************************************************************************************************************
 	/*
 	 * accessor method
 	 * gives classes access to the DefaultListModel in InputPanel which has the list of simulations
@@ -356,6 +363,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		return inputPanel.getSimList();
 	}
 
+//*****************************************************************************************************************
 	/*
 	 * propogated method call, used to close the currently running viz window after the command
 	 * is entered in the manualPanel/CommandPrompt
@@ -365,6 +373,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		updateStatus(inputPanel.getSimName() + "...closed");
 	}
 	
+//*****************************************************************************************************************
 	/*
 	 * accessor method
 	 * gives classes access to the currently selected simulation, according to the InputPanel
@@ -373,6 +382,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		return inputPanel.getSimName();
 	}
 	
+//*****************************************************************************************************************
 	/*
 	 * propogated method call.  This method is invoked from ConfigPanel, when the ParentPanel
 	 * is initialized.  The ParentPanel is passed from ConfigPanel, to CommandPane, to CommandPrompt,
@@ -382,6 +392,8 @@ public class CommandPane implements ActionListener, ItemListener {
 		manualPanel.setParser(p);
 	}
 	
+//*****************************************************************************************************************
+	
 	//*******************************************************************************************************//
 	//*******************************************************************************************************//
 	//													 //
@@ -389,11 +401,28 @@ public class CommandPane implements ActionListener, ItemListener {
 	//													 //
 	//*******************************************************************************************************//
 	//*******************************************************************************************************//
+	
+//*****************************************************************************************************************
+
 	private class Activate extends CcsThread.request{
 
 		public Activate(String arg){
 			super("Activate", arg.getBytes());
 		}
-		public void handleReply(byte[] data){}
+		public void handleReply(byte[] data){
+			configPanel.reView();
+		}
+	}
+	
+//*****************************************************************************************************************
+	
+	private class Statistics extends CcsThread.request{
+		public Statistics(String arg){
+			super("Statistics", arg.getBytes());
+		}
+		public void handleReply(byte[] data){
+			String reply = new String(data);
+			quantitativePanel.setInfo(reply);
+		}
 	}
 }

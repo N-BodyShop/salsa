@@ -14,7 +14,7 @@ public class ColorMapDisplay extends JLabel {
 		image = new byte[width * height];
 		byte value;
 		for(int i = 0; i < width; i++) {
-			value = (byte) (255.0 * i / width);
+			value = (byte) (1 + 254.0 * i / width);
 			for(int j = 0; j < height; j++)
 				image[j * width + i] = value;
 		}
@@ -35,7 +35,7 @@ public class ColorMapDisplay extends JLabel {
 		byte value = 0;
 		image = new byte[width * height];
 		for(int i = 0; i < width; i++) {
-		    value = (byte) (255 * i / width);
+		    value = (byte) (1 + 254.0 * i / width);
 			for(int j = 0; j < height; j++)
 				image[j * width + i] = value;
 		}

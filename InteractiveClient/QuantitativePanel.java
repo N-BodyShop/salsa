@@ -5,16 +5,17 @@ import javax.swing.*;
  * QuantitativePanel sets up/modifies the quantitative tab of the CommandPane program
  */
 public class QuantitativePanel extends JPanel {
-	JTextField infoField;
+	JTextArea infoField;
 
 	public QuantitativePanel() {
 		this("toString displayed here");
 	}
 
 	public QuantitativePanel(String arg){
-		infoField = new JTextField(arg);
+		infoField = new JTextArea(arg);
 		infoField.setEditable(false);
-		add(infoField);
+		JScrollPane sp = new JScrollPane(infoField);
+		add(sp);
 	}
 
 	public void setInfo(String arg){

@@ -40,7 +40,9 @@ public class MainView extends JPanel implements ComponentListener{
 	}
 
 	/**************************************************************************************************/
-
+	/*
+	 * rotates the view
+	 */
 	public void drag(int xN, int yN, String aboutThis, double angle){
 		if(xN==-1){
 			//this first block is used by the sliders
@@ -77,7 +79,10 @@ public class MainView extends JPanel implements ComponentListener{
 	}
 
 	/**************************************************************************************************/
-
+	/*
+	 * This function updates this MainView object with respect to the vector args of another
+	 * MainView object
+	 */
 	public void update(Vector3D newX, Vector3D newY, Vector3D newZ, Vector3D newO, boolean update){
 		x = new Vector3D(newX);
 		y = new Vector3D(newY);
@@ -95,12 +100,17 @@ public class MainView extends JPanel implements ComponentListener{
 	}
 	
 	/**************************************************************************************************/
-
+	/* pan, according to mousedrags in ParentPanel */
 	public void pan(MouseEvent e){
 		origin = origin.plus((x.scalarMultiply(((double) theParent.start_x - e.getX()) / (theParent.getWidth()/2))).plus(y.scalarMultiply(((double) e.getY() - theParent.start_y) / getHeight())).scalarMultiply(2.0));
 		ccs.addRequest(new ImageRequest(), true);
 	}
-	
+
+	/**************************************************************************************************/
+	/*
+	 * called indirectly from CommandParser to pan the view
+	 */
+
 	public void numericPan(double scalar, String direction){
 		if(direction.equals("up")){
 			double amount = y.length()*scalar*2;
@@ -127,7 +137,9 @@ public class MainView extends JPanel implements ComponentListener{
 	}
 	
 	/**************************************************************************************************/
-
+	/*
+	 * called from mousedragging in ParentPanel to zoom the view
+	 */
 	public void zoom(MouseEvent e){
 		int delta_y = e.getY() - theParent.start_y;
 		double zoom;
@@ -144,7 +156,9 @@ public class MainView extends JPanel implements ComponentListener{
 	}
 	
 	/**************************************************************************************************/
-
+	/*
+	 * called indirectly from CommandParser to zoom
+	 */
 	public void zoom(double scalar){
 		x = x.scalarMultiply(scalar);
 		y = y.scalarMultiply(scalar);
@@ -152,7 +166,9 @@ public class MainView extends JPanel implements ComponentListener{
 	}
 	
 	/**************************************************************************************************/
-
+	/*
+	 * translate the z location of the origin in simulation space according to mousedrags
+	 */
 	public void zTranslate(MouseEvent e){
 		z = x.cross(y);
 		double zShift = ((2*((double)theParent.start_y - e.getY()))/theParent.getHeight())*y.length();
@@ -170,6 +186,10 @@ public class MainView extends JPanel implements ComponentListener{
 	public void componentMoved(ComponentEvent e) {}
 	public void componentShown(ComponentEvent e) {}
 
+	/*
+	 * resize the view.  This method resizes the vectors appropriately to adjust the view,
+	 * ensuring it fits correctly in the given space on screen
+	 */
 	public void componentResized(ComponentEvent e) {
 		width = e.getComponent().getWidth();
 		height = e.getComponent().getHeight();
@@ -264,6 +284,7 @@ public class MainView extends JPanel implements ComponentListener{
 	
 	/**************************************************************************************************
 	 * byte[] encodeRequest
+	 * encode the vector positions of THIS MainView object into binary for use by the server
 	 */
 	private byte[] encodeRequest() {
 		// for mapping System.out.println("ViewingPanel: encodeRequest");
@@ -305,6 +326,7 @@ public class MainView extends JPanel implements ComponentListener{
 
 	/**************************************************************************************************
 	 * void displayImage
+	 * takes the array of data provided by the server and displays them on screen
 	 */
 
 	private void displayImage(byte[] data) {
@@ -341,6 +363,7 @@ public class MainView extends JPanel implements ComponentListener{
 			source.setAnimated(true);
 			display.setIcon(new ImageIcon(display.createImage(source)));
 		}else if(arg.equals("review")){
+			System.out.println("REVIEW CALLED!");
 			ccs.addRequest(new ImageRequest(), true);
 		}
 	}
@@ -404,3 +427,4 @@ public class MainView extends JPanel implements ComponentListener{
 		}
 	}
 }
+
