@@ -19,19 +19,19 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 #	ListSimulations.class ChooseSimulation.class AttributeManager.class \
 #	WindowManager.class
 
-CHARM_JAVA = -classpath .:$(HOME)/peak/src/charm/java
+CHARM_JAVA = $(HOME)/src/charm/java
 
 TARGET = Salsa
 VERSION = 0.1
 all: $(TARGET).jar
 
 $(TARGET).jar: Manifest $(CLASSES)
-	jar cmf Manifest $@ *.class charm/ccs/*.class
+	jar cmf Manifest $@ *.class $(CHARM_JAVA)/bin/charmdebug.jar
 
 .SUFFIXES: .java .class
 
 .java.class :
-	javac $(CHARM_JAVA) $<
+	javac -classpath .:$(CHARM_JAVA) $<
 	
 .PHONY: all clean dist binarydist
 
