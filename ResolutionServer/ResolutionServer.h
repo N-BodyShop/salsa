@@ -135,7 +135,6 @@ public:
 	colored_particle(const Tipsy::simple_particle& p) : position(p.pos), value(0), color(0) { }
 };
 
-class PythonInstance;
 class PythonTopMain;
 
 extern "C" void initResolutionServer();
@@ -151,7 +150,6 @@ class Main : public CBase_Main {
 	CcsDelayedReply delayedReply;
 	std::string regionString;
 
-	std::auto_ptr<PythonInstance> pythonInterpreter;
 public:
 	
 	Main(const Main&);

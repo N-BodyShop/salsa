@@ -1,6 +1,8 @@
 /** @file ResolutionServer.cpp
  */
  
+#include <stdint.h>
+
 #include <iostream>
 #include <fstream>
 #include <set>
@@ -17,7 +19,6 @@
 #include "SiXFormat.h"
 #include "TipsyFormat.h"
 
-#include "PythonInstance.h"
 
 using namespace std;
 using namespace SimulationHandling;
@@ -27,7 +28,7 @@ int verbosity;
 Main::Main(CkArgMsg* m) {
 	verbosity = 0;
 	
-#ifndef MACOSX
+#ifdef MACOSX
 	poptOption optionsTable[] = {
 		{"verbose", 'v', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, 0, 1, "be verbose about what's going on", "verbosity"},
 		POPT_AUTOHELP
