@@ -12,10 +12,10 @@ void Main::executePythonCode(CkCcsRequestMsg* m) {
 	cout << "Got code to execute: \"" << s << "\"" << endl;
 	CcsDelayedReply d = m->reply;
 	m->data[m->length-1] = 0;  // guarantee null termination.
-	Main::execute(m);
+	Main::pyRequest(m);
 	
 	unsigned char success = 1;
-	CcsSendDelayedReply(d, 1, &success);
+	CcsSendDelayedReply(d, 3, "ok\n");
 }
 
 void Main::getFamilies(int handle) {
@@ -23,7 +23,6 @@ void Main::getFamilies(int handle) {
     PyObject *lFamily = PyList_New(0);
     for(Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter)
 	PyList_Append(lFamily, Py_BuildValue("s", iter->first.c_str()));
-    pythonPrepareReturn(handle);
     pythonReturn(handle, lFamily);
     }
 
@@ -40,7 +39,6 @@ void Main::getAttributes(int handle) {
 	    PyList_Append(lAttributes,
 			  Py_BuildValue("s", attrIter->first.c_str()));
 	}
-    pythonPrepareReturn(handle);
     pythonReturn(handle, lAttributes);
     }
 
@@ -51,7 +49,6 @@ void Main::getGroups(int handle) {
     for(Worker::GroupMap::iterator iter = w->groups.begin();
 	iter != w->groups.end(); ++iter)
 	PyList_Append(lGroup, Py_BuildValue("s", iter->first.c_str()));
-    pythonPrepareReturn(handle);
     pythonReturn(handle, lGroup);
     }
 
@@ -67,7 +64,6 @@ void Main::getNumParticles(int handle) {
 	    cerr << "No such family!" << endl;
 	    return;
     }
-    pythonPrepareReturn(handle);
     pythonReturn(handle,Py_BuildValue("i",
 				      iter->second.count.totalNumParticles));
 }
@@ -84,7 +80,6 @@ void Main::getAttributeRange(int handle) {
     AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
     if(attrIter == simIter->second.attributes.end())
 	return;
-    pythonPrepareReturn(handle);
     pythonReturn(handle,Py_BuildValue("(dd)", getScalarMin(attrIter->second),
 				      getScalarMax(attrIter->second)));
     }
@@ -96,9 +91,11 @@ void Main::getAttributeSum(int handle)
     PyArg_ParseTuple(arg, "ss", &groupName, &attributeName);
     CkReductionMsg* mesg;
     double sum;
+
+    pythonSleep(handle);
     workers.getAttributeSum(groupName, attributeName, createCallbackResumeThread(mesg, sum));
     delete mesg;
-    pythonPrepareReturn(handle);
+    pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("d", sum));
     }
 
@@ -118,7 +115,6 @@ void Main::getDimensions(int handle)
 	iDim = 0;
     else
 	iDim =  attrIter->second.dimensions;
-    pythonPrepareReturn(handle);
     pythonReturn(handle,Py_BuildValue("i", iDim));
     }
 
@@ -139,7 +135,6 @@ void Main::getDataType(int handle)
 	retcode = 0;
     else
 	retcode =  attrIter->second.code;
-    pythonPrepareReturn(handle);
     pythonReturn(handle,Py_BuildValue("i", retcode));
     }
 
@@ -151,10 +146,11 @@ void Main::getCenterOfMass(int handle)
     PyArg_ParseTuple(arg, "s", &groupName);
     pair<double, Vector3D<double> > compair;
 
+    pythonSleep(handle);
     workers.getCenterOfMass(groupName, createCallbackResumeThread(mesg, compair));
     delete mesg;
     Vector3D<double> retval = compair.second / compair.first;
-    pythonPrepareReturn(handle);
+    pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("(ddd)", retval.x, retval.y, retval.z));
     }
 	
@@ -166,9 +162,12 @@ void Main::createGroup_Family(int handle)
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
     PyArg_ParseTuple(arg, "sss", &groupName, &parentName, &familyName);
+    pythonSleep(handle);
     workers.createGroup_Family(groupName, parentName, familyName,
 			       createCallbackResumeThread(mesg, result));
     delete mesg;
+    pythonAwake(handle);
+    pythonReturn(handle);
     }
 	
 void Main::createGroup_AttributeRange(int handle)
@@ -181,10 +180,13 @@ void Main::createGroup_AttributeRange(int handle)
 
     PyArg_ParseTuple(arg, "sssdd", &groupName, &parentName, &attributeName,
 		     &minValue, &maxValue);
+    pythonSleep(handle);
     workers.createGroup_AttributeRange(groupName, parentName, attributeName,
 				       minValue, maxValue,
 				       createCallbackResumeThread(mesg, result));
     delete mesg;
+    pythonAwake(handle);
+    pythonReturn(handle);
     }
 
 void Main::createGroupAttributeSphere(int handle) {
@@ -199,9 +201,12 @@ void Main::createGroupAttributeSphere(int handle) {
     string sParentName(parentName);
     string sAttributeName(attributeName);
     
+    pythonSleep(handle);
     workers.createGroup_AttributeSphere(sGroupName, sParentName,
 					sAttributeName, v3dCenter, dSize,
 					CkCallbackResumeThread());
+    pythonAwake(handle);
+    pythonReturn(handle);
 }
 
 void Main::createGroupAttributeBox(int handle) {
@@ -226,10 +231,13 @@ void Main::createGroupAttributeBox(int handle) {
     string sParentName(parentName);
     string sAttributeName(attributeName);
     
+    pythonSleep(handle);
     workers.createGroup_AttributeBox(sGroupName, sParentName,
 					sAttributeName, v3dCorner,
 					v3dEdge1, v3dEdge2,v3dEdge3,
 					CkCallbackResumeThread());
+    pythonAwake(handle);
+    pythonReturn(handle);
 }
 
 void Main::runLocalParticleCode(int handle) {
@@ -240,4 +248,5 @@ void Main::runLocalParticleCode(int handle) {
     string s = string(achCode);
     
     workers.localParticleCode(s, CkCallbackResumeThread());
+    pythonReturn(handle);
 }

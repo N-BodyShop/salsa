@@ -147,7 +147,9 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("GetAttributeInformation", CkCallback(CkIndex_Worker::getAttributeInformation(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("GetColoringInformation", CkCallback(CkIndex_Worker::getColoringInformation(0), CkArrayIndex1D(0), workers));
 
-	CcsRegisterHandler("ExecutePythonCode", CkCallback(CkIndex_Main::execute(0),thishandle));
+	/* this is the old way   CcsRegisterHandler("ExecutePythonCode", CkCallback(CkIndex_Main::pyRequest(0),thishandle)); */
+	/* this is the new way to register python */
+	((CProxy_Main)thishandle).registerPython("ExecutePythonCode");
 	CcsRegisterHandler("LocalParticleCode",
 			   CkCallback(CkIndex_Main::localParticleCode(0), thishandle));
 	cerr << "Waiting for ccs authentication" << endl;

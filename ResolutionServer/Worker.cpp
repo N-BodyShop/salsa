@@ -93,7 +93,7 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	
 	//load appropriate positions
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
-		//cout << "Family name: " << iter->first << endl;
+		cout << "Family name: " << iter->first << endl;
 		u_int64_t totalNumParticles = iter->second.count.totalNumParticles;
 		u_int64_t numParticles = totalNumParticles / CkNumPes();
 		u_int64_t leftover = totalNumParticles % CkNumPes();
@@ -1443,7 +1443,7 @@ void Worker::localParticleCode(std::string s, const CkCallback &cb)
     CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
     memcpy(msg->data, wrapper.pack(), wrapper.size());
     
-    PythonObject::execute(msg);
+    PythonObject::pyRequest(msg);
     
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
