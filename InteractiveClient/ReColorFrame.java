@@ -20,11 +20,13 @@ public class ReColorFrame extends JFrame
     ViewPanel vp;
     NameValue minPanel, maxPanel;
     Vector attributes;
-    String attrib;
-    JComboBox linLog;
-    JComboBox attributeList;
+    String attrib, dvAttrib;
+    JComboBox linLog, attributeList, dvAttributeList;
     Hashtable clipHash;
     JComboBox clipList;
+    JTextField dvScale;
+    JCheckBox dvCheckBox;
+    boolean dvBool;
 
     public ReColorFrame( Simulation sim, ViewPanel viewP ){
         s = sim;
@@ -93,6 +95,23 @@ public class ReColorFrame extends JFrame
         attrib = (String)attributeList.getSelectedItem();
         s.ccs.addRequest( new ValueRange(attrib) );
         
+        JPanel drawVectorsPanel = new JPanel();
+        dvBool = false;
+        drawVectorsPanel.setLayout(new BoxLayout(drawVectorsPanel, 
+                                BoxLayout.X_AXIS));
+        dvCheckBox = new JCheckBox("Draw");
+        dvCheckBox.addItemListener(this);
+        drawVectorsPanel.add(dvCheckBox);
+        dvAttributeList = new JComboBox(attributes);
+        dvAttributeList.setSelectedIndex(s.selectedAttributeIndex);
+        dvAttributeList.addActionListener(this);
+        dvAttributeList.setActionCommand("dvSelected");
+        drawVectorsPanel.add(dvAttributeList);
+        JLabel dvLabel2 = new JLabel("vectors x");
+        drawVectorsPanel.add(dvLabel2);
+        dvScale = new JTextField("0.01");
+        drawVectorsPanel.add(dvScale);
+
         JButton chooseButton = new JButton("Recolor");
         chooseButton.setActionCommand("choose");
         chooseButton.addActionListener(this);
@@ -104,6 +123,7 @@ public class ReColorFrame extends JFrame
         contentPane.add(clipPanel);
         contentPane.add(minPanel);
         contentPane.add(maxPanel);
+        contentPane.add(drawVectorsPanel);
         contentPane.add(chooseButton);
         
         pack();
@@ -127,6 +147,9 @@ public class ReColorFrame extends JFrame
                 family = (Family)s.Families.get(key);
                 if ( family.on ){ message = message +","+ key; }
             }
+            if( dvBool ) {
+                s.ccs.addRequest( new DrawVectors( dvAttrib + ","+dvScale.getText() ) );
+            }
             System.out.println(message);
             s.ccs.addRequest( new ChooseColorValue( message ) );
 /*            String ll = (String)linLog.getSelectedItem();
@@ -143,7 +166,10 @@ public class ReColorFrame extends JFrame
             } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}*/
 
         } else if ( "clip set".equals(e.getActionCommand()) ){
-            s.selectedClippingIndex = clipList.getSelectedIndex();            
+            s.selectedClippingIndex = clipList.getSelectedIndex(); 
+        } else if ( "dvSelected".equals(e.getActionCommand()) ){
+            s.selectedVectorIndex = dvAttributeList.getSelectedIndex();
+            dvAttrib = (String)dvAttributeList.getSelectedItem();
         } else {
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
             attrib = (String)attributeList.getSelectedItem();
@@ -154,6 +180,11 @@ public class ReColorFrame extends JFrame
 
     public void itemStateChanged(ItemEvent e) {
         Object source = e.getItemSelectable();
+        if ( source == dvCheckBox ){
+            if ( e.getStateChange() == ItemEvent.DESELECTED ) { dvBool = false;
+            } else{ dvBool = true;}
+            return;
+        }
         Family family;
         for ( Enumeration en = s.Families.elements(); 
                 en.hasMoreElements(); ){
@@ -165,9 +196,10 @@ public class ReColorFrame extends JFrame
             }
         }
         
-            attrib = (String)attributeList.getSelectedItem();
+        attrib = (String)attributeList.getSelectedItem();
         attributes = new Vector();
         attributeList.removeAllItems();
+        dvAttributeList.removeAllItems();
         for ( Enumeration en = s.Families.elements(); en.hasMoreElements(); ){
             family = (Family)en.nextElement();
             for ( int j = 0; j < family.attributes.size(); j++ ){
@@ -177,10 +209,12 @@ public class ReColorFrame extends JFrame
                         s.selectedAttributeIndex = attributes.size() -1;
                     }
                     attributeList.addItem(family.attributes.get(j));
+                    dvAttributeList.addItem(family.attributes.get(j));
                 }
             }
         }
         attributeList.setSelectedIndex(s.selectedAttributeIndex);
+        dvAttributeList.setSelectedIndex(s.selectedAttributeIndex);
     }
     
     private class ValueRange extends CcsThread.request{
@@ -205,6 +239,15 @@ public class ReColorFrame extends JFrame
        }
     }
     
+    private class DrawVectors extends CcsThread.request{
+        public DrawVectors(String message){
+            super("DrawVectors", message.getBytes());
+            System.out.println(message);
+        }
+        public void handleReply(byte[] data) {
+       }
+    }
+
     private class ChooseColorValue extends CcsThread.request{
         public ChooseColorValue(String message){
             super("ChooseColorValue", message.getBytes());
