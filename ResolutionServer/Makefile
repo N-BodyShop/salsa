@@ -1,5 +1,5 @@
 STRUCTURES_PATH = $(HOME)/projects/structures
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH)
+CXXFLAGS += -O3 -Wall -I$(STRUCTURES_PATH)
 LDFLAGS += -L$(STRUCTURES_PATH) -language charm++
 LDLIBS += -lTipsy -lpopt -module liveViz -memory paranoid
 

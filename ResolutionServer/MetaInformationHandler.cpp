@@ -29,6 +29,7 @@ void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 }
 
 void MetaInformationHandler::clearBoxes(CkCcsRequestMsg* m) {
+	activeRegion = 0;
 	for(vector<Box<double> *>::iterator iter = boxes.begin(); iter != boxes.end(); ++iter)
 		delete *iter;
 	boxes.clear();
@@ -62,6 +63,7 @@ void MetaInformationHandler::specifySphere(CkCcsRequestMsg* m) {
 }
 
 void MetaInformationHandler::clearSpheres(CkCcsRequestMsg* m) {
+	activeRegion = 0;
 	for(vector<Sphere<double> *>::iterator iter = spheres.begin(); iter != spheres.end(); ++iter)
 		delete *iter;
 	spheres.clear();

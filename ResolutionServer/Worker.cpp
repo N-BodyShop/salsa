@@ -12,8 +12,13 @@
 
 void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb) {		
 	if(MetaInformationHandler* meta = metaProxy.ckLocalBranch()) {
+		for(vector<Box<double> *>::iterator iter = meta->boxes.begin(); iter != meta->boxes.end(); ++iter)
+			delete *iter;
+		for(vector<Sphere<double> *>::iterator iter = meta->spheres.begin(); iter != meta->spheres.end(); ++iter)
+			delete *iter;
 		meta->boxes.clear();
 		meta->spheres.clear();
+		meta->activeRegion = 0;
 		meta->regionMap.clear();
 	}
 	
