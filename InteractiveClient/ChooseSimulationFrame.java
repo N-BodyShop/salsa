@@ -114,6 +114,7 @@ public class ChooseSimulationFrame extends JFrame
         	SimulationFrame sf = new SimulationFrame(c,s);
 			sf.addWindowListener(new WindowAdapter() {
 				public void windowClosing(WindowEvent e) {
+					s.reset();
 					setVisible(true);
 				}
 			});

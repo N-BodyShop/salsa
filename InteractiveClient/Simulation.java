@@ -17,7 +17,11 @@ public class Simulation {
     int numberOfColors;
     Vector Families;
     
-    public Simulation(){
+    public Simulation() {
+		reset();
+	}
+	
+	public void reset() {
         Name = new String();
         attributes = new DefaultComboBoxModel();
         selectedAttributeIndex = 0;
