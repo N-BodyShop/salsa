@@ -74,7 +74,7 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("ClearSpheres", CkCallback(CkIndex_MetaInformationHandler::clearSpheres(0), metaProxy));
 	CcsRegisterHandler("ValueRange", CkCallback(CkIndex_Worker::valueRange(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("Recolor", CkCallback(CkIndex_Worker::recolor(0), workers));
-	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), metaProxy));
+	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), thishandle));
 	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
 	
 	cerr << "Waiting for ccs authentication" << endl;
@@ -128,7 +128,7 @@ void Main::listSimulations(CkCcsRequestMsg* m) {
 }
 
 void Main::chooseSimulation(CkCcsRequestMsg* m) {
-	cout << "You chose: \"" << m->data << "\"" << endl;
+	cout << "You chose: \"" << string(m->data, m->data + m->length) << "\"" << endl;
 	simListType::iterator chosen = simulationList.find(string(m->data, m->data + m->length));
 	if(authenticated && chosen != simulationList.end()) {
 		workers.readParticles(chosen->second.first, chosen->second.second, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
@@ -163,23 +163,24 @@ void Main::shutdownServer(CkCcsRequestMsg* m) {
 }
 
 void Main::activate(CkCcsRequestMsg* m) {
-	string id(m->data, m->data + m->length);
-	metaProxy.activate(id, CkCallbackResumeThread());
+	regionString.assign(m->data, m->length);
+	metaProxy.activate(regionString, CkCallbackResumeThread());
 	unsigned char success = 1;
 	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;
 }
 
 void Main::collectStats(CkCcsRequestMsg* m) {
-	id = string(m->data, m->data + m->length);
+	regionString = string(m->data, m->data + m->length);
 	delayedReply = m->reply;
-	workers.collectStats(id, CkCallback(CkIndex_Main::statsCollected(0), thishandle));
+	workers.collectStats(regionString, CkCallback(CkIndex_Main::statsCollected(0), thishandle));
+	delete m;
 }
 
 void Main::statsCollected(CkReductionMsg* m) {
 	GroupStatistics* stats = static_cast<GroupStatistics *>(m->getData());
 	ostringstream oss;
-	oss << "Statistics for \"" << id << "\"\nNumber of particles: " << stats->numParticles << "\nBounding box: " << stats->boundingBox << "\n";
+	oss << "Statistics for \"" << regionString << "\"\nNumber of particles: " << stats->numParticles << "\nBounding box: " << stats->boundingBox << "\n";
 	string output = oss.str();
 	CcsSendDelayedReply(delayedReply, output.length(), output.c_str());
 	delete m;

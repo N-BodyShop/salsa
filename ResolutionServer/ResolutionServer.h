@@ -44,9 +44,9 @@ class Main : public Chare {
 	simListType simulationList;
 	bool authenticated;
 	CcsDelayedReply delayedReply;
-	std::string id;
+	std::string regionString;
 public:
-		
+	
 	Main(CkArgMsg* m);
 	
 	void authenticate(CkCcsRequestMsg* m);
@@ -93,7 +93,7 @@ class Worker : public ArrayElement1D {
 	const static byte numColors = 254;
 public:
 	
-	Worker(const CkGroupID& metaID) : metaProxy(metaID), imageSize(0) { }
+	Worker(const CkGroupID& metaID) : metaProxy(metaID), image(new byte[0]), imageSize(0) { }
 	Worker(CkMigrateMessage* m) { }
 	~Worker() {
 		delete[] image;

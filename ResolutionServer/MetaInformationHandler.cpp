@@ -51,7 +51,7 @@ void MetaInformationHandler::specifySphere(CkCcsRequestMsg* m) {
 	cout << "Got a sphere definition: " << s << endl;
 	spheres.push_back(s);
 	ostringstream oss;
-	oss << "String " << spheres.size();
+	oss << "Sphere " << spheres.size();
 	string stringID = oss.str();
 	regionMap[stringID] = &spheres.back();
 	if(CkMyNode() == 0)
