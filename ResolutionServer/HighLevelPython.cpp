@@ -206,10 +206,10 @@ void Main::createGroupAttributeSphere(int handle) {
 
 void Main::runLocalParticleCode(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    char *achCode, *achEntry;
-    PyArg_ParseTuple(arg, "ss", &achCode, &achEntry);
+    char *achCode;
+    PyArg_ParseTuple(arg, "s", &achCode);
 
-    string s = string(achCode) + string(1, '\0') + string(achEntry);
+    string s = string(achCode);
     
     workers.localParticleCode(s, CkCallbackResumeThread());
 }

@@ -1,0 +1,180 @@
+Differences to make the python scripting work the way TRQ wants it to!
+Apply these to charm/src/libs/ck-libs/pythonCCS/*
+
+Index: Makefile
+===================================================================
+RCS file: /cvsroot/charm/src/libs/ck-libs/pythonCCS/Makefile,v
+retrieving revision 1.4
+diff -c -2 -r1.4 Makefile
+*** Makefile	21 Nov 2004 01:05:27 -0000	1.4
+--- Makefile	11 Jan 2005 22:54:07 -0000
+***************
+*** 1,3 ****
+--- 1,4 ----
+  CDIR=../../../..
++ OPTS=-g -Wall
+  CHARMC=$(CDIR)/bin/charmc $(OPTS)
+  
+Index: PythonCCS-client.C
+===================================================================
+RCS file: /cvsroot/charm/src/libs/ck-libs/pythonCCS/PythonCCS-client.C,v
+retrieving revision 1.4
+diff -c -2 -r1.4 PythonCCS-client.C
+*** PythonCCS-client.C	24 Nov 2004 03:04:28 -0000	1.4
+--- PythonCCS-client.C	11 Jan 2005 22:54:07 -0000
+***************
+*** 98,101 ****
+--- 98,102 ----
+    }
+    // transform unsigned integers from host byte order to network byte order
++   ((PythonAbstract*)memory)->magic = htonl(magic);
+    ((PythonExecute*)memory)->codeLength = htonl(codeLength);
+    ((PythonExecute*)memory)->methodNameLength = htonl(methodNameLength);
+Index: PythonCCS.C
+===================================================================
+RCS file: /cvsroot/charm/src/libs/ck-libs/pythonCCS/PythonCCS.C,v
+retrieving revision 1.11
+diff -c -2 -r1.11 PythonCCS.C
+*** PythonCCS.C	23 Nov 2004 03:25:13 -0000	1.11
+--- PythonCCS.C	11 Jan 2005 22:54:07 -0000
+***************
+*** 100,103 ****
+--- 100,105 ----
+    PythonPrint *pyPrint=0;
+    PythonExecute *pyMsg=0;
++   pyAbstract->magic = ntohl(pyAbstract->magic);
++   
+    if (pyAbstract->magic == sizeof(PythonPrint)) {
+      pyPrint = (PythonPrint *)msg->data;
+***************
+*** 123,131 ****
+        CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4), (void *)&pyReference);
+      } else {
+!       if (iter->second.printed.length() > 0) {
+  	// send back to the client the string
+  	const char *str = iter->second.printed.data();
+  	//CkPrintf("sending data to the client\n");
+! 	CcsSendDelayedReply(msg->reply, strlen(str)+1, str);
+  	if (iter->second.clientReady == -1) {
+  	  // after the client flush the printed buffer, delete the entry
+--- 125,134 ----
+        CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4), (void *)&pyReference);
+      } else {
+!       if (iter->second.printed.length() > 0 || iter->second.isHighLevel) {
+  	// send back to the client the string
+  	const char *str = iter->second.printed.data();
+  	//CkPrintf("sending data to the client\n");
+! 	CcsSendDelayedReply(msg->reply, strlen(str), str);
+! 	iter->second.printed.erase();
+  	if (iter->second.clientReady == -1) {
+  	  // after the client flush the printed buffer, delete the entry
+***************
+*** 158,162 ****
+        iter->second.inUse = true;
+        // send back this number to the client, which is an ack
+!       CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4), (void *)&pyReference);
+        CmiUnlock(CsvAccess(pyLock));
+        PyEval_AcquireLock();
+--- 161,167 ----
+        iter->second.inUse = true;
+        // send back this number to the client, which is an ack
+!       // if (!pyMsg->isHighLevel())
+!       //  CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4),
+!       //		      (void *)&pyReference);
+        CmiUnlock(CsvAccess(pyLock));
+        PyEval_AcquireLock();
+***************
+*** 177,190 ****
+  
+      // update the reference number, used to access the current chare
+!     pyReference = CsvAccess(pyNumber)++;
+      CsvAccess(pyNumber) &= ~(1<<31);
+      ((*CsvAccess(pyWorkers))[pyReference]).object = this;
+      ((*CsvAccess(pyWorkers))[pyReference]).inUse = true;
+      CmiUnlock(CsvAccess(pyLock));
+  
+      // send back this number to the client
+      //CkPrintf("sending interpreter to the client\n");
+!     CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4), (void *)&pyReference);
+! 
+      // create the new interpreter
+      PyEval_AcquireLock();
+--- 182,198 ----
+  
+      // update the reference number, used to access the current chare
+!     pyReference = ++CsvAccess(pyNumber);
+      CsvAccess(pyNumber) &= ~(1<<31);
+      ((*CsvAccess(pyWorkers))[pyReference]).object = this;
+      ((*CsvAccess(pyWorkers))[pyReference]).inUse = true;
++     ((*CsvAccess(pyWorkers))[pyReference]).clientReady = 0;
++     if(pyMsg->isHighLevel())
++ 	((*CsvAccess(pyWorkers))[pyReference]).isHighLevel = true;
+      CmiUnlock(CsvAccess(pyLock));
+  
+      // send back this number to the client
+      //CkPrintf("sending interpreter to the client\n");
+!     // if (!pyMsg->isHighLevel())
+!     // CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4), (void *)&pyReference);
+      // create the new interpreter
+      PyEval_AcquireLock();
+***************
+*** 204,212 ****
+  
+    // run the program
+-   if (pyMsg->isHighLevel()) {
+-     CthResume(CthCreate((CthVoidFn)_callthr_executeThread, new CkThrCallArg(msg,this), 0));
+-   } else {
+      executeThread(msg);
+!   }
+  }
+  
+--- 212,221 ----
+  
+    // run the program
+      executeThread(msg);
+! 
+!     if (pyMsg->isHighLevel()) {
+! 	((*CsvAccess(pyWorkers))[pyReference]).inUse = false;
+! 	CcsSendDelayedReply(msg->reply, sizeof(CmiUInt4), (void *)&pyReference);
+! 	}
+  }
+  
+***************
+*** 439,442 ****
+--- 448,455 ----
+      }
+      more = nextIteratorUpdate(part, result, userIterator);
++     if(!result) {
++ 	CkPrintf("Python Call error\n");
++ 	break;
++ 	}
+      Py_DECREF(result);
+    }
+***************
+*** 448,452 ****
+    Py_DECREF(code);
+  
+!   // distroy map element in pyWorkers and terminate interpreter
+    Py_EndInterpreter(pts);
+    PyEval_ReleaseLock();
+--- 461,465 ----
+    Py_DECREF(code);
+  
+!   // destroy map element in pyWorkers and terminate interpreter
+    Py_EndInterpreter(pts);
+    PyEval_ReleaseLock();
+Index: PythonCCS.h
+===================================================================
+RCS file: /cvsroot/charm/src/libs/ck-libs/pythonCCS/PythonCCS.h,v
+retrieving revision 1.11
+diff -c -2 -r1.11 PythonCCS.h
+*** PythonCCS.h	21 Nov 2004 01:05:27 -0000	1.11
+--- PythonCCS.h	11 Jan 2005 22:54:07 -0000
+***************
+*** 79,82 ****
+--- 79,83 ----
+    PythonObject *object; /* The c++ object running the job */
+    bool inUse;
++   bool isHighLevel;
+    PyObject *arg;
+    PyObject **result;

@@ -490,7 +490,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	if(verbosity > 2 && thisIndex == 0)
 		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
 		
-	if(imageSize < req.width * req.height) {
+	if(imageSize < (unsigned int) (req.width * req.height)) {
 		delete[] image;
 		imageSize = req.width * req.height;
 		image = new byte[imageSize];
@@ -1409,16 +1409,24 @@ void Worker::createGroup_AttributeSphere(std::string const& groupName,
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
-// Below is a test of Filippo's python integrator
+// Below is a test of Filippo's python iterator
 
 void Worker::localParticleCode(std::string s, const CkCallback &cb) 
 {
-    CkCcsRequestMsg *msg=new (s.length(),0) CkCcsRequestMsg;
+    // CkCcsRequestMsg *msg=new (s.length(),0) CkCcsRequestMsg;
 
-    msg->length=s.length()+1; // make sure final NULL gets copied
-    memcpy(msg->data, s.c_str(), s.length()+1);
+    // msg->length=s.length()+1; // make sure final NULL gets copied
+    // memcpy(msg->data, s.c_str(), s.length()+1);
 
-    iterate(msg);
+    // iterate(msg);
+    
+    PythonIterator info;
+    PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
+    CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
+    memcpy(msg->data, wrapper.pack(), wrapper.size());
+    
+    PythonObject::execute(msg);
+    
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
 
