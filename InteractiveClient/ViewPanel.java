@@ -44,6 +44,7 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
         display.setIcon(new ImageIcon(display.createImage(source)));
         add(display, BorderLayout.CENTER);
         addMouseListener(this);
+        addMouseMotionListener(this);
 
         s.ccs.addRequest(new ActivateGroup( "All", this) );
         rcm = new RightClickMenu(s, this);
@@ -109,6 +110,10 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
 
     public void mousePressed(MouseEvent e) {
         maybeShowPopup(e);
+        if (s.groupSelecting){
+            rect = new Rectangle(e.getX(),e.getY(),0,0);
+            System.out.println("Rectangle created: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
+        }
     }
 
     public void mouseReleased(MouseEvent e) {
@@ -143,11 +148,8 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
     }
 
     public void mouseDragged(MouseEvent e) {
-            System.out.println("boolean: "+s.groupSelecting);
         if (s.groupSelecting){
             repaint();
-            rect = new Rectangle(e.getX(),e.getY(),0,0);
-            System.out.println("Rectangle created: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
             Graphics graph = this.getGraphics();
             graph.setColor(Color.white);
             Double x = new Double(e.getX()-rect.getX());

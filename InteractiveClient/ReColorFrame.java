@@ -98,7 +98,7 @@ public class ReColorFrame extends JFrame
         contentPane.add(particlePanel);
         contentPane.add(attributeList);
         contentPane.add(linLog);
-//        contentPane.add(clipPanel);
+        contentPane.add(clipPanel);
         contentPane.add(minPanel);
         contentPane.add(maxPanel);
         contentPane.add(chooseButton);
@@ -114,7 +114,7 @@ public class ReColorFrame extends JFrame
 
     public void actionPerformed(ActionEvent e){
         if ( "choose".equals(e.getActionCommand()) ){
-/*            String message = (String)linLog.getSelectedItem()+","+attrib+","+
+            String message = (String)linLog.getSelectedItem()+","+attrib+","+
                 minPanel.getValue()+","+maxPanel.getValue()+","+
                 clipHash.get((String)clipList.getSelectedItem());
             Family family;
@@ -124,8 +124,8 @@ public class ReColorFrame extends JFrame
                 family = (Family)s.Families.get(key);
                 if ( family.on ){ message = message +","+ key; }
             }
-            s.ccs.addRequest( new ChooseColorValue( message ) );*/
-            String ll = (String)linLog.getSelectedItem();
+            s.ccs.addRequest( new ChooseColorValue( message ) );
+/*            String ll = (String)linLog.getSelectedItem();
             int type = 0;
             if (ll.equals("linear") ){type = 0;} else { type = 1;};
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -136,7 +136,7 @@ public class ReColorFrame extends JFrame
                 dos.writeDouble(Double.parseDouble(maxPanel.getValue()));
                 dos.writeBytes(attrib);
                 s.ccs.addRequest( new ChooseColorValue( baos.toByteArray() ) );
-            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
+            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}*/
 
         } else if ( "clip set".equals(e.getActionCommand()) ){
             s.selectedClippingIndex = clipList.getSelectedIndex();            
@@ -197,12 +197,12 @@ public class ReColorFrame extends JFrame
     }
     
     private class ChooseColorValue extends CcsThread.request{
-/*        public ChooseColorValue(String message){
+        public ChooseColorValue(String message){
             super("ChooseColorValue", message.getBytes());
-        }*/
-        public ChooseColorValue(byte [] bytes){
-            super("ChooseColorValue", bytes);
         }
+/*        public ChooseColorValue(byte [] bytes){
+            super("ChooseColorValue", bytes);
+        }*/
         public void handleReply(byte[] data) {
             setVisible(false);
             vp.getNewImage();

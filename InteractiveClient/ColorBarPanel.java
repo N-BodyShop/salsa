@@ -239,23 +239,30 @@ public class ColorBarPanel extends JPanel
     * returns the current color model translated according to mousedrags
     */
     private void translateCM( int diff ){
+    System.out.println("Crash 1: "+diff);
         byte[] transferRed = new byte[cmap_size];
         byte[] transferGreen = new byte[cmap_size];
         byte[] transferBlue = new byte[cmap_size];
+    System.out.println("Crash 2");
         for(int i = 0; i < cmap_size; ++i) {
             transferRed[i] = cm_red[s.numberOfColors + (i + diff + cmap_size) % cmap_size];
             transferGreen[i] = cm_green[s.numberOfColors + (i + diff + cmap_size) % cmap_size];
             transferBlue[i] = cm_blue[s.numberOfColors + (i + diff + cmap_size) % cmap_size];
         }
+    System.out.println("Crash 3");
         for(int i = 0; i < cmap_size; ++i) {
             cm_red[i + s.numberOfColors] = transferRed[i];
             cm_green[i + s.numberOfColors] = transferGreen[i];
             cm_blue[i + s.numberOfColors] = transferBlue[i];
         }
+    System.out.println("Crash 4");
 
         s.cm = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+    System.out.println("Crash 5");
         cbsource.newPixels(imagebytes,s.cm,0,width);
+    System.out.println("Crash 6");
         vp.redisplay();
+    System.out.println("Crash 7");
     }
 
 
