@@ -3,8 +3,8 @@
 # First we start the server on a remote host, and then connect to it
 
 set REMOTEHOST = catsanddogs.astro.washington.edu
-set REMOTEDIR = /users/gwl/public/ResolutionServer-0.2-beta2
-#set REMOTEDIR = /users/gwl/Projects/ResolutionServer
+#set REMOTEDIR = /users/gwl/public/ResolutionServer-0.2-beta2
+set REMOTEDIR = /users/gwl/Projects/ResolutionServer
 
 set FILE = ""
 if ( $#argv == 1 ) then
@@ -15,7 +15,7 @@ if ( $#argv == 1 ) then
   endif
 endif
 
-set SALSAARGS = `ssh $REMOTEHOST "cd $REMOTEDIR; ./run_server.sh -v -v -v +p4 $FILE" | tail -1`
+set SALSAARGS = `ssh $REMOTEHOST "cd $REMOTEDIR; ./run_server.sh -v -v +p4 $FILE" | tail -1`
 set SALSAARGS = "$SALSAARGS $FILE"
 
 #start the client, which will tell the server to quit when it quits
