@@ -16,6 +16,7 @@ public class CodePanel extends JPanel /*implements ActionListener*/ {
 		super(new BorderLayout());
 		
 		windowManager = wm;
+		interpreterHandle = 0;
 		
 		codeText = new JTextArea(15, 40);
 		codeText.setTabSize(4);
@@ -57,21 +58,11 @@ public class CodePanel extends JPanel /*implements ActionListener*/ {
 		
 		Action executeAction = new AbstractAction() {
 		    public void actionPerformed(ActionEvent e) {
-			printRequest = 0;
-			if(interpreterHandle == 0) {
-			    PythonExecute myrequest =
-				new PythonExecute(codeText.getText()+"\n",
-						  true,true,0);
-			    myrequest.setKeepPrint(true);
-			    windowManager.ccs.addRequest(new ExecutePythonCode(myrequest.pack()));
-			    }
-			else {
-			    PythonExecute myrequest =
-				new PythonExecute(codeText.getText()+"\n",
-						  true,true,interpreterHandle);
-			    myrequest.setKeepPrint(true);
-			    windowManager.ccs.addRequest(new ExecutePythonCode(myrequest.pack()));
-			    }
+			PythonExecute myrequest
+			    = new PythonExecute(codeText.getText()+"\n",
+						true,true,interpreterHandle);
+			myrequest.setKeepPrint(true);
+			windowManager.ccs.addRequest(new ExecutePythonCode(myrequest.pack()));
 			}
 		};
 		codeText.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("shift ENTER"), "execute");

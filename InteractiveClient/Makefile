@@ -7,7 +7,7 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 	SalsaRequests.class ChooseSimulationFrame.class \
 	Salsa.class DelimitedStringEnumeration.class GroupManager.class \
 	CodePanel.class GroupQuery.class MenuBar.class LocalParticle.class \
-	PythonExecute.class
+	PythonExecute.class HighLevelPython.class PyPrintHandler.class
 	
 #	ConnectFrame.class \
 #	ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class \

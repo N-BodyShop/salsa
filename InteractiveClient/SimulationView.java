@@ -503,16 +503,17 @@ public class SimulationView extends JLabel
 	public void componentShown(ComponentEvent e) { }
     public void makeBox(String groupName) 
     {
-	ExecutePythonCode code = new ExecutePythonCode("createGroup_makebox(\""
-					   + groupName + "\","
+	PythonExecute code = new PythonExecute("charm.createGroupAttributeBox(\""
+					   + groupName + "\", \"All\", \"position\","
 					   + selectCorner.toPyString() + ","
 					   + selectEdge1.toPyString() + ","
 					   + selectEdge2.toPyString() + ","
-					   + selectEdge3.toPyString() + ")\n");
-	windowManager.ccs.addRequest(code);
+					   + selectEdge3.toPyString() + ")\n",
+					       false, true, 0);
+	windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
     }
 	private class ExecutePythonCode extends CcsThread.request {
-		public ExecutePythonCode(String s) {
+		public ExecutePythonCode(byte[] s) {
 			super("ExecutePythonCode", s);
 		}
 		
@@ -521,5 +522,4 @@ public class SimulationView extends JLabel
 			System.out.println("Return from code execution: \"" + result + "\"");
 		}
 	}
-	
 }

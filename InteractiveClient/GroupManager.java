@@ -84,9 +84,14 @@ public class GroupManager extends Manager
 		applyButton.setActionCommand("apply");
 		applyButton.addActionListener(this);
 		
+		JButton refreshButton = new JButton("Refresh");
+		refreshButton.setActionCommand("refresh");
+		refreshButton.addActionListener(this);
+		
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.add(button);
 		buttonPanel.add(applyButton);
+		buttonPanel.add(refreshButton);
 		
 		Box rhs = new Box(BoxLayout.PAGE_AXIS);
 		rhs.add(displayPanel);
@@ -118,7 +123,7 @@ public class GroupManager extends Manager
 				applyButton.setEnabled(true);
 			} else {
 				//could switch cards here to display "Sorry, no knowledge" message?
-				groupNameField.setEnabled(false);
+				groupNameField.setEnabled(true);
 				attributeNameBox.setEnabled(false);
 				minValField.setEnabled(false);
 				maxValField.setEnabled(false);
@@ -151,6 +156,14 @@ public class GroupManager extends Manager
 			sim.groups.put(g.name, g);
 			groupList.clearSelection();
 			groupList.setSelectedValue(g.name, true);
+		} else if(command.equals("refresh")) { // get new list of
+						       // groups from server
+		    // Convert the Python list into a comma separated string
+		    String getGroupsCode
+			= "ck.printclient(str(charm.getGroups()).replace(\"', '\",\",\").strip(\"[]'\"))\n";
+		    PythonExecute code = new PythonExecute(getGroupsCode,
+						false, true, 0);
+		    HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetGroupsHandler());
 		} else if(command.equals("chooseAttribute")) {
 			String attribute = (String) attributeNameBox.getSelectedItem();
 			double minVal = 1E200;
@@ -184,6 +197,18 @@ public class GroupManager extends Manager
 			} catch(NumberFormatException e) {
 				System.err.println("Problem parsing group id");
 			}
+		}
+	}
+	public class GetGroupsHandler extends PyPrintHandler {
+		public void handle(String result) {
+			System.out.println("Return from code execution: \"" + result + "\"");
+			sim.groups.clear();
+			DelimitedStringEnumeration glist
+			    = new DelimitedStringEnumeration(result);
+			while(glist.hasMoreElements()) {
+			    Simulation.Group g = new Simulation.Group((String) glist.nextElement());
+			    sim.groups.put(g.name, g);
+			    }
 		}
 	}
 }
