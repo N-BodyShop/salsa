@@ -8,14 +8,25 @@ mainmodule ResolutionServer {
 
 	mainchare Main {
 		entry Main();
-		entry void nextPart(CkReductionMsg* m);	
+		
+		entry void authenticate(CkCcsRequestMsg* m);
+		entry void listSimulations(CkCcsRequestMsg* m);
+		entry void chooseSimulation(CkCcsRequestMsg* m);
+		entry void startVisualization(CkReductionMsg* m);
+		entry void shutdownServer(CkCcsRequestMsg* m);
+		
 	};
 	
 	array [1D] Worker {
 		entry Worker();
 		
-		entry void readParticles(const std::string& posfilename, const std::string& valuefilename, bool logarithmic, bool reversed, const CkCallback& cb);
+		entry void readParticles(const std::string& posfilename, const std::string& valuefilename, byte numColors, bool logarithmic, bool reversed, const CkCallback& cb);
 		
 		entry void generateImage(liveVizRequestMsg* m);
+		
+		entry void specifyBox(CkCcsRequestMsg* m);
+		entry void clearBoxes(CkCcsRequestMsg* m);
+		entry void specifySphere(CkCcsRequestMsg* m);
+		entry void clearSpheres(CkCcsRequestMsg* m);
 	};
 };

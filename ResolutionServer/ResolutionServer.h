@@ -6,14 +6,29 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 #include "pup_stl.h"
 #include "liveViz.h"
+#include "ckcallback-ccs.h"
 
 #include "TipsyParticles.h"
 #include "OrientedBox.h"
+#include "Sphere.h"
+
+template <typename T>
+class Box {
+public:
+	Vector3D<T> vertices[8];
+};
 
 #include "ResolutionServer.decl.h"
+
+template <typename T>
+inline void operator|(PUP::er& p, Box<T>& b) {
+	for(int i = 0; i < 8; ++i)
+		p | b.vertices[i];
+}
 
 typedef unsigned char byte;
 
@@ -32,10 +47,23 @@ public:
 
 class Main : public Chare {
 	CProxy_Worker workers;
+	int logarithmic;
+	int reversed;
+	std::string simulationListFilename;
+	typedef std::map<std::string, std::pair<std::string, std::string> > simListType;
+	simListType simulationList;
+	bool authenticated;
+	CcsDelayedReply delayedReply;
 public:
 		
 	Main(CkArgMsg* m);
-	void nextPart(CkReductionMsg* m);
+	
+	void authenticate(CkCcsRequestMsg* m);
+	void listSimulations(CkCcsRequestMsg* m);
+	void chooseSimulation(CkCcsRequestMsg* m);
+	void startVisualization(CkReductionMsg* m);
+	void shutdownServer(CkCcsRequestMsg* m);
+	
 };
 
 class Worker : public ArrayElement1D {
@@ -47,6 +75,8 @@ class Worker : public ArrayElement1D {
 	byte* image;
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
+	vector<Box<float> > boxes;
+	vector<Sphere<double> > spheres;
 public:
 	
 	Worker() : imageSize(0) { }
@@ -55,10 +85,14 @@ public:
 		delete[] image;
 	}
 	
-	void readParticles(const std::string& posfilename, const std::string& valuefilename, bool logarithmic, bool reversed, const CkCallback& cb);
+	void readParticles(const std::string& posfilename, const std::string& valuefilename, byte numColors, bool logarithmic, bool reversed, const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
-
+	
+	void specifyBox(CkCcsRequestMsg* m);
+	void clearBoxes(CkCcsRequestMsg* m);
+	void specifySphere(CkCcsRequestMsg* m);
+	void clearSpheres(CkCcsRequestMsg* m);
 };
 
 template <typename T1>

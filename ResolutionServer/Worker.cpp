@@ -4,12 +4,11 @@
 #include <cstdlib>
 
 #include "tree_xdr.h"
-#include "SwapEndianness.h"
 
 #include "ResolutionServer.h"
 #include "Reductions.h"
 
-void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, bool logarithmic, bool reversed, const CkCallback& cb) {
+void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, byte numColors, bool logarithmic, bool reversed, const CkCallback& cb) {
 	beLogarithmic = logarithmic;
 	bool reverseColors = reversed;
 		
@@ -35,6 +34,17 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 	}
 	if(fh.dimensions != 3 || fh.code != float32) {
 		cerr << "Worker " << thisIndex << ": Position file contains wrong type" << endl;
+		contribute(0, 0, CkReduction::concat, cb);
+		return;
+	}
+	
+	if(!xdr_template(&xdrs, &boundingBox.lesser_corner) || !xdr_template(&xdrs, &boundingBox.greater_corner)) {
+		cerr << "Worker " << thisIndex << ": Had problems reading bounding box values" << endl;
+		contribute(0, 0, CkReduction::concat, cb);
+		return;
+	}
+	if(boundingBox.lesser_corner == boundingBox.greater_corner) {
+		cerr << "Worker " << thisIndex << ": Can't handle all the same position" << endl;
 		contribute(0, 0, CkReduction::concat, cb);
 		return;
 	}
@@ -65,7 +75,6 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 			contribute(0, 0, CkReduction::concat, cb);
 			return;
 		}
-		boundingBox.grow(myParticles[i].position);
 	}
 	xdr_destroy(&xdrs);
 	fclose(infile);
@@ -116,7 +125,7 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 		if(verbosity > 2)
 			cout << "Worker " << thisIndex << ": All particles have the same color" << endl;
 		for(u_int64_t i = 0; i < numParticles; ++i)
-			myParticles[i].color = 255;
+			myParticles[i].color = numColors - 1;
 	} else {
 		if(!seekField(valfh, &xdrs, startParticle)) {
 			cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
@@ -143,11 +152,11 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 				value *= -1;
 			if(beLogarithmic) {
 				if(minValue <= 0)
-					myParticles[i].color = static_cast<byte>(255.0 * log10(value - minValue + 1.0) / delta);
+					myParticles[i].color = static_cast<byte>((numColors - 1) * log10(value - minValue + 1.0) / delta);
 				else
-					myParticles[i].color = static_cast<byte>(255.0 * (log10(value) - lower) / delta);
+					myParticles[i].color = static_cast<byte>((numColors - 1) * (log10(value) - lower) / delta);
 			} else
-				myParticles[i].color = static_cast<byte>(255.0 * (value - minValue) / delta);
+				myParticles[i].color = static_cast<byte>((numColors - 1) * (value - minValue) / delta);
 		}
 	}
 	xdr_destroy(&xdrs);
@@ -195,6 +204,72 @@ public:
 	}
 };
 
+template <typename T>
+inline T swapEndianness(T val) {
+	static const unsigned int size = sizeof(T);
+	T swapped;
+	unsigned char* source = reinterpret_cast<unsigned char *>(&val);
+	unsigned char* dest = reinterpret_cast<unsigned char *>(&swapped);
+	for(unsigned int i = 0; i < size; ++i)
+		dest[i] = source[size - i - 1];
+	return swapped;
+}
+
+void Worker::specifyBox(CkCcsRequestMsg* m) {
+	if(m->length != 8 * 3 * sizeof(double))
+		return;
+	Vector3D<double>* vertices = reinterpret_cast<Vector3D<double> *>(m->data);
+	cout << "Got a box definition" << endl;
+	Box<float> box;
+	for(int i = 0; i < 8; ++i) {
+		vertices[i].x = swapEndianness(vertices[i].x);
+		vertices[i].y = swapEndianness(vertices[i].y);
+		vertices[i].z = swapEndianness(vertices[i].z);
+		box.vertices[i] = vertices[i];
+		cout << "Vertex " << (i + 1) << ": " << vertices[i] << endl;
+	}
+	
+	//save box somehow
+	boxes.push_back(box);
+	
+	//give it unique identifier
+	
+	//send identifier back to client
+	
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
+void Worker::clearBoxes(CkCcsRequestMsg* m) {
+	boxes.clear();
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
+void Worker::specifySphere(CkCcsRequestMsg* m) {
+	if(m->length != 4 * sizeof(double))
+		return;
+	Sphere<double> s;
+	s.origin = *reinterpret_cast<Vector3D<double> *>(m->data);
+	s.radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
+	s.origin.x = swapEndianness(s.origin.x);
+	s.radius = swapEndianness(s.radius);
+	cout << "Got a sphere definition: " << s << endl;
+	spheres.push_back(s);
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
+void Worker::clearSpheres(CkCcsRequestMsg* m) {
+	spheres.clear();
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
 void Worker::generateImage(liveVizRequestMsg* m) {
 	double start = CkWallTimer();
 	
@@ -231,6 +306,56 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			}
 		}
 	}
+	if(boxes.size() > 0) {
+		//draw boxes onto canvas
+		unsigned int pix_x, pix_y;
+		for(vector<Box<float> >::iterator iter = boxes.begin(); iter != boxes.end(); ++iter) {
+			for(int i = 0; i < 8; ++i) {
+				x = dot(req.x, iter->vertices[i] - req.o);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, iter->vertices[i] - req.o);
+					if(y > -1 && y < 1) {
+						cerr << "Vertex is in the frame" << endl;
+						pix_x = static_cast<unsigned int>(req.width * (x + 1) / 2);
+						pix_y = static_cast<unsigned int>(req.height * (y + 1) / 2);
+						for(int j = 0; j < 3; ++j) {
+							for(int k = 0; k < 3; ++k) {
+								pixel = pix_x - 1 + j + req.width * (pix_y - 1 + k);
+								if(pixel < imageSize)
+									image[pixel] = 255;
+								else
+									cerr << "Pixel is bad" << endl;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if(spheres.size() > 0) {
+		//draw spheres onto canvas
+		unsigned int pix_x, pix_y;
+		for(vector<Sphere<double> >::iterator iter = spheres.begin(); iter != spheres.end(); ++iter) {
+			x = dot(req.x, iter->origin - req.o);
+			if(x > -1 && x < 1) {
+				y = dot(req.y, iter->origin - req.o);
+				if(y > -1 && y < 1) {
+					cerr << "Sphere origin is in the frame" << endl;
+					pix_x = static_cast<unsigned int>(req.width * (x + 1) / 2);
+					pix_y = static_cast<unsigned int>(req.height * (y + 1) / 2);
+					for(int j = 0; j < 3; ++j) {
+						for(int k = 0; k < 3; ++k) {
+							pixel = pix_x - 1 + j + req.width * (pix_y - 1 + k);
+							if(pixel < imageSize)
+								image[pixel] = 255;
+							else
+								cerr << "Pixel is bad" << endl;
+						}
+					}
+				}
+			}
+		}
+	}
 	/*
 	for(u_int64_t i = 0; i < numParticles; ++i) {
 		x = dot(req.x, myParticles[i].position - req.o);
@@ -251,6 +376,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		}
 	}
 	*/
+	double stop = CkWallTimer();
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
 	cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
+	cout << "my part: " << (stop - start) << " seconds" << endl;
 }
