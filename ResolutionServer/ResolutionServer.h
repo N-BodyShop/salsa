@@ -9,6 +9,8 @@
 #include <map>
 #include <set>
 
+#include <boost/shared_ptr.hpp>
+
 #include "pup_stl.h"
 #include "liveViz.h"
 #include "ckcallback-ccs.h"
@@ -18,6 +20,24 @@
 #include "Sphere.h"
 #include "Box.h"
 #include "Simulation.h"
+
+template <typename MessageType, typename ResultType>
+class CkCallbackResumeThreadResult : public CkCallback {
+	MessageType*& m;
+	ResultType& result;
+public:
+		
+	CkCallbackResumeThreadResult(MessageType*& m_, ResultType& result_) : CkCallback(resumeThread), m(m_), result(result_) { }
+	~CkCallbackResumeThreadResult() {
+		m = reinterpret_cast<MessageType *>(thread_delay());
+		result = *reinterpret_cast<ResultType *>(m->getData());
+	}
+};
+
+template <typename MessageType, typename ResultType>
+CkCallbackResumeThreadResult<MessageType, ResultType> createCallbackResumeThread(MessageType*& m, ResultType& r) {
+	return CkCallbackResumeThreadResult<MessageType, ResultType>(m, r);
+}
 
 enum clipping { low, high, both, none };
 
@@ -57,8 +77,11 @@ public:
 	Vector3D<double> z;
 	Vector3D<double> o;
 	int centerFindingMethod;
-	int activeGroup;
-	
+	//int activeGroup;
+	std::string activeGroup;
+	double minMass;
+	double maxMass;
+	int doSplatter;
 	
 	MyVizRequest() : width(0), height(0) { }
 
@@ -87,6 +110,9 @@ inline void operator|(PUP::er& p, MyVizRequest& req) {
 	p | req.o;
 	p | req.centerFindingMethod;
 	p | req.activeGroup;
+	p | req.minMass;
+	p | req.maxMass;
+	p | req.doSplatter;
 }
 
 #include "ParticleStatistics.h"
@@ -108,7 +134,14 @@ public:
 	colored_particle(const Tipsy::simple_particle& p) : position(p.pos), value(0), color(0) { }
 };
 
+class PythonInstance;
+class PythonMain;
+
+extern "C" void initResolutionServer();
+
 class Main : public Chare {
+	friend class PythonMain;
+	
 	CProxy_MetaInformationHandler metaProxy;
 	CProxy_Worker workers;
 	typedef std::map<std::string, std::string> simListType;
@@ -116,7 +149,11 @@ class Main : public Chare {
 	simListType simulationList;
 	CcsDelayedReply delayedReply;
 	std::string regionString;
+
+	std::auto_ptr<PythonInstance> pythonInterpreter;
 public:
+	
+	Main(const Main&);
 	
 	Main(CkArgMsg* m);
 	
@@ -135,6 +172,8 @@ public:
 	void activateGroup(CkCcsRequestMsg* m);
 	void drawVectors(CkCcsRequestMsg* m);
 	
+	void initializePython();
+	void executePythonCode(CkCcsRequestMsg* m);
 };
 
 class MetaInformationHandler : public Group {
@@ -157,12 +196,18 @@ public:
 	friend class Worker;
 };
 
+//forward declare Group class
+namespace SimulationHandling {
+class Group;
+}
+
 class Worker : public ArrayElement1D {
 	friend class Main;
+	friend class PythonMain;
 	
 	CProxy_MetaInformationHandler metaProxy;
-	SimulationHandling::Simulation* sim;
 	CkCallback callback;
+	SimulationHandling::Simulation* sim;
 	byte* image;
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
@@ -175,6 +220,11 @@ class Worker : public ArrayElement1D {
 	std::string drawVectorAttributeName;
 	bool drawVectors;
 	float vectorScale;
+	
+	float minMass, maxMass;
+	
+	typedef std::map<std::string, boost::shared_ptr<SimulationHandling::Group> > GroupMap;
+	GroupMap groups;
 	
 	template <typename T>
 	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip);
@@ -206,6 +256,12 @@ public:
 
 	void getAttributeInformation(CkCcsRequestMsg* m);
 	void getColoringInformation(CkCcsRequestMsg* m);
+	
+	void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
+	void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
+	
+	void createGroup_Family(std::string const& familyName, CkCallback const& cb);
+	void createGroup_AttributeRange(std::string const& groupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 };
 
 #endif //RESOLUTIONSERVER_H

@@ -22,6 +22,10 @@ CkReduction::reducerType pairByteDoubleMax;
 CkReduction::reducerType pairDoubleDoubleMin;
 CkReduction::reducerType pairDoubleDoubleMax;
 
+CkReduction::reducerType pairFloatFloatSum;
+CkReduction::reducerType pairDoubleDoubleSum;
+CkReduction::reducerType pairDoubleVector3DSum;
+
 using namespace std;
 
 typedef unsigned char byte;
@@ -98,6 +102,18 @@ CkReductionMsg* pairMax(int nMsg, CkReductionMsg** msgs) {
 	return CkReductionMsg::buildNew(sizeof(pair<T, U>), ppair);
 }
 
+template <typename T, typename U>
+CkReductionMsg* pairSum(int nMsg, CkReductionMsg** msgs) {
+	pair<T, U>* ppair = static_cast<pair<T, U> *>(msgs[0]->getData());
+	pair<T, U>* msgppair;
+	for(int i = 1; i < nMsg; i++) {
+		msgppair = static_cast<pair<T, U> *>(msgs[i]->getData());
+		ppair->first += msgppair->first;
+		ppair->second += msgppair->second;
+	}
+	return CkReductionMsg::buildNew(sizeof(pair<T, U>), ppair);
+}
+
 void registerReductions() {
 	mergeStatistics = CkReduction::addReducer(mergeParticleStats);
 	
@@ -112,6 +128,10 @@ void registerReductions() {
 	pairByteDoubleMax = CkReduction::addReducer(pairMax<byte, double>);
 	pairDoubleDoubleMin = CkReduction::addReducer(pairMin<double, double>);
 	pairDoubleDoubleMax = CkReduction::addReducer(pairMax<double, double>);
+	
+	pairFloatFloatSum = CkReduction::addReducer(pairSum<float, float>);
+	pairDoubleDoubleSum = CkReduction::addReducer(pairSum<double, double>);
+	pairDoubleVector3DSum = CkReduction::addReducer(pairSum<double, Vector3D<double> >);
 }
 
 #include "Reductions.def.h"

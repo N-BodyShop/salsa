@@ -16,3 +16,7 @@ extern CkReduction::reducerType pairByteDoubleMin;
 extern CkReduction::reducerType pairByteDoubleMax;
 extern CkReduction::reducerType pairDoubleDoubleMin;
 extern CkReduction::reducerType pairDoubleDoubleMax;
+
+extern CkReduction::reducerType pairFloatFloatSum;
+extern CkReduction::reducerType pairDoubleDoubleSum;
+extern CkReduction::reducerType pairDoubleVector3DSum;

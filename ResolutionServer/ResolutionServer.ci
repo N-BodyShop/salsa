@@ -7,7 +7,7 @@ mainmodule ResolutionServer {
 	readonly int verbosity;
 
 	mainchare Main {
-		entry Main();
+		entry Main(); //creates interpreter, load Python binding to Main classes, expose this object to instance of interpreter
 		
 		entry void listSimulations(CkCcsRequestMsg* m);
 		entry void chooseSimulation(CkCcsRequestMsg* m);
@@ -24,6 +24,7 @@ mainmodule ResolutionServer {
 		entry [threaded] void activateGroup(CkCcsRequestMsg* m);
 		entry [threaded] void drawVectors(CkCcsRequestMsg* m);
 		
+		entry void executePythonCode(CkCcsRequestMsg* m);
 	};
 	
 	array [1D] Worker {
@@ -44,6 +45,11 @@ mainmodule ResolutionServer {
 		
 		entry void getAttributeInformation(CkCcsRequestMsg* m);
 		entry void getColoringInformation(CkCcsRequestMsg* m);
+	
+		entry void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
+		entry void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
+		entry void createGroup_Family(const std::string& familyName, const CkCallback& cb);
+		entry void createGroup_AttributeRange(const std::string& groupName, const std::string& attributeName, double minValue, double maxValue, const CkCallback& cb);
 	};
 	
 	group MetaInformationHandler {

@@ -6,8 +6,6 @@
 #include <set>
 #include <iterator>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 #include <popt.h>
 
 #include "pup_network.h"
@@ -16,6 +14,8 @@
 
 #include "SiXFormat.h"
 #include "TipsyFormat.h"
+
+#include "PythonInstance.h"
 
 using namespace std;
 using namespace SimulationHandling;
@@ -68,9 +68,6 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;
 	
-	//if(verbosity > 2)
-	//	cout << "Started at " << boost::posix_time::second_clock::local_time() << endl;
-	
 	Simulation* sim = new SiXFormatReader(fname);
 	if(sim->size() == 0) {
 		//try plain tipsy format
@@ -103,6 +100,8 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cout << "Created workers and meta handler" << endl;
 	
+	initializePython();
+	
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
 	CcsRegisterHandler("CreateColoring", CkCallback(CkIndex_Main::makeColoring(0), thishandle));
@@ -120,6 +119,8 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("DrawVectors", CkCallback(CkIndex_Main::drawVectors(0), thishandle));
 	CcsRegisterHandler("GetAttributeInformation", CkCallback(CkIndex_Worker::getAttributeInformation(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("GetColoringInformation", CkCallback(CkIndex_Worker::getColoringInformation(0), CkArrayIndex1D(0), workers));
+
+	CcsRegisterHandler("ExecutePythonCode", CkCallback(CkIndex_Main::executePythonCode(0),thishandle));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -157,6 +158,7 @@ void Main::startVisualization(CkReductionMsg* m) {
     liveVizConfig cfg(false, false, box);
     //cfg.moreVerbose();
 	//cfg.moreVerbose();
+	//cout << "Initializing liveViz" << endl;
     liveVizInit(cfg, workers, CkCallback(CkIndex_Worker::generateImage(0), workers));
 	
 	unsigned char success = 1;
@@ -217,12 +219,22 @@ void Main::statsCollected(CkReductionMsg* m) {
 
 void Main::calculateDepth(CkCcsRequestMsg* m) {
 	delayedReply = m->reply;
-	MyVizRequest* preq = reinterpret_cast<MyVizRequest *>(m->data + 4 * sizeof(int));
+	char* buf = reinterpret_cast<char *>(m->data);
+	liveVizRequest lvr;
+	PUP_toNetwork_unpack up(buf);
+	lvr.pupNetwork(up);
+	buf += up.size();
+	liveVizRequestMsg* msg = liveVizRequestMsg::buildNew(lvr, buf, m->length - up.size());
+	MyVizRequest req;
+	liveVizRequestUnpack(msg, req);
+	//delete msg;
+	//MyVizRequest* preq = reinterpret_cast<MyVizRequest *>(m->data + 4 * sizeof(int));
 	//get correct endianness
-	PUP::fromNetwork p;
-	p | *preq;
-	cout << "Centering request got MyVizRequest: " << *preq << endl;
-	workers.calculateDepth(*preq, CkCallback(CkIndex_Main::depthCalculated(0), thishandle));
+	//PUP::fromNetwork p;
+	//p | *preq;
+	//cout << "Centering request got MyVizRequest: " << *preq << endl;
+	cout << "Centering request got MyVizRequest: " << req << endl;
+	workers.calculateDepth(req, CkCallback(CkIndex_Main::depthCalculated(0), thishandle));
 	delete m;
 }
 

@@ -5,10 +5,18 @@
 #include <cstdlib>
 #include <vector>
 #include <set>
+#include <numeric>
+
+#include <boost/bind.hpp>
+#include <boost/iterator/filter_iterator.hpp>
+#include <boost/iterator/counting_iterator.hpp>
 
 #include "tree_xdr.h"
 #include "SiXFormat.h"
 #include "TipsyFormat.h"
+#include "SPH_Kernel.h"
+#include "Interpolate.h"
+#include "Group.h"
 
 #include "pup_network.h"
 #include "ResolutionServer.h"
@@ -47,6 +55,8 @@ std::list<std::string> splitString(const std::string& s, const char c = ',') {
 
 using namespace std;
 using namespace SimulationHandling;
+using namespace boost;
+using namespace SPH;
 
 const string Worker::coloringPrefix = "__internal_coloring";
 
@@ -75,7 +85,6 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		if(sim->size() == 0)
 			cerr << "Couldn't load simulation file (tried new format and plain tipsy)" << endl;
 	}
-	//cout << "Simulation " << sim->name << " contains " << sim->size() << " families" << endl;
 	
 	boundingBox = OrientedBox<float>();
 	
@@ -113,22 +122,34 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	colorings.push_back(c);
 	startColor = familyColor;
 	
-	groupNames.push_back("All");
-	activeGroupName = "All";
+	//groupNames.push_back("All");
+	//activeGroupName = "All";
+	groups["All"] = boost::shared_ptr<SimulationHandling::Group>(new AllGroup(*sim));
 	
 	drawVectors = false;
 	vectorScale = 0.01;
-	
+
+	minMass = HUGE_VAL;
+	maxMass = -HUGE_VAL;
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
+		TypedArray& massArr = iter->second.attributes["mass"];
+		float val = massArr.getMinValue(Type2Type<float>());
+		if(val < minMass)
+			minMass = val;
+		val = massArr.getMaxValue(Type2Type<float>());
+		if(maxMass < val)
+			maxMass = val;
+	}
+	//handle case where all particles have same mass
+	if(minMass == maxMass)
+		minMass = 0;
+		
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
 const byte lineColor = 1;
 
 #include "PixelDrawing.cpp"
-
-#include <boost/iterator/filter_iterator.hpp>
-#include <boost/iterator/counting_iterator.hpp>
-using namespace boost;
 
 class SimplePredicate {
 public:
@@ -222,6 +243,16 @@ inline int sign(T x) {
 		return 1;
 }
 
+template <typename T>
+inline T uniform(T val) {
+	if(val < 0)
+		return 0;
+	else if(val > 1)
+		return 1;
+	else
+		return val;
+}
+/*
 void Worker::generateImage(liveVizRequestMsg* m) {
 	//double start = CkWallTimer();
 	
@@ -257,7 +288,12 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	Coloring& c = colorings[req.coloring];
 	activeGroupName = groupNames[req.activeGroup];
 	
+	bool drawSplatter = req.doSplatter;
+		
 	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+		//if this piece doesn't have particles in this family, skip it
+		if(simIter->second.count.numParticles == 0)
+			continue;
 		//don't try to draw inactive families
 		if(c.activeFamilies.find(simIter->first) == c.activeFamilies.end())
 			continue;
@@ -324,6 +360,56 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 					}
 				}
 			}
+		} else if(drawSplatter) { //draw splattered visual
+			//make sure these attributes are loaded, and assign softening to smoothing for point-particles
+			AttributeMap::iterator attrIter = simIter->second.attributes.find("mass");
+			if(attrIter == simIter->second.attributes.end())
+				cerr << "No Masses!" << endl;
+			if(attrIter->second.length == 0)
+				sim->loadAttribute(simIter->first, "mass", simIter->second.count.numParticles, simIter->second.count.startParticle);
+			float* masses = simIter->second.getAttribute("mass", Type2Type<float>());
+			if(masses == 0)
+				cerr << "Masses pointer null!" << endl;
+			string smoothingAttributeName = "softening";
+			if(simIter->first == "gas") {
+				attrIter = simIter->second.attributes.find("smoothingLength");
+				if(attrIter != simIter->second.attributes.end())
+					smoothingAttributeName = "smoothingLength";
+			}
+			attrIter = simIter->second.attributes.find(smoothingAttributeName);
+			if(attrIter == simIter->second.attributes.end())
+				cerr << "No smoothing or softening!" << endl;
+			if(attrIter->second.length == 0)
+				sim->loadAttribute(simIter->first, smoothingAttributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
+			float* smoothingLengths = simIter->second.getAttribute(smoothingAttributeName, Type2Type<float>());
+			if(smoothingLengths == 0)
+				cerr << "D'oh!  smoothingLengths null!" << endl;
+			
+			if(!projectedKernel.isReady())
+				initializeProjectedKernel(100);
+			
+			float massRange = req.maxMass - req.minMass;
+			if(thisIndex == 0) {
+				cout << "Mass range is from " << minMass << " to " << maxMass << endl;
+				cout << "Splatter range is from " << req.minMass << " to " << req.maxMass << endl;
+			}
+			for(; iter != end; ++iter) {
+				x = dot(req.x, positions[*iter] - req.o);
+				float hpix = smoothingLengths[*iter] / delta;
+				float xbound = 1 + 2 * 2 * hpix / req.width;
+				if(x > -xbound && x < xbound) {
+					y = dot(req.y, positions[*iter] - req.o);
+					float ybound = 1 + 2 * 2 * hpix / req.height;
+					if(y > -ybound && y < ybound) {
+						//rescale masses (log masses?) to (256-startColor)
+						//float m = (256 - startColor) * uniform((masses[*iter] - req.minMass) / massRange);
+						//splatParticle(image, req.width, req.height, x, y, m, smoothingLengths[*iter], delta, startColor);
+						double minAmount = req.minMass;
+						double maxAmount = req.maxMass;
+						splatParticle(image, req.width, req.height, x, y, masses[*iter], smoothingLengths[*iter], delta, startColor, minAmount, maxAmount);
+					}
+				}
+			}
 		} else { //draw points only
 			for(; iter != end; ++iter) {
 				x = dot(req.x, positions[*iter] - req.o);
@@ -345,7 +431,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	delete pred;
 	//XXX removed active region drawing from here
-	/*
+	
 	if(thisIndex == 0) {
 		if(meta->boxes.size() > 0) {
 			//draw boxes onto canvas
@@ -377,9 +463,179 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			}
 		}
 	}
-	*/
+	
 	//double stop = CkWallTimer();
-	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, max_image_data);
+	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, (drawSplatter ? sum_image_data : max_image_data));
+	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
+	//cout << "my part: " << (stop - start) << " seconds" << endl;
+}
+*/
+void Worker::generateImage(liveVizRequestMsg* m) {
+	//double start = CkWallTimer();
+	
+	MyVizRequest req;
+	liveVizRequestUnpack(m, req);
+	
+	if(verbosity > 2 && thisIndex == 0)
+		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
+		
+	if(imageSize < req.width * req.height) {
+		delete[] image;
+		imageSize = req.width * req.height;
+		image = new byte[imageSize];
+	}
+	memset(image, 0, req.width * req.height);
+
+	MetaInformationHandler* meta = metaProxy.ckLocalBranch();
+	if(!meta) {
+		cerr << "Well this sucks!  Couldn't get local pointer to meta handler" << endl;
+		return;
+	}
+	
+	float delta = 2 * req.x.length() / req.width;
+	if(verbosity > 3 && thisIndex == 0)
+		cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
+	req.x /= req.x.lengthSquared();
+	req.y /= req.y.lengthSquared();
+	float x, y;
+	unsigned int pixel;
+	
+	Coloring& c = colorings[req.coloring];
+	boost::shared_ptr<SimulationHandling::Group> g(groups[req.activeGroup]);
+	
+	bool drawSplatter = req.doSplatter;
+		
+	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		GroupIterator iter = g->make_begin_iterator(*famIter);
+		GroupIterator end = g->make_end_iterator(*famIter);
+		if(iter == end)
+			continue;
+		//don't try to draw inactive families
+		if(c.activeFamilies.find(*famIter) == c.activeFamilies.end())
+			continue;
+		
+		ParticleFamily& family = (*sim)[*famIter];
+		Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+		byte* colors = family.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
+		//if the color doesn't exist, use the family color
+		if(colors == 0)
+			colors = family.getAttribute(coloringPrefix + "familyColor", Type2Type<byte>());
+		
+		bool drawVectorsThisFamily = drawVectors;
+		AttributeMap::iterator vectorIter;
+		if(drawVectorsThisFamily) {
+			vectorIter = family.attributes.find(drawVectorAttributeName);
+			if(vectorIter == family.attributes.end())
+				drawVectorsThisFamily = false;
+			else
+				sim->loadAttribute(*famIter, drawVectorAttributeName, family.count.numParticles, family.count.startParticle);
+		}
+		
+		if(drawVectorsThisFamily) {
+			//get vectors
+			CoerciveExtractor<Vector3D<float> > vectorGetter(vectorIter->second);
+			Vector3D<float> point;
+			float x_end, y_end, t;
+			int x0, y0, x1, y1, b;
+			for(; iter != end; ++iter) {
+				point = positions[*iter] - req.o;
+				x = dot(req.x, point);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, point);
+					if(y > -1 && y < 1) {
+						point += vectorScale * vectorGetter[*iter];
+						x_end = dot(req.x, point);
+						y_end = dot(req.y, point);
+						if(x_end <= -1 || x_end >= 1) {
+							b = sign(x_end);
+							t = (b - x) / (x_end - x);
+							x_end = b;
+							y_end = y + (y_end - y) * t;
+						} else if(y_end <= -1 || y_end >= 1) {
+							b = sign(y_end);
+							t = (b - y) / (y_end - y);
+							x_end = x + (x_end - x) * t;
+							y_end = b;
+						}
+						x0 = static_cast<unsigned int>(req.width * (x + 1) / 2);
+						x1 = static_cast<unsigned int>(req.width * (x_end + 1) / 2);
+						y0 = static_cast<unsigned int>(req.height * (1 - y) / 2);
+						y1 = static_cast<unsigned int>(req.height * (1 - y_end) / 2);
+						drawLine(image, req.width, req.height, x0, y0, x1, y1, colors[*iter]);
+					}
+				}
+			}
+		} else if(drawSplatter) { //draw splattered visual
+			//make sure these attributes are loaded, and assign softening to smoothing for point-particles
+			AttributeMap::iterator attrIter = family.attributes.find("mass");
+			if(attrIter == family.attributes.end())
+				cerr << "No Masses!" << endl;
+			if(attrIter->second.length == 0)
+				sim->loadAttribute(*famIter, "mass", family.count.numParticles, family.count.startParticle);
+			float* masses = family.getAttribute("mass", Type2Type<float>());
+			if(masses == 0)
+				cerr << "Masses pointer null!" << endl;
+			string smoothingAttributeName = "softening";
+			if(*famIter == "gas") {
+				attrIter = family.attributes.find("smoothingLength");
+				if(attrIter != family.attributes.end())
+					smoothingAttributeName = "smoothingLength";
+			}
+			attrIter = family.attributes.find(smoothingAttributeName);
+			if(attrIter == family.attributes.end())
+				cerr << "No smoothing or softening!" << endl;
+			if(attrIter->second.length == 0)
+				sim->loadAttribute(*famIter, smoothingAttributeName, family.count.numParticles,family.count.startParticle);
+			float* smoothingLengths = family.getAttribute(smoothingAttributeName, Type2Type<float>());
+			if(smoothingLengths == 0)
+				cerr << "D'oh!  smoothingLengths null!" << endl;
+			
+			if(!projectedKernel.isReady())
+				initializeProjectedKernel(100);
+			
+			float massRange = req.maxMass - req.minMass;
+			if(thisIndex == 0) {
+				cout << "Mass range is from " << minMass << " to " << maxMass << endl;
+				cout << "Splatter range is from " << req.minMass << " to " << req.maxMass << endl;
+			}
+			for(; iter != end; ++iter) {
+				x = dot(req.x, positions[*iter] - req.o);
+				float hpix = smoothingLengths[*iter] / delta;
+				float xbound = 1 + 2 * 2 * hpix / req.width;
+				if(x > -xbound && x < xbound) {
+					y = dot(req.y, positions[*iter] - req.o);
+					float ybound = 1 + 2 * 2 * hpix / req.height;
+					if(y > -ybound && y < ybound) {
+						//rescale masses (log masses?) to (256-startColor)
+						//float m = (256 - startColor) * uniform((masses[*iter] - req.minMass) / massRange);
+						//splatParticle(image, req.width, req.height, x, y, m, smoothingLengths[*iter], delta, startColor);
+						double minAmount = req.minMass;
+						double maxAmount = req.maxMass;
+						splatParticle(image, req.width, req.height, x, y, masses[*iter], smoothingLengths[*iter], delta, startColor, minAmount, maxAmount);
+					}
+				}
+			}
+		} else { //draw points only
+			for(; iter != end; ++iter) {
+				x = dot(req.x, positions[*iter] - req.o);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, positions[*iter] - req.o);
+					if(y > -1 && y < 1) {
+						if(req.radius == 0) {
+							pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+							if(pixel >= imageSize)
+								cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+							if(image[pixel] < colors[*iter])
+								image[pixel] = colors[*iter];
+						} else
+							drawDisk(image, req.width, req.height, static_cast<unsigned int>(req.width * (x + 1) / 2), static_cast<unsigned int>(req.height * (1 - y) / 2), req.radius, colors[*iter]);
+					}
+				}
+			}
+		}
+	}
+	//double stop = CkWallTimer();
+	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, (drawSplatter ? sum_image_data : max_image_data));
 	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
 	//cout << "my part: " << (stop - start) << " seconds" << endl;
 }
@@ -804,6 +1060,13 @@ void Worker::makeGroup(const string& s, const CkCallback& cb) {
 		if(extract(*++iter, minValue) && extract(*++iter, maxValue)) {
 			if(verbosity > 2 && thisIndex == 0)
 				cerr << "Defining group " << groupName << " on attribute " << attributeName << " from " << minValue << " to " << maxValue << endl;
+			for(Simulation::const_iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+				AttributeMap::const_iterator attrIter = simIter->second.attributes.find(attributeName);
+				if(attrIter != simIter->second.attributes.end() && attrIter->second.data == 0)
+					sim->loadAttribute(simIter->first, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
+			}
+			groups[groupName] = make_AttributeRangeGroup(*sim, attributeName, minValue, maxValue);
+			/*
 			vector<string>::iterator groupIter = find(groupNames.begin(), groupNames.end(), groupName);
 			if(groupIter != groupNames.end())
 				index = groupIter - groupNames.begin();
@@ -817,6 +1080,7 @@ void Worker::makeGroup(const string& s, const CkCallback& cb) {
 				if(verbosity > 3)
 					cout << "Piece " << thisIndex << ": My part of the group includes " << g.size() << " particles" << endl;
 			}
+			*/
 		} else
 			cerr << "Problem getting group range values, no group created" << endl;
 	} else
@@ -946,3 +1210,161 @@ void Worker::getGroupInformation(CkCcsRequestMsg* m) {
 	delete m;
 }
 */
+
+template <typename T, typename IteratorType>
+double sumAttribute(TypedArray const& arr, IteratorType begin, IteratorType end) {
+	double sum = 0;
+	T const* array = arr.getArray(Type2Type<T>());
+	if(array == 0)
+		return 0;
+	for(; begin != end; ++begin)
+		sum += array[*begin];
+	return sum;
+}
+/*
+void Worker::getAttributeSum(const string& groupName, const string& attributeName, const CkCallback& cb) {
+	double sum = 0;
+	SimplePredicate* pred = new SimplePredicate;
+	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+		AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
+		if(attrIter == simIter->second.attributes.end())
+			continue;
+		
+		if(groupName != "All") {
+			ParticleGroup& activeGroup = simIter->second.groups[groupName];
+			delete pred;
+			pred = new IndexedPredicate(activeGroup.begin(), activeGroup.end());
+		}
+		counting_iterator<u_int64_t> beginIndex(0);
+		counting_iterator<u_int64_t> endIndex(simIter->second.count.numParticles);
+		FilterIteratorType iter(pred, beginIndex, endIndex);
+		FilterIteratorType end(pred, endIndex, endIndex);
+		
+		//only makes sense for scalar values
+		if(attrIter->second.dimensions != 1) {
+			cerr << "This isn't a scalar attribute" << endl;
+			continue;
+		}
+		if(attrIter->second.data == 0) //attribute not loaded
+			sim->loadAttribute(simIter->first, attrIter->first, simIter->second.count.numParticles, simIter->second.count.startParticle);
+		switch(attrIter->second.code) {
+			case int8:
+				sum += sumAttribute<Code2Type<int8>::type>(attrIter->second, iter, end); break;
+			case uint8:
+				sum += sumAttribute<Code2Type<uint8>::type>(attrIter->second, iter, end); break;
+			case int16:
+				sum += sumAttribute<Code2Type<int16>::type>(attrIter->second, iter, end); break;
+			case uint16:
+				sum += sumAttribute<Code2Type<uint16>::type>(attrIter->second, iter, end); break;
+			case int32:
+				sum += sumAttribute<Code2Type<int32>::type>(attrIter->second, iter, end); break;
+			case uint32:
+				sum += sumAttribute<Code2Type<uint32>::type>(attrIter->second, iter, end); break;
+			case int64:
+				sum += sumAttribute<Code2Type<int64>::type>(attrIter->second, iter, end); break;
+			case uint64:
+				sum += sumAttribute<Code2Type<uint64>::type>(attrIter->second, iter, end); break;
+			case float32:
+				sum += sumAttribute<Code2Type<float32>::type>(attrIter->second, iter, end); break;
+			case float64:
+				sum += sumAttribute<Code2Type<float64>::type>(attrIter->second, iter, end); break;
+		}
+	}
+	delete pred;
+	contribute(sizeof(double), &sum, CkReduction::sum_double, cb);
+}
+/*/
+void Worker::getAttributeSum(const string& groupName, const string& attributeName, const CkCallback& cb) {
+	double sum = 0;
+	GroupMap::iterator gIter = groups.find(groupName);
+	if(gIter != groups.end()) {
+		shared_ptr<SimulationHandling::Group> g = gIter->second;
+		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+			Simulation::iterator simIter = sim->find(*famIter);
+			TypedArray& arr = simIter->second.attributes[attributeName];
+			//only makes sense for scalar values
+			if(arr.dimensions != 1) {
+				cerr << "This isn't a scalar attribute" << endl;
+				continue;
+			}
+			if(arr.data == 0) //attribute not loaded
+				sim->loadAttribute(*famIter, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
+			GroupIterator iter = g->make_begin_iterator(*famIter);
+			GroupIterator end = g->make_end_iterator(*famIter);
+			switch(arr.code) {
+				case int8:
+					sum += sumAttribute<Code2Type<int8>::type>(arr, iter, end); break;
+				case uint8:
+					sum += sumAttribute<Code2Type<uint8>::type>(arr, iter, end); break;
+				case int16:
+					sum += sumAttribute<Code2Type<int16>::type>(arr, iter, end); break;
+				case uint16:
+					sum += sumAttribute<Code2Type<uint16>::type>(arr, iter, end); break;
+				case int32:
+					sum += sumAttribute<Code2Type<int32>::type>(arr, iter, end); break;
+				case uint32:
+					sum += sumAttribute<Code2Type<uint32>::type>(arr, iter, end); break;
+				case int64:
+					sum += sumAttribute<Code2Type<int64>::type>(arr, iter, end); break;
+				case uint64:
+					sum += sumAttribute<Code2Type<uint64>::type>(arr, iter, end); break;
+				case float32:
+					sum += sumAttribute<Code2Type<float32>::type>(arr, iter, end); break;
+				case float64:
+					sum += sumAttribute<Code2Type<float64>::type>(arr, iter, end); break;
+			}
+		}
+	}
+	contribute(sizeof(double), &sum, CkReduction::sum_double, cb);
+}
+
+void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
+	pair<double, Vector3D<double> > compair;
+	GroupMap::iterator gIter = groups.find(groupName);
+	if(gIter != groups.end()) {
+		shared_ptr<SimulationHandling::Group> g = gIter->second;
+		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+			ParticleFamily& family = (*sim)[*famIter];
+			Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+			if(positions == 0) {
+				cerr << "Worker " << thisIndex << " Null positions!" << endl;
+				return;
+			}
+			AttributeMap::iterator attrIter = family.attributes.find("mass");
+			if(attrIter == family.attributes.end())
+				cerr << "No Masses!" << endl;
+			if(attrIter->second.length == 0)
+				sim->loadAttribute(*famIter, "mass", family.count.numParticles, family.count.startParticle);
+			float* masses = family.getAttribute("mass", Type2Type<float>());
+			if(masses == 0)
+				cerr << "Masses pointer null!" << endl;
+			GroupIterator iter = g->make_begin_iterator(*famIter);
+			GroupIterator end = g->make_end_iterator(*famIter);
+			for(; iter != end; ++iter) {
+				compair.first += masses[*iter];
+				compair.second += masses[*iter ] * positions[*iter];
+			}
+		}
+	}
+
+	contribute(sizeof(compair), &compair, pairDoubleVector3DSum, cb);
+}
+
+void Worker::createGroup_Family(std::string const& familyName, CkCallback const& cb) {
+	int result = 0;
+	if(sim->find(familyName) != sim->end()) {
+		groups[familyName] = boost::shared_ptr<SimulationHandling::Group>(new FamilyGroup(*sim, familyName));
+		result = 1;
+	}
+	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
+void Worker::createGroup_AttributeRange(std::string const& groupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb) {
+	int result = 0;
+	boost::shared_ptr<SimulationHandling::Group> g = make_AttributeRangeGroup(*sim, attributeName, minValue, maxValue);
+	if(g) {
+		groups[groupName] = g;
+		result = 1;
+	}
+	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
