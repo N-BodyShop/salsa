@@ -44,6 +44,10 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         item.setActionCommand("center");
         item.addActionListener(this);
         add(item);
+        item = new JMenuItem("Select a Group...");
+        item.setActionCommand("group");
+        item.addActionListener(this);
+        add(item);
         item = new JMenuItem("Save image as png...");
         item.setActionCommand("png");
         item.addActionListener(this);
@@ -70,6 +74,9 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         else if (command.equals("center"))  { zall();}
         else if (command.equals("recolor"))  { 
             ReColorFrame rcf = new ReColorFrame(s, vp);
+        }
+        else if (command.equals("group"))  { 
+            SelectGroupFrame sgf = new SelectGroupFrame(s, vp);
         }
 //        else if (command.equals("cs")){ ChooseSimulationFrame csf = 
 //                                    new ChooseSimulationFrame(s.ccs,);}

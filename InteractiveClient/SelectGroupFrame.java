@@ -1,5 +1,5 @@
 //
-//  ReColorFrame.java
+//  SelectGroupFrame.java
 //  
 //
 //  Created by Greg Stinson on Tue Sep 30 2003.
@@ -13,21 +13,20 @@ import java.io.*;
 import java.net.UnknownHostException;
 import java.lang.Math;
 
-public class ReColorFrame extends JFrame
+public class SelectGroupFrame extends JFrame
                         implements ActionListener {
     Simulation s;
     ViewPanel vp;
-    NameValue minPanel;
-    NameValue maxPanel;
+    NameValue minPanel, maxPanel, groupName;
     String attrib;
     JComboBox linLog;
     JComboBox attributeList;
 
-    public ReColorFrame( Simulation sim, ViewPanel viewP ){
+    public SelectGroupFrame( Simulation sim, ViewPanel viewP ){
         s = sim;
         vp = viewP;
     
-        setTitle("Choose Attribute");
+        setTitle("Select Group");
         Container contentPane = getContentPane();
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
@@ -46,7 +45,10 @@ public class ReColorFrame extends JFrame
         attrib = (String)attributeList.getSelectedItem();
         s.ccs.addRequest( new ValueRange(attrib) );
         
-        JButton chooseButton = new JButton("Recolor");
+        groupName = new NameValue("Group Name:");
+        groupName.setValue(attrib+"1");
+        
+        JButton chooseButton = new JButton("Create Group");
         chooseButton.setActionCommand("choose");
         chooseButton.addActionListener(this);
 
@@ -54,15 +56,16 @@ public class ReColorFrame extends JFrame
         contentPane.add(linLog);
         contentPane.add(minPanel);
         contentPane.add(maxPanel);
+        contentPane.add(groupName);
         contentPane.add(chooseButton);
         
         pack();
 		
 		//place it in the center of the screen
-		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setLocation(screenSize.width / 2 - getSize().width / 2, screenSize.height / 2 - getSize().height / 2);
 
-		setVisible(true);
+        setVisible(true);
     }
 
     public void actionPerformed(ActionEvent e){
@@ -77,12 +80,14 @@ public class ReColorFrame extends JFrame
                 dos.writeDouble(Double.parseDouble(minPanel.getValue()));
                 dos.writeDouble(Double.parseDouble(maxPanel.getValue()));
                 dos.writeBytes(attrib);
-                s.ccs.addRequest( new ChooseColorValue( baos.toByteArray() ) );
+                s.Groups.addElement(groupName.getValue());
+                s.ccs.addRequest( new CreateGroup( baos.toByteArray() ) );
             } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
         } else {
             attrib = (String)attributeList.getSelectedItem();
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
             // attribute selected, so we need to find out its possible values
+            groupName.setValue(attrib+"1");
             s.ccs.addRequest( new ValueRange(attrib) );
         }
     }
@@ -112,6 +117,16 @@ public class ReColorFrame extends JFrame
     private class ChooseColorValue extends CcsThread.request{
         public ChooseColorValue(byte[] data){
             super("ChooseColorValue", data);
+        }
+        public void handleReply(byte[] data) {
+            setVisible(false);
+            vp.getNewImage();
+       }
+    }
+    
+    private class CreateGroup extends CcsThread.request{
+        public CreateGroup(byte[] data){
+            super("CreateGroup", data);
         }
         public void handleReply(byte[] data) {
             setVisible(false);

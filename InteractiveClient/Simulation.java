@@ -19,6 +19,7 @@ public class Simulation {
     int numberOfColors;
     ColorModel cm;
     Vector Families;
+    Vector Groups;
     
     public Simulation(CcsThread ccsThread){
         ccs = ccsThread;
@@ -30,5 +31,6 @@ public class Simulation {
         attributes = new DefaultComboBoxModel();
         selectedAttributeIndex = 0;
         Families = new Vector();
+        Groups = new Vector();
     }
 }
