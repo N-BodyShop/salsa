@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "ResolutionServer.h"
 
 #include <iostream>

@@ -1,6 +1,8 @@
 /** @file Worker.cpp
  */
 
+#include <stdint.h>
+
 #include <utility>
 #include <cstdlib>
 #include <vector>

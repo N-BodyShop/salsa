@@ -1,6 +1,8 @@
 /** @file MetaInformationHandler.cpp
  */
 
+#include <stdint.h>
+
 #include <sstream>
 
 #include "pup_network.h"
