@@ -157,7 +157,7 @@ public class ViewPanel extends JPanel implements MouseListener {
 
         public Center() {
             super("Center", null);
-            setData(encodeRequest());
+            setData(encodeCenterRequest());
         }
 
         public void handleReply(byte[] data) {
@@ -170,6 +170,35 @@ public class ViewPanel extends JPanel implements MouseListener {
         }
     }
 
+    private byte[] encodeCenterRequest() {
+        // for mapping System.out.println("ViewingPanel: encodeRequest");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
+        try {
+            DataOutputStream dos = new DataOutputStream(baos);
+
+            dos.writeInt(s.centerMethod); /*Client version*/
+            dos.writeInt(1); /*Request type*/
+            dos.writeInt(width);
+            dos.writeInt(height);
+            dos.writeDouble(x.x);
+            dos.writeDouble(x.y);
+            dos.writeDouble(x.z);
+            dos.writeDouble(y.x);
+            dos.writeDouble(y.y);
+            dos.writeDouble(y.z);
+            dos.writeDouble(z.x);
+            dos.writeDouble(z.y);
+            dos.writeDouble(z.z);
+            dos.writeDouble(origin.x);
+            dos.writeDouble(origin.y);
+            dos.writeDouble(origin.z);
+            System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
+        } catch(IOException e) {
+            System.err.println("Couldn't encode request!");
+            e.printStackTrace();
+        }
+        return baos.toByteArray();
+    }
     private byte[] encodeRequest() {
         // for mapping System.out.println("ViewingPanel: encodeRequest");
         ByteArrayOutputStream baos = new ByteArrayOutputStream(128);

@@ -19,7 +19,6 @@ public class SimulationFrame extends JFrame {
         s = sim;
         
         setTitle("Salsa:  "+s.Name);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 

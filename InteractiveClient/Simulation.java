@@ -20,6 +20,7 @@ public class Simulation {
     ColorModel cm;
     Vector Families;
     Vector Groups;
+    int centerMethod;
     
     public Simulation(CcsThread ccsThread){
         ccs = ccsThread;
@@ -32,5 +33,6 @@ public class Simulation {
         selectedAttributeIndex = 0;
         Families = new Vector();
         Groups = new Vector();
+        centerMethod = 0;
     }
 }

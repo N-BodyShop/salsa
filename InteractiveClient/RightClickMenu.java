@@ -36,12 +36,12 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         item.setActionCommand("zall");
         item.addActionListener(this);
         add(item);
-        item = new JMenuItem("recolor image");
-        item.setActionCommand("recolor");
+        item = new JMenuItem("Choose centering...");
+        item.setActionCommand("center");
         item.addActionListener(this);
         add(item);
-        item = new JMenuItem("center Z");
-        item.setActionCommand("center");
+        item = new JMenuItem("recolor image");
+        item.setActionCommand("recolor");
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("Select a Group...");
@@ -71,9 +71,7 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         if ( command.equals("xall") ) { xall();}
         else if (command.equals("yall"))  { yall();}
         else if (command.equals("zall"))  { zall();}
-        else if (command.equals("center"))  {
-            s.ccs.addRequest( new Center() );
-        }
+        else if (command.equals("center"))  { PreferencesFrame pf = new PreferencesFrame(s);}
         else if (command.equals("recolor"))  { 
             ReColorFrame rcf = new ReColorFrame(s, vp);
         }
@@ -88,74 +86,28 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
     }
     
     public void xall(){
+        tbp.resetSliders();
         vp.x = new Vector3D(0, vp.boxSize*0.5, 0);
         vp.y = new Vector3D(0, 0, vp.boxSize*0.5);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
         vp.getNewImage();
-        tbp.resetSliders();
     }
     public void yall(){
+        tbp.resetSliders();
         vp.x = new Vector3D(0, 0, vp.boxSize*0.5);
         vp.y = new Vector3D(vp.boxSize*0.5, 0, 0);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
         vp.getNewImage();
-        tbp.resetSliders();
     }
     public void zall(){
+        tbp.resetSliders();
         vp.x = new Vector3D(vp.boxSize*0.5, 0, 0);
         vp.y = new Vector3D(0, vp.boxSize*0.5, 0);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
         vp.getNewImage();
-        tbp.resetSliders();
     }
     
-    private class Center extends CcsThread.request {
-
-        public Center() {
-            super("Center", null);
-            setData(encodeRequest());
-        }
-
-        public void handleReply(byte[] data) {
-            DataInputStream dis = new DataInputStream( new ByteArrayInputStream(data));
-            try {
-                double m = dis.readDouble();
-                vp.origin = vp.origin.plus(vp.z.unitVector().scalarMultiply( m ));
-                System.out.println("Server response: "+m+"  New origin for rotation: "+vp.origin);
-            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
-        }
-    }
-
-    private byte[] encodeRequest() {
-        // for mapping System.out.println("ViewingPanel: encodeRequest");
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
-        try {
-            DataOutputStream dos = new DataOutputStream(baos);
-
-            dos.writeInt(1); /*Client version*/
-            dos.writeInt(1); /*Request type*/
-            dos.writeInt(vp.width);
-            dos.writeInt(vp.height);
-            dos.writeDouble(vp.x.x);
-            dos.writeDouble(vp.x.y);
-            dos.writeDouble(vp.x.z);
-            dos.writeDouble(vp.y.x);
-            dos.writeDouble(vp.y.y);
-            dos.writeDouble(vp.y.z);
-            dos.writeDouble(vp.z.x);
-            dos.writeDouble(vp.z.y);
-            dos.writeDouble(vp.z.z);
-            dos.writeDouble(vp.origin.x);
-            dos.writeDouble(vp.origin.y);
-            dos.writeDouble(vp.origin.z);
-            System.out.println("x:"+vp.x.toString()+" y:"+vp.y.toString()+" z:"+vp.z.toString()+" or:"+vp.origin.toString());
-        } catch(IOException e) {
-            System.err.println("Couldn't encode request!");
-            e.printStackTrace();
-        }
-        return baos.toByteArray();
-    }
 }

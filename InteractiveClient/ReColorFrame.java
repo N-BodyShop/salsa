@@ -42,7 +42,11 @@ public class ReColorFrame extends JFrame
         linLog.addActionListener(this);
 
         minPanel = new NameValue("min. value:");
+        minPanel.setActionCommand("choose");
+        minPanel.addActionListener(this);
         maxPanel = new NameValue("max. value:");
+        maxPanel.setActionCommand("choose");
+        maxPanel.addActionListener(this);
         attrib = (String)attributeList.getSelectedItem();
         s.ccs.addRequest( new ValueRange(attrib) );
         

@@ -47,4 +47,8 @@ public class NameValue extends JPanel{
     public void addActionListener(ActionListener l){
         valueField.addActionListener(l);
     }
+
+    public void setActionCommand(String command){
+        valueField.setActionCommand(command);
+    }
 }
