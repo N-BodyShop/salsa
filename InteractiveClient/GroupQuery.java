@@ -7,9 +7,12 @@ public class GroupQuery extends JFrame
                         implements ActionListener {
     
     JTextField groupNameField;
+    SimulationView simulationView;
     
-    public GroupQuery() {
+    public GroupQuery(SimulationView v) {
 	super("Salsa: Name group");
+
+	simulationView = v;
 
 	JPanel displayPanel;
 	
@@ -29,9 +32,10 @@ public class GroupQuery extends JFrame
     public void actionPerformed(ActionEvent e) {
 	
 	System.out.println("Creating group: " + groupNameField.getText());
+	simulationView.makeBox(groupNameField.getText());
+    
 	setVisible(false);
     }
-    
-    }
+}
 
 	

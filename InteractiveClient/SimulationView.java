@@ -26,10 +26,10 @@ public class SimulationView extends JLabel
 	double maxMass = 1;
 	int doSplatter = 0;
 	int selectState = 0;	// State of box selection
-		Vector3D selectCorner1, selectCorner2, // Box vectors
-	         selectCorner3, selectCorner4;
-    int selStartX, selStartY;
-    int oldCurrentX, oldCurrentY;
+	Vector3D selectCorner, selectEdge1, // Box vectors
+	         selectEdge2, selectEdge3;
+	int selStartX, selStartY;
+	int oldCurrentX, oldCurrentY;
 	
 	int height, width;
 	MemoryImageSource source;
@@ -73,7 +73,7 @@ public class SimulationView extends JLabel
 	addComponentListener(this);
 		
 	rcm = new RightClickMenu(windowManager, this);
-	gquery = new GroupQuery();
+	gquery = new GroupQuery(this);
 	}
 	
 	public void redisplay(ColorModel cm) {
@@ -108,20 +108,25 @@ public class SimulationView extends JLabel
 	       == (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK)) {
 		    switch(selectState) {
 		    case 0:
-			selectCorner1 = coordEvent(e);
+			selectCorner = coordEvent(e);
 			selStartX = e.getX();
 			selStartY = e.getY();
 			oldCurrentX = selStartX;
 			oldCurrentY = selStartY;
 			selectState = 1;
-			System.out.println("Corner 1: " + selectCorner1.toString());
+			System.out.println("Corner 1: " + selectCorner.toString());
 			break;
 		    case 2:
-			selectCorner3 = coordEvent(e);
+			// get 3rd component of box origin
+			Vector3D dz = y.scalarMultiply(y.dot(coordEvent(e).minus(origin))
+						       /y.lengthSquared());
+			selectCorner = selectCorner.plus(dz);
+			
+			selectEdge3 = coordEvent(e);
 			selectState = 3;
 			selStartY = e.getY();
 			oldCurrentY = selStartY;
-			System.out.println("Corner 3: " + selectCorner3.toString());
+			System.out.println("Corner 3: " + selectEdge3.toString());
 			break;
 		    default:
 			System.out.println("Bad state in press: " + selectState);
@@ -135,21 +140,33 @@ public class SimulationView extends JLabel
 			break;
 		
 		    case 1:
-			selectCorner2 = coordEvent(e);
+			selectEdge1 = coordEvent(e);
 			selectState = 2;
-			System.out.println("Corner 2: " + selectCorner2.toString());
-			rotateUp(0.5*Math.PI);
+			// Turn corners into direction vectors
+			Vector3D d = selectEdge1.minus(selectCorner);
+			selectEdge1 = x.scalarMultiply(x.dot(d)
+							 /x.lengthSquared());
+			selectEdge2 = y.scalarMultiply(y.dot(d)
+							 /y.lengthSquared());
+			
+			System.out.println("Corner 2: " + selectEdge1.toString());
+			System.out.println("Corner 3: " + selectEdge2.toString());
+			rotateUp(-0.5*Math.PI);
 			getNewImage();
 			getNewDepth();
-			selStartX = xCoord(selectCorner1);
+			selStartX = xCoord(selectCorner);
 			selStartY = -1;
-			oldCurrentX = xCoord(selectCorner2);
+			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
 			oldCurrentY = -1;
 			break;
 		    case 3:
-			selectCorner4 = coordEvent(e);
+			selectEdge3 = y.scalarMultiply(y.dot(coordEvent(e).minus(selectEdge3))
+						      /y.lengthSquared());
 			selectState = 0;
-			System.out.println("Corner 4: " + selectCorner4.toString());
+			System.out.println("Corner: " + selectCorner.toString());
+			System.out.println("Dir 1: " + selectEdge1.toString());
+			System.out.println("Dir 2: " + selectEdge2.toString());
+			System.out.println("Dir 3: " + selectEdge3.toString());
 			gquery.setVisible(true);
 			break;
 		    default:
@@ -237,9 +254,9 @@ public class SimulationView extends JLabel
 		    origin = coordEvent(e);
 		    zoom(1.0 / zoomFactor);
 		    if(selectState == 2) {
-			selStartX = xCoord(selectCorner1);
+			selStartX = xCoord(selectCorner);
 			selStartY = -1;
-			oldCurrentX = xCoord(selectCorner2);
+			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
 			oldCurrentY = -1;
 			}
 		    break;
@@ -249,9 +266,9 @@ public class SimulationView extends JLabel
 		    origin = coordEvent(e);
 		    zoom(zoomFactor);
 		    if(selectState == 2) {
-			selStartX = xCoord(selectCorner1);
+			selStartX = xCoord(selectCorner);
 			selStartY = -1;
-			oldCurrentX = xCoord(selectCorner2);
+			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
 			oldCurrentY = -1;
 			}
 		    break;
@@ -482,5 +499,25 @@ public class SimulationView extends JLabel
 	public void componentHidden(ComponentEvent e) { }
 	public void componentMoved(ComponentEvent e) { }
 	public void componentShown(ComponentEvent e) { }
+    public void makeBox(String groupName) 
+    {
+	ExecutePythonCode code = new ExecutePythonCode("createGroup_makebox(\""
+					   + groupName + "\","
+					   + selectCorner.toPyString() + ","
+					   + selectEdge1.toPyString() + ","
+					   + selectEdge2.toPyString() + ","
+					   + selectEdge3.toPyString() + ")\n");
+	windowManager.ccs.addRequest(code);
+    }
+	private class ExecutePythonCode extends CcsThread.request {
+		public ExecutePythonCode(String s) {
+			super("ExecutePythonCode", s);
+		}
+		
+		public void handleReply(byte[] data) {
+			String result = new String(data);
+			System.out.println("Return from code execution: \"" + result + "\"");
+		}
+	}
 	
 }

@@ -67,6 +67,10 @@ public class Vector3D {
 		return "(" + x + "," + y + "," + z + ")";
 	}
 	
+	public String toPyString() {
+		return x + "," + y + "," + z;
+	}
+	
 	final public void rotateUpDown(double theta) {
 		double c = Math.cos(theta);
 		double s = Math.sin(theta);
