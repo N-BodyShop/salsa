@@ -123,6 +123,7 @@ public:
 	
 	void listSimulations(CkCcsRequestMsg* m);
 	void chooseSimulation(CkCcsRequestMsg* m);
+	void defaultColor(CkCcsRequestMsg* m);
 	void chooseColorValue(CkCcsRequestMsg* m);
 	void startVisualization(CkReductionMsg* m);
 	void shutdownServer(CkCcsRequestMsg* m);
@@ -133,6 +134,7 @@ public:
 	void depthCalculated(CkReductionMsg* m);
 	void createGroup(CkCcsRequestMsg* m);
 	void activateGroup(CkCcsRequestMsg* m);
+	void drawVectors(CkCcsRequestMsg* m);
 	
 };
 
@@ -166,11 +168,16 @@ class Worker : public ArrayElement1D {
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
 	byte startColor;
-	std::string currentAttribute;
 	std::string activeGroupName;
 	
+	enum clipping { low, high, both, none };
+	
+	std::string drawVectorAttributeName;
+	bool drawVectors;
+	float vectorScale;
+	
 	template <typename T>
-	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic);
+	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip);
 	
 public:
 	
@@ -191,10 +198,12 @@ public:
 	
 	void collectStats(const std::string& id, const CkCallback& cb);
 	
-	void chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb);
+	void defaultColor(const CkCallback& cb);
+	void chooseColorValue(const std::string& specification, const CkCallback& cb);
 	void calculateDepth(MyVizRequest req, const CkCallback& cb);
 	void createGroup(const std::string& s, const CkCallback& cb);
 	void setActiveGroup(const std::string& s, const CkCallback& cb);
+	void setDrawVectors(const std::string& s, const CkCallback& cb);
 };
 
 #endif //RESOLUTIONSERVER_H

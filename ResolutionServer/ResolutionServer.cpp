@@ -101,6 +101,7 @@ Main::Main(CkArgMsg* m) {
 	
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
+	CcsRegisterHandler("SetDefaultColors", CkCallback(CkIndex_Main::defaultColor(0), thishandle));
 	CcsRegisterHandler("ChooseColorValue", CkCallback(CkIndex_Main::chooseColorValue(0), thishandle));
 	CcsRegisterHandler("ShutdownServer", CkCallback(CkIndex_Main::shutdownServer(0), thishandle));
 	CcsRegisterHandler("SpecifyBox", CkCallback(CkIndex_MetaInformationHandler::specifyBox(0), metaProxy));
@@ -113,6 +114,7 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("Center", CkCallback(CkIndex_Main::calculateDepth(0), thishandle));
 	CcsRegisterHandler("CreateGroup", CkCallback(CkIndex_Main::createGroup(0), thishandle));
 	CcsRegisterHandler("ActivateGroup", CkCallback(CkIndex_Main::activateGroup(0), thishandle));
+	CcsRegisterHandler("DrawVectors", CkCallback(CkIndex_Main::drawVectors(0), thishandle));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -173,19 +175,20 @@ void Main::startVisualization(CkReductionMsg* m) {
 		cerr << "How the hell did this happen?!" << endl;
 }
 
+void Main::defaultColor(CkCcsRequestMsg* m) {
+	//workers.defaultColor(CkCallback(m->reply));
+	workers.defaultColor(CkCallbackResumeThread());
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
 void Main::chooseColorValue(CkCcsRequestMsg* m) {
-	PUP::fromNetwork p;
-	int beLogarithmic = *reinterpret_cast<int *>(m->data);
-	double minVal = *reinterpret_cast<double *>(m->data + sizeof(int));
-	double maxVal = *reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double));
-	p | beLogarithmic;
-	p | minVal;
-	p | maxVal;
-	string attributeName(m->data + sizeof(int) + 2 * sizeof(double), m->data + m->length);
-	cout << "You're choosing attribute \"" << attributeName << "\" to represent the color of particles" << endl;
-	workers.chooseColorValue(attributeName, beLogarithmic, minVal, maxVal, CkCallbackResumeThread());
-	unsigned char value = 1;
-	CcsSendDelayedReply(m->reply, 1, &value);
+	//workers.chooseColorValue(string(m->data, m->length), CkCallback(m->reply));
+	cout << "Color spec: \"" << string(m->data, m->length) << "\"" << endl;
+	workers.chooseColorValue(string(m->data, m->length), CkCallbackResumeThread());
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;
 }
 
@@ -232,7 +235,7 @@ void Main::calculateDepth(CkCcsRequestMsg* m) {
 }
 
 void Main::depthCalculated(CkReductionMsg* m) {
-	double* z;
+	double* z = 0;
 	pair<byte, double>* mostPair;
 	pair<double, double>* potPair;
 	switch(m->getSize()) {
@@ -269,6 +272,14 @@ void Main::createGroup(CkCcsRequestMsg* m) {
 void Main::activateGroup(CkCcsRequestMsg* m) {
 	string s(m->data, m->length);
 	workers.setActiveGroup(s, CkCallbackResumeThread());
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
+void Main::drawVectors(CkCcsRequestMsg* m) {
+	string s(m->data, m->length);
+	workers.setDrawVectors(s, CkCallbackResumeThread());
 	unsigned char success = 1;
 	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;

@@ -1,11 +1,4 @@
 group main ++shell /usr/bin/ssh
-host squall #greg stinson
-host teem #oliver fraser
-host sunbreak #anil seth
-host rime #gajus miknaitis
-host tormenta #joel allred
-
-group rh73 ++shell /usr/bin/ssh
 host acidrain #chris laws
 host brume #daryl haggard
 host catsanddogs #lucianne walcowicz
@@ -22,8 +15,13 @@ host raindrop #rich plotkin
 host regen #nate kaib
 host snow #luisa buchman
 host sprinkle #kevin covey
+host rime #gajus miknaitis
 host tempest #mark claire
 host typhoon #mike solontoi
 host ullr #sean raymond
 host virga #peter yoachim
 host ymir #andrew west
+host teem #oliver fraser
+host squall #greg stinson
+host sunbreak #anil seth
+host tormenta #joel allred

@@ -1,14 +1,14 @@
-STRUCTURES_PATH = $(HOME)/projects/structures
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler
+STRUCTURES_PATH = ../structures
+CXXFLAGS += -g -O3 -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler -I../boost
 LDFLAGS += -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
 LDLIBS += -lTipsy -lpopt -module liveViz -lxerces-c
 
-CHARMC = $(HOME)/projects/charm/net-linux/bin/charmc
+CHARMC = $(HOME)/Projects/charm/net-linux/bin/charmc
 CXX = $(CHARMC)
 CC = $(CXX)
 
 TARGET = ResolutionServer
-VERSION = 0.2-alpha
+VERSION = 0.2-beta
 all:: $(TARGET)
 
 $(TARGET).o: $(TARGET).decl.h Reductions.decl.h

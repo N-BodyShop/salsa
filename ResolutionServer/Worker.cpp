@@ -4,6 +4,7 @@
 #include <utility>
 #include <cstdlib>
 #include <vector>
+#include <set>
 
 #include "tree_xdr.h"
 #include "SiXFormat.h"
@@ -13,6 +14,42 @@
 #include "ResolutionServer.h"
 #include "Reductions.h"
 #include "Space.h"
+
+std::string trim(const std::string& s) {
+	std::string trimmed(s);
+	trimmed.erase(0, trimmed.find_first_not_of(" \t\r\n"));
+	trimmed.erase(trimmed.find_last_not_of(" \t\r\n") + 1);
+	return trimmed;
+}
+
+bool toDouble(const std::string& s, double& d) {
+	std::istringstream iss(s);
+	iss >> d;
+	return iss;
+}
+
+template <typename T>
+bool extract(const std::string& s, T& value) {
+	std::istringstream iss(s);
+	iss >> value;
+	return iss;
+}
+
+std::list<std::string> splitString(const std::string& s, const char c = ',') {
+	std::list<std::string> l;
+	std::string::size_type past, pastOld = 0;
+	while(pastOld < s.size()) {
+		past = s.find(c, pastOld);
+		if(past == std::string::npos) {
+			l.push_back(trim(s.substr(pastOld)));
+			break;
+		} else
+			++past;
+		l.push_back(trim(s.substr(pastOld, past - pastOld - 1)));
+		pastOld = past;
+	}
+	return l;
+}
 
 using namespace std;
 using namespace SimulationHandling;
@@ -78,13 +115,15 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	startColor = familyColor;
 	
 	activeGroupName = "All";
+	drawVectors = false;
+	vectorScale = 0.01;
 	
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
 const byte lineColor = 1;
 
-void drawLine(byte* image, const int width, const int height, int x0, int y0, int x1, int y1) {
+void drawLine(byte* image, const int width, const int height, int x0, int y0, int x1, int y1, const int color = lineColor) {
 	int dx = 1;
 	int a = x1 - x0;
 	if(a < 0) {
@@ -104,8 +143,8 @@ void drawLine(byte* image, const int width, const int height, int x0, int y0, in
 	int eps = 0;
 	
 	for(;;) {
-		if(x0 > 0 && x0 < width && y0 > 0 && y0 < height)
-			image[x0 + width * y0] = lineColor;
+		if(x0 > 0 && x0 < width && y0 > 0 && y0 < height && image[x0 + width * y0] < color)
+			image[x0 + width * y0] = color;
 		if(x0 == x1 && y0 == y1)
 			break;
 		if(eps <= xcrit) {
@@ -119,44 +158,44 @@ void drawLine(byte* image, const int width, const int height, int x0, int y0, in
 	}
 }
 		
-void drawCirclePoints(byte* image, const int width, const int height, const int xCenter, const int yCenter, const int x, const int y) {
+void drawCirclePoints(byte* image, const int width, const int height, const int xCenter, const int yCenter, const int x, const int y, const int color = lineColor) {
 	int xpix, ypix;
 	
 	xpix = xCenter + x;
 	ypix = yCenter + y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter - x;
 	ypix = yCenter + y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter + x;
 	ypix = yCenter - y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter - x;
 	ypix = yCenter - y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter + y;
 	ypix = yCenter + x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter - y;
 	ypix = yCenter + x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter + y;
 	ypix = yCenter - x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 	xpix = xCenter - y;
 	ypix = yCenter - x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-		image[xpix + ypix * width] = lineColor;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
+		image[xpix + ypix * width] = color;
 }
 
-void drawCircle(byte* image, const int width, const int height, const int x0, const int y0, const int radius) {
+void drawCircle(byte* image, const int width, const int height, const int x0, const int y0, const int radius, const int color = lineColor) {
 	int x = 0;
 	int y = radius;
 	int p = 1 - radius;
@@ -169,8 +208,104 @@ void drawCircle(byte* image, const int width, const int height, const int x0, co
 			--y;
 			p += 2 * (x - y) + 1;
 		}
-		drawCirclePoints(image, width, height, x0, y0, x, y);
+		drawCirclePoints(image, width, height, x0, y0, x, y, color);
 	}
+}
+
+#include <boost/iterator/filter_iterator.hpp>
+#include <boost/iterator/counting_iterator.hpp>
+using namespace boost;
+
+class SimplePredicate {
+public:
+	//the SimplePredicate defines the "All" group, always returning true
+	virtual bool operator()(const u_int64_t i) {
+		return true;
+	}	
+};
+
+class NonePredicate : public SimplePredicate {
+public:
+	//the NonePredicate defines the "None" group, always returning false
+	virtual bool operator()(const u_int64_t i) {
+		return false;
+	}	
+};
+
+class IndexedPredicate : public SimplePredicate {
+	vector<u_int64_t>::const_iterator nextIndex;
+	vector<u_int64_t>::const_iterator endIndex;
+public:
+		
+	IndexedPredicate(vector<u_int64_t>::const_iterator begin, vector<u_int64_t>::const_iterator end) : nextIndex(begin), endIndex(end) { }
+
+	virtual bool operator()(const u_int64_t i) {
+		/// XXX Sketchy here! (have to go forward, indices must be ordered, can't skip any indices)
+		if(nextIndex != endIndex && i == *nextIndex) {
+			++nextIndex;
+			return true;
+		} else
+			return false;
+	}	
+};
+
+template <typename T>
+class InsideSpherePredicate : public SimplePredicate {
+	Sphere<T> sphere;
+	Vector3D<T> positions;
+public:
+		
+	InsideSpherePredicate(const Sphere<T>& s, const Vector3D<T> pos) : sphere(s), positions(pos) { }
+
+	virtual bool operator()(const u_int64_t i) {
+		return sphere.contains(positions[i]);
+	}	
+};
+
+/* This class acts as a predicate to filter the particles drawn/selected/whatever.
+ It is applied to the particle indices by the Boost filter_iterator.
+ It forwards the predicate decision on to a subclassed pointer to
+ facilitate different predicates. */
+class FilterPredicate {
+	SimplePredicate* predicate;
+public:
+	
+	FilterPredicate(SimplePredicate* pred = 0) : predicate(pred) { }
+	
+	bool operator()(const u_int64_t i) {
+		return predicate->operator()(i);
+	}
+	
+	void setPredicate(SimplePredicate* pred) {
+		predicate = pred;
+	}
+};
+
+typedef filter_iterator<FilterPredicate, counting_iterator<u_int64_t> > FilterIteratorType;
+
+template <typename T>
+struct DecimalLogarithmOp {
+	T operator()(T value) {
+		return log10(value);
+	}
+};
+
+template <typename T>
+struct DecimalLogarithmOp<Vector3D<T> > {
+	Vector3D<T> operator()(Vector3D<T> value) {
+		T length = value.length();
+		if(length == 0)
+			return 0;
+		return value / length * log10(length + 1);
+	}
+};
+
+template <typename T>
+inline int sign(T x) {
+	if(x < 0)
+		return -1;
+	else
+		return 1;
 }
 
 void Worker::generateImage(liveVizRequestMsg* m) {
@@ -202,28 +337,71 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	float x, y;
 	unsigned int pixel;
 	
+	SimplePredicate* pred = new SimplePredicate;
+	
 	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+		//Vector3D<float>* positions = any_cast<TypedArray<Vector3D<float> > >(simIter->second.getAttribute("position")).data;
 		Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 		byte* colors = simIter->second.getAttribute("color", Type2Type<byte>());
-		if(activeGroupName == "All") {
-			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
-				x = dot(req.x, positions[i] - req.o);
-				if(x > -1 && x < 1) {
-					y = dot(req.y, positions[i] - req.o);
-					if(y > -1 && y < 1) {
-						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-						if(pixel >= imageSize)
-							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-						if(image[pixel] < colors[i])
-							image[pixel] = colors[i];
-					}
-				}
-			}
-		} else {
+		if(activeGroupName != "All") {
 			ParticleGroup& activeGroup = simIter->second.groups[activeGroupName];
 			if(thisIndex == 0)
 				cerr << "Drawing using group " << activeGroupName << " which has " << activeGroup.size() << " particles" << endl;
-			for(ParticleGroup::iterator iter = activeGroup.begin(); iter != activeGroup.end(); ++iter) {
+			//pred.setIndexed(activeGroup.begin(), activeGroup.end());
+			delete pred;
+			pred = new IndexedPredicate(activeGroup.begin(), activeGroup.end());
+		}
+		counting_iterator<u_int64_t> beginIndex(0);
+		counting_iterator<u_int64_t> endIndex(simIter->second.count.numParticles);
+		FilterIteratorType iter(pred, beginIndex, endIndex);
+		FilterIteratorType end(pred, endIndex, endIndex);
+		
+		bool drawVectorsThisFamily = drawVectors;
+		AttributeMap::iterator vectorIter;
+		if(drawVectorsThisFamily) {
+			vectorIter = simIter->second.attributes.find(drawVectorAttributeName);
+			if(vectorIter == simIter->second.attributes.end())
+				drawVectorsThisFamily = false;
+			else
+				sim->loadAttribute(simIter->first, drawVectorAttributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
+		}
+		
+		if(drawVectorsThisFamily) {
+			//get vectors
+			CoerciveExtractor<Vector3D<float> > vectorGetter(vectorIter->second);
+			Vector3D<float> point;
+			float x_end, y_end, t;
+			int x0, y0, x1, y1, b;
+			for(; iter != end; ++iter) {
+				point = positions[*iter] - req.o;
+				x = dot(req.x, point);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, point);
+					if(y > -1 && y < 1) {
+						point += vectorScale * vectorGetter[*iter];
+						x_end = dot(req.x, point);
+						y_end = dot(req.y, point);
+						if(x_end <= -1 || x_end >= 1) {
+							b = sign(x_end);
+							t = (b - x) / (x_end - x);
+							x_end = b;
+							y_end = y + (y_end - y) * t;
+						} else if(y_end <= -1 || y_end >= 1) {
+							b = sign(y_end);
+							t = (b - y) / (y_end - y);
+							x_end = x + (x_end - x) * t;
+							y_end = b;
+						}
+						x0 = static_cast<unsigned int>(req.width * (x + 1) / 2);
+						x1 = static_cast<unsigned int>(req.width * (x_end + 1) / 2);
+						y0 = static_cast<unsigned int>(req.height * (1 - y) / 2);
+						y1 = static_cast<unsigned int>(req.height * (1 - y_end) / 2);
+						drawLine(image, req.width, req.height, x0, y0, x1, y1, colors[*iter]);
+					}
+				}
+			}
+		} else { //draw points only
+			for(; iter != end; ++iter) {
 				x = dot(req.x, positions[*iter] - req.o);
 				if(x > -1 && x < 1) {
 					y = dot(req.y, positions[*iter] - req.o);
@@ -238,7 +416,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			}
 		}
 	}
-	
+	delete pred;
 	//XXX removed active region drawing from here
 	
 	if(thisIndex == 0) {
@@ -274,7 +452,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 
 	double stop = CkWallTimer();
-	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
+	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, max_image_data);
 	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
 	//cout << "my part: " << (stop - start) << " seconds" << endl;
 }
@@ -361,7 +539,7 @@ void Worker::valueRange(CkCcsRequestMsg* m) {
 }
 
 template <typename T>
-void Worker::assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic) {
+void Worker::assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip) {
 	double invdelta = 1.0 / (maxVal - minVal);
 	double value;
 	for(u_int64_t i = 0; i < N; ++i) {
@@ -378,81 +556,124 @@ void Worker::assignColors(const unsigned int dimensions, byte* colors, void* val
 			}
 		}
 		value = floor(startColor + (256 - startColor) * (value - minVal) * invdelta);
-		if(value < startColor || value > 255)
-			colors[i] = 0;
-		else
+		if(value < startColor) {
+			if(clip == low || clip == both)
+				colors[i] = 0;
+			else
+				colors[i] = startColor;
+		} else if(value > 255) {
+			if(clip == high || clip == both)
+				colors[i] = 0;
+			else
+				colors[i] = 255;
+		} else
 			colors[i] = static_cast<byte>(value);
 	}
 }
 
-void Worker::chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb) {
-	currentAttribute = attributeName;
-	if(verbosity > 2 && thisIndex == 0) {
-		cout << "Re-coloring using " << currentAttribute << " from " << minVal << " to " << maxVal;
-		if(beLogarithmic)
-			cout << ", logarithmically" << endl;
-		else
-			cout << ", linearly" << endl;
-	}
-	
+void Worker::defaultColor(const CkCallback& cb) {
 	byte familyColor = startColor - sim->size();
-	
+	byte* colors = 0;
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
-		AttributeMap::iterator attrIter = iter->second.attributes.find(currentAttribute);
-		byte* colors = iter->second.getAttribute("color", Type2Type<byte>());
-		
-		if(attrIter != iter->second.attributes.end()) {	
-			if(attrIter->second.length == 0)
-				sim->loadAttribute(iter->first, currentAttribute, iter->second.count.numParticles, iter->second.count.startParticle);
-			void* values = iter->second.attributes[currentAttribute].data;
-			if(values != 0) {
-				switch(attrIter->second.code) {
-					case int8:
-						assignColors<char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case uint8:
-						assignColors<unsigned char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case int16:
-						assignColors<short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case uint16:
-						assignColors<unsigned short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case int32:
-						assignColors<int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case uint32:
-						assignColors<unsigned int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case int64:
-						assignColors<int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case uint64:
-						assignColors<u_int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case float32:
-						assignColors<float>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					case float64:
-						assignColors<double>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
-						break;
-					default:
-						break;
+		colors = iter->second.getAttribute("color", Type2Type<byte>());
+		//color particles by the family they're in
+		memset(colors, familyColor, iter->second.count.numParticles);
+		++familyColor;
+	}
+	contribute(0, 0, CkReduction::concat, cb);
+}
+
+void Worker::chooseColorValue(const std::string& specification, const CkCallback& cb) {
+	list<string> args = splitString(specification);
+	if(args.size() >= 6) {
+		list<string>::iterator iter = args.begin();
+
+		bool beLogarithmic = false;
+		if(*iter == "logarithmic")
+			beLogarithmic = true;
+
+		string& currentAttribute = *++iter;
+
+		double minVal, maxVal;
+		if(extract(*++iter, minVal) && extract(*++iter, maxVal)) {
+
+			clipping clip = none;
+			++iter;
+			if(*iter == "cliplow")
+				clip = low;
+			else if(*iter == "cliphigh")
+				clip = high;
+			else if(*iter == "clipboth")
+				clip = both;
+
+			set<string> activeFamilies(++iter, args.end());
+
+			if(verbosity > 2 && thisIndex == 0) {
+				cout << "Re-coloring using " << currentAttribute << " from " << minVal << " to " << maxVal;
+				if(beLogarithmic)
+					cout << ", logarithmically" << endl;
+				else
+					cout << ", linearly" << endl;
+			}
+
+			byte familyColor = startColor - sim->size();
+			for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
+				byte* colors = iter->second.getAttribute("color", Type2Type<byte>());
+				if(activeFamilies.count(iter->first) != 0) { //it's active
+					AttributeMap::iterator attrIter = iter->second.attributes.find(currentAttribute);
+					if(attrIter != iter->second.attributes.end()) {	
+						if(attrIter->second.length == 0)
+							sim->loadAttribute(iter->first, currentAttribute, iter->second.count.numParticles, iter->second.count.startParticle);
+						void* values = iter->second.attributes[currentAttribute].data;
+						if(values != 0) {
+							switch(attrIter->second.code) {
+								case int8:
+									assignColors<char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case uint8:
+									assignColors<unsigned char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case int16:
+									assignColors<short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case uint16:
+									assignColors<unsigned short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case int32:
+									assignColors<int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case uint32:
+									assignColors<unsigned int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case int64:
+									assignColors<int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case uint64:
+									assignColors<u_int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case float32:
+									assignColors<float>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								case float64:
+									assignColors<double>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
+									break;
+								default:
+									break;
+							}
+						}
+					} else {
+						//color particles by the family they're in
+						memset(colors, familyColor, iter->second.count.numParticles);
+					}
+				} else { //this family is not active, make it black
+					memset(colors, 0, iter->second.count.numParticles);
 				}
 			}
-		} else if(currentAttribute == "family") {
-			//color particles by the family they're in
-			memset(colors, familyColor, iter->second.count.numParticles);
-			++familyColor;
-		} else {
-			//the attribute does not exist, black out these particles
-			memset(colors, 0, iter->second.count.numParticles);
+
+			if(verbosity > 3 && thisIndex == 0)
+				cout << "Re-colored particles" << endl;
 		}
 	}
-	
-	if(verbosity > 3 && thisIndex == 0)
-		cout << "Re-colored particles" << endl;
 	
 	contribute(0, 0, CkReduction::concat, cb);
 }
@@ -548,42 +769,6 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	}
 }
 
-std::string trim(const std::string& s) {
-	std::string trimmed(s);
-	trimmed.erase(0, trimmed.find_first_not_of(" \t\r\n"));
-	trimmed.erase(trimmed.find_last_not_of(" \t\r\n") + 1);
-	return trimmed;
-}
-
-bool toDouble(const std::string& s, double& d) {
-	std::istringstream iss(s);
-	iss >> d;
-	return iss;
-}
-
-template <typename T>
-bool extract(const std::string& s, T& value) {
-	std::istringstream iss(s);
-	iss >> value;
-	return iss;
-}
-
-std::list<std::string> splitString(const std::string& s, const char c = ',') {
-	std::list<std::string> l;
-	std::string::size_type past, pastOld = 0;
-	while(pastOld < s.size()) {
-		past = s.find(c, pastOld);
-		if(past == std::string::npos) {
-			l.push_back(trim(s.substr(pastOld)));
-			break;
-		} else
-			++past;
-		l.push_back(trim(s.substr(pastOld, past - pastOld - 1)));
-		pastOld = past;
-	}
-	return l;
-}
-
 void Worker::createGroup(const string& s, const CkCallback& cb) {
 	string groupName, attributeName;
 	list<string> parts = splitString(s);
@@ -616,5 +801,22 @@ void Worker::setActiveGroup(const std::string& s, const CkCallback& cb) {
 	activeGroupName = s;
 	if(thisIndex == 0)
 		cerr << "Activated group " << activeGroupName << endl;
+	contribute(0, 0, CkReduction::concat, cb);
+}
+
+void Worker::setDrawVectors(const string& s, const CkCallback& cb) {
+	list<string> parts = splitString(s);
+	if(parts.size() >= 2) {
+		list<string>::iterator iter = parts.begin();
+		drawVectorAttributeName = *iter;
+		if(drawVectorAttributeName == "")
+			drawVectors = false;
+		else if(extract(*++iter, vectorScale))
+			drawVectors = true;
+	}
+		
+	if(verbosity > 2 && thisIndex == 0)
+		cout << "Changed drawing of vectors somehow " << s << endl;
+	
 	contribute(0, 0, CkReduction::concat, cb);
 }
