@@ -71,7 +71,9 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         if ( command.equals("xall") ) { xall();}
         else if (command.equals("yall"))  { yall();}
         else if (command.equals("zall"))  { zall();}
-        else if (command.equals("center"))  { zall();}
+        else if (command.equals("center"))  {
+            s.ccs.addRequest( new Center() );
+        }
         else if (command.equals("recolor"))  { 
             ReColorFrame rcf = new ReColorFrame(s, vp);
         }
@@ -118,7 +120,12 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         }
 
         public void handleReply(byte[] data) {
-            vp.origin.z = new Double( new String(data) ).doubleValue();
+            DataInputStream dis = new DataInputStream( new ByteArrayInputStream(data));
+            try {
+                double m = dis.readDouble();
+                vp.origin = vp.origin.plus(vp.z.unitVector().scalarMultiply( m ));
+                System.out.println("Server response: "+m+"  New origin for rotation: "+vp.origin);
+            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
         }
     }
 
