@@ -62,13 +62,18 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		instructions();
 	}
 
+	/*************************************************************************************************/
+	/* this section should be updated in conjunction with CommandParser...as new commands are added,
+	 * the instructions on how to use those commands should be put here
+	 */
+
 	public void instructions(){
 		commandLog.append("" + '\n');
 		commandLog.append("List of known commands:\n");
 		commandLog.append("Query for list of commands: " + " $commands\n");
 		commandLog.append("Get list of simulations: " + " $simlist\n");
 		commandLog.append("Chose a simulation: " + " $choosesim <int>\n");
-		commandLog.append("Chose a file to read commands from: " + " $openfile\n");
+		commandLog.append("Chose a file to read commands from: " + " $openfile\n");	//this one has serious problems
 		commandLog.append("Launch the simulation: " + " $launch\n");
 		commandLog.append("Xall: " + " $xall\n");
 		commandLog.append("Yall: " + " $yall\n");
@@ -94,10 +99,13 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 	}
 
 	/*************************************************************************************************/
-
+	/* method used to toss some text on the screen */
 	public void updateScreen(String arg){
 		commandLog.append(arg + '\n');
 	}
+
+	/*************************************************************************************************/
+	/* clear the commandLog/screen */
 
 	public void clear(){
 		commandLog.setText("");
@@ -142,9 +150,13 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 			commandField.setText("");
 			currentCommand = "";
 		}catch(Exception ex){
+			/* this catch was initially put here because a nullpointer exception was being thrown
+			 * when the manualPanel attempted to parse a string command, but the CommandParser
+			 * instance variable hadn't been initialized yet...it is initialized in ConfigPanel
+			 * actionPerformed */
 			System.out.println("Exception caugth...haven't initialized yet...?");
 			updateScreen("Please launch the simulation from the Configure tab in order to initialize the program variables");
-			ex.printStackTrace();
+			//ex.printStackTrace();
 		}
 	}
 
@@ -175,7 +187,12 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 
 	public void keyReleased(KeyEvent e) {
 	}
-	
+
+	/*************************************************************************************************/
+	/*
+	 * called from CommandPane.enableOne() to disable this CommandPrompt until the appropriate time
+	 * UPDATE: this method isn't really in use at the moment...it is commented out in CommandPane
+	 */
 	public void disable(){
 		if(disabledOnce){
 			//do nothing
@@ -184,20 +201,30 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 			disabledOnce = true;
 		}
 	}
-
+	
+	/*************************************************************************************************/
+	/*
+	 * called from CommandPane.enableTwo() to enable text input
+	 * UPDATE: this method isn't really in use at the moment...it is commented out in CommandPane
 	public void enable(){
 		commandField.setEnabled(true);
 	}
-
+	
+	/*************************************************************************************************/
+	/*
+	 * this method is called indirectly from ConfigPanel (ConfigPanel calls CommandPane.callParseSetter, which
+	 * in turn calls this method) when the ParentPanel is instantiated, and can be used to initialize the 
+	 * ParentPanel instance variable in CommandParser class
+	 */
 	public void setParser(ParentPanel p){
 		if(parser==null){
-			parser = new CommandParser(p, this);
+			parser = new CommandParser(p, this, refComPane);
 		}else{
 			System.out.println("Setting new parser!");
 			parser.theParent = p;
 		}
 	}
-	
+/*
 	public DefaultListModel getSimList(){
 		return refComPane.getSimList();
 	}
@@ -205,20 +232,20 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 	public void updateStatus(String arg){
 		refComPane.updateStatus("Launched: " + arg);
 	}
-	
+
 	public void launch(){
 		refComPane.launch();
 	}
-	
+
 	public void disposeWindow(){
 		refComPane.disposeWindow();
 	}
-	
+
 	public void updateGroupList(String arg){
 		refComPane.updateGroupList(arg);
 	}
-	
+
 	public void clearGroups(){
 		refComPane.clearGroups();
-	}
+	}*/
 }

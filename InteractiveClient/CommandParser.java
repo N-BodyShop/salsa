@@ -11,11 +11,10 @@ import java.awt.*;
  */
 public class CommandParser {
 	private CcsThread ccs;
-	public ParentPanel theParent;
-	private CommandPrompt thePrompt;
+	public ParentPanel theParent;		//give access to the ParentPanel properties
+	private CommandPrompt thePrompt;	//give access to the CommandPrompt properties
+	private CommandPane refComPane;		//give access to the CommandPane properties
 	private String theCommand = "";
-	private double theArg;
-	private int index;
 	private DefaultListModel theSimList;
 	private String selectedSim;
 
@@ -27,10 +26,11 @@ public class CommandParser {
 	 * @param p the ParentPanel object to associate this parser to
 	 * @param cp the CommandPrompt object to associate this parser to
 	 */
-	public CommandParser(ParentPanel p, CommandPrompt cp){
+	public CommandParser(ParentPanel p, CommandPrompt cp, CommandPane ref){
 		theParent = p;
 		thePrompt = cp;
-		theSimList = thePrompt.getSimList();
+		refComPane = ref;
+		theSimList = refComPane.getSimList();
 		ccs = new CcsThread(new Label(), theParent.host, theParent.port);
 		System.out.println("Parser is set...ROCK AND ROLL!");
 	}
@@ -95,12 +95,12 @@ public class CommandParser {
 					thePrompt.updateScreen("Please close the current simulation");
 				}else{
 					goodCommand(arg);
-					thePrompt.launch();
+					refComPane.launch();
 				}
 			}else if(arg.equals("closeviz")){
 				if(theParent.isOpen){
 					goodCommand(arg);
-					thePrompt.disposeWindow();
+					refComPane.disposeWindow();
 				}else{
 					badCommand("Sorry, you can't close a non-open visualization!");
 				}
@@ -238,7 +238,7 @@ public class CommandParser {
 				}
 			}catch(NumberFormatException ex){
 				//System.out.println("number format exception");
-				badCommand("illegal argument " + arg);
+				badCommand("Illegal argument " + arg);
 			}
 
 		}
@@ -268,6 +268,14 @@ public class CommandParser {
 		thePrompt.addCommand(barf);
 	}
 
+	//*******************************************************************************************************//
+	//*******************************************************************************************************//
+	//													 //
+	//                         SERVER REQUESTS APPEAR BELOW HERE		                                 //
+	//													 //
+	//*******************************************************************************************************//
+	//*******************************************************************************************************//
+
 	private class ValueRange extends CcsThread.request{
 		public ValueRange(){
 			super("ValueRange", null);
@@ -292,6 +300,8 @@ public class CommandParser {
 		}
 	}
 	
+	//***********************************************************************************************
+
 	private class ChooseSimulation extends CcsThread.request{
 
 		public ChooseSimulation(String sim){
@@ -307,10 +317,9 @@ public class CommandParser {
 				//good
 				System.out.println("Launching " + selectedSim);
 				//refComPane.updateStatus("Simulation loaded: " + selectedSim);
-				thePrompt.updateStatus(selectedSim);
-				thePrompt.clearGroups();
-				thePrompt.updateGroupList("All particles");
-
+				refComPane.updateStatus("Launched: " + selectedSim);
+				refComPane.clearGroups();
+				refComPane.updateGroupList("All particles");
 			}
 		}
 	}

@@ -38,7 +38,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	private long firstClick;
 	public boolean isOpen, mouseDragged;
 	private String colorMapType;
-	public ConfigPanel refConfigPanel;
+	public ConfigPanel refConfigPanel;	//currently only used to pack the JFrame containing this ParentPanel (aug. 20, '03)
 	private CommandPane refComPane;
 	public boolean resizeCall;
 	private JPopupMenu rightClickMenu;
@@ -306,6 +306,10 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		item.setActionCommand("clear");
 		item.addActionListener(this);
 		rightClickMenu.add(item);
+		item = new JMenuItem("review");
+		item.setActionCommand("review");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
 		//end right click menu setup
 
 		mainView.messageHub("lvConfig", false);
@@ -386,6 +390,8 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			}
 		}else if(command.equals("png")){
 			encodePNG(true, null, null);
+		}else if(command.equals("review")){
+			reView();
 		}
 	}
 	
@@ -477,9 +483,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			}else{
 				System.out.println("Choice: " + choice);
 				try{
-					String numberOne = JOptionPane.showInputDialog("Enter first mysterious double value");
+					String numberOne = JOptionPane.showInputDialog("Enter lower bound double value");
 					one = Double.parseDouble(numberOne);
-					String numberTwo = JOptionPane.showInputDialog("Enter second mysterious double value");
+					String numberTwo = JOptionPane.showInputDialog("Enter upper bound double value");
 					two = Double.parseDouble(numberTwo);
 					if(choice.equals("linear")){
 						type = 0;
@@ -522,12 +528,13 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	//*******************************************************************************************************//
 	/*
-	 * this function is called indirectly from CommandParser to resize the window in response to the manual input
+	 * this function is called from CommandParser to resize the window in response to the manual input
 	 * command 'resize'...see CommandPrompt method instructions() for usage of 'resize'
+	 * NOTE: this function only works on good days
 	 */
 
 	public void resizeMainView(int wid, int hei){
-
+		/* please see MainView.componentResized()...this code is almost an exact copy */
 		mainView.resizedImage = true;
 		mainView.width = wid;
 		mainView.height = hei;
@@ -562,7 +569,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	//*******************************************************************************************************//
 	/*
-	 * this function is used by the reColor function to encode the arguments of the server call to binary
+	 * this function is used by the reColor() function to encode the arguments to binary
 	 */
 
 	private byte[] encodeNumbers(int type, double first, double second) {
@@ -1037,7 +1044,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	/**************************************************************************************************/
 	/*
 	 * this method uses the simNumbers in xSimNumbers, ySimNumbers, and zSimNumbers, in conjunction with
-	 * the vector information of the two views to locate the points of a selection box or sphere in
+	 * the vector information of the two views, to locate the points of a selection box or sphere in
 	 * actual simulation space
 	 */
 	public void setPosVectors(){
@@ -1196,7 +1203,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	//*******************************************************************************************************//
 	/*
-	 * called indirectly from CommandParser to pan the views
+	 * called from CommandParser to pan the views
 	 */
 	public void panNumeric(double amount, String direction){
 		mainDrawn = auxDrawn = false;
@@ -1509,8 +1516,8 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	 */
 	private ColorModel resetWRBB(MouseEvent e){
 		//System.out.println("Resetting colors");
-		System.out.println("color_start is: " + color_start);
-		System.out.println("e.getX() is: " + e.getX());
+		//System.out.println("color_start is: " + color_start);
+		//System.out.println("e.getX() is: " + e.getX());
 		int diff = color_start - e.getX();
 		diff = (int) (254.0 * diff / (mainView.width + auxView.width));
 		color_start = e.getX();

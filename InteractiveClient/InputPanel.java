@@ -101,7 +101,7 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener,
 	}
 
 //*****************************************************************************************************************
-
+	
 	public void keyPressed(KeyEvent e){}
 	public void keyReleased(KeyEvent e){}
 	public void keyTyped(KeyEvent e){

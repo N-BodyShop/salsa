@@ -116,6 +116,8 @@ public class CommandPane implements ActionListener, ItemListener {
 		disable();
 	}
 	
+//*****************************************************************************************************************
+
 	public void launch(){
 		configPanel.render.doClick();
 	}
@@ -154,7 +156,10 @@ public class CommandPane implements ActionListener, ItemListener {
 	}
 	
 //*****************************************************************************************************************
-
+	/*
+	 * called from InputPanel, after the hostname and portname have been stored, and can
+	 * therefor be used to initialize CcsThread objects
+	 */
 	public void setCCS(){
 		ccs = new CcsThread(new Label(), host, port);
 	}
