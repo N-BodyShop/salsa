@@ -8,20 +8,24 @@
 
 import javax.swing.*;
 import java.util.*;
+import java.awt.image.*;
 
 public class Simulation {
     String Name;
+    CcsThread ccs;
     DefaultComboBoxModel attributes;
     int selectedAttributeIndex;
     int numberOfFamilies;
     int numberOfColors;
+    ColorModel cm;
     Vector Families;
     
-    public Simulation() {
-		reset();
-	}
+    public Simulation(CcsThread ccsThread){
+        ccs = ccsThread;
+        reset();
+    }
 	
-	public void reset() {
+    public void reset() {
         Name = new String();
         attributes = new DefaultComboBoxModel();
         selectedAttributeIndex = 0;

@@ -15,19 +15,17 @@ import java.lang.Math;
 
 public class ReColorFrame extends JFrame
                         implements ActionListener {
-    Connection c;
     Simulation s;
-    CcsThread ccs;
+    ViewPanel vp;
     NameValue minPanel;
     NameValue maxPanel;
     String attrib;
     JComboBox linLog;
     JComboBox attributeList;
 
-    public ReColorFrame( Connection con, Simulation sim, CcsThread ct ){
-        c = con;
+    public ReColorFrame( Simulation sim, ViewPanel viewP ){
         s = sim;
-        ccs = ct;
+        vp = viewP;
     
         setTitle("Choose Attribute");
         Container contentPane = getContentPane();
@@ -77,22 +75,13 @@ public class ReColorFrame extends JFrame
                 dos.writeDouble(Double.parseDouble(minPanel.getValue()));
                 dos.writeDouble(Double.parseDouble(maxPanel.getValue()));
                 dos.writeBytes(attrib);
-                ccs.addRequest( new ChooseColorValue( baos.toByteArray() ) );
+                s.ccs.addRequest( new ChooseColorValue( baos.toByteArray() ) );
             } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
         } else {
             attrib = (String)attributeList.getSelectedItem();
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
             // attribute selected, so we need to find out its possible values
-            try{
-                CcsThread ccs = new CcsThread( new Label(), c.host,c.port );
-                ccs.addRequest( new ValueRange(attrib) );
-            } catch (UnknownHostException uhe) {            
-                JOptionPane.showMessageDialog(this, "Couldn't find host "+
-                        c.host+":"+c.port+".");
-            } catch (IOException ioe) {
-                JOptionPane.showMessageDialog(this, "Couldn't connect to "+
-                            c.host+":"+c.port+".");
-            }
+            s.ccs.addRequest( new ValueRange(attrib) );
         }
     }
 
@@ -124,6 +113,7 @@ public class ReColorFrame extends JFrame
         }
         public void handleReply(byte[] data) {
             setVisible(false);
+            vp.getNewImage();
        }
     }
 }

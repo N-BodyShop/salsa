@@ -9,46 +9,37 @@
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
 public class ChooseSimulationFrame extends JFrame
                                 implements ActionListener {
     JList simJList;
-    Connection c;
     Simulation s;
+    Vector simlist;
 
-    public ChooseSimulationFrame( Connection con ){
-        c = con;
-        s = new Simulation();
-    
+    public ChooseSimulationFrame( CcsThread ccs, Vector list ){
+        simlist = list;
+        s = new Simulation(ccs);
+        
         setTitle("Choose Simulation");
         setLocationRelativeTo(null);
         Container contentPane = getContentPane();
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
         
-        simJList = new JList( con.simlist );
+        simJList = new JList( simlist );
         simJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         simJList.setSelectedIndex(0);
         simJList.setVisibleRowCount(8);
         MouseListener mouseListener = new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) { actionPerformed(new ActionEvent(simJList,2,"clicked"));
- /*                   s.Name = (String)c.simlist.get( simJList.locationToIndex(e.getPoint()) );
-                    System.out.println("Selected "+s.Name);
-                    try{
-                        CcsThread ccs = new CcsThread( new Label(), c.host,c.port );
-                        ccs.addRequest( new ChooseSimulation(s.Name) );
-                        setVisible(false);
-                    } catch (IOException ioe) {
-                        System.err.println("Couldn't connect to "+
-                                    c.host+":"+c.port+".");
-                    }*/
-                }
+                if (e.getClickCount() == 2) { actionPerformed(new ActionEvent(simJList,2,"clicked")); }
             }
         };
         simJList.addMouseListener(mouseListener);
+//        simJList.addActionListener(this);
         JScrollPane simScrollPane = new JScrollPane(simJList);
         
         JButton chooseButton = new JButton("Choose");
@@ -74,16 +65,10 @@ public class ChooseSimulationFrame extends JFrame
     }
 
     public void actionPerformed(ActionEvent e){
-        s.Name = (String)c.simlist.get( simJList.getSelectedIndex() );
+        s.Name = (String)simlist.get( simJList.getSelectedIndex() );
         System.out.println("Selected "+s.Name);
-        try{
-            CcsThread ccs = new CcsThread( new Label(), c.host,c.port );
-            ccs.addRequest( new ChooseSimulation(s.Name) );
-            setVisible(false);
-        } catch (IOException ioe) {
-            JOptionPane.showMessageDialog(this, "Couldn't connect to "+
-                        c.host+":"+c.port+".");
-        }
+        s.ccs.addRequest( new ChooseSimulation(s.Name) );
+        setVisible(false);
     }
 
     private class ChooseSimulation extends CcsThread.request{
@@ -110,15 +95,37 @@ public class ChooseSimulationFrame extends JFrame
                 index = reply.indexOf(",",lastindex);
                 s.attributes.addElement(reply.substring(lastindex,index));
             }
-         	// we've chosen and initialized a simulation, now we can look at it
-        	SimulationFrame sf = new SimulationFrame(c,s);
-			sf.addWindowListener(new WindowAdapter() {
-				public void windowClosing(WindowEvent e) {
-					s.reset();
-					setVisible(true);
-				}
-			});
-       }
+        s.ccs.addRequest( new lvConfig() );
+
+        }
     }
 
+    private class lvConfig extends CcsThread.request {
+        public lvConfig() {
+            super("lvConfig", null);
+        }
+        
+        public void handleReply(byte[] configData){
+            try {
+                Config config = new Config(new DataInputStream(new ByteArrayInputStream(configData)));
+                Vector3D origin;
+                origin = new Vector3D(0, 0, 0);
+                origin = config.max.plus(config.min).scalarMultiply(0.5);
+                double boxSize = config.max.x - config.min.x;
+                if((config.max.y - config.min.y != boxSize) || 
+                    (config.max.z - config.min.z != boxSize)) 
+                    {    System.err.println("Box is not a cube!"); }
+                SimulationFrame sf = new SimulationFrame(s,boxSize,origin);
+                sf.addWindowListener( new WindowAdapter() {
+                        public void windowClosing(WindowEvent e){
+                            setVisible(true);
+                        }
+                    });
+//                RotatedViewFrame rvf = new RotatedViewFrame(s,boxSize,origin);
+            } catch(IOException e) {
+                System.err.println("Fatal: Couldn't obtain configuration information");
+                e.printStackTrace();
+            }
+        }
+    }
 }

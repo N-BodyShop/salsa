@@ -9,6 +9,7 @@
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
@@ -18,10 +19,9 @@ public class ConnectFrame extends JFrame
     NameValue passPanel;
     NameValue hostPanel;
     NameValue portPanel;
-    Connection c;
+    CcsThread ccs;
 
-    public ConnectFrame( Connection con ){
-        c = con;
+    public ConnectFrame( ){
         setTitle("Connect to NChilada Server");
         //setLocationRelativeTo(null);
         Container contentPane = getContentPane();
@@ -61,7 +61,7 @@ public class ConnectFrame extends JFrame
     
     public void actionPerformed(ActionEvent e){
         try{
-            CcsThread ccs = new CcsThread( new Label(), 
+            ccs = new CcsThread( new Label(), 
                 hostPanel.getValue(), Integer.parseInt(portPanel.getValue()) );
             ccs.addRequest( new AuthenticationRequest(userPanel.getValue(), 
                         passPanel.getValue()) );
@@ -82,19 +82,8 @@ public class ConnectFrame extends JFrame
         }
 
         public void handleReply(byte[] data) {
-            // connected OK, so initialize Connection
-            c.host = hostPanel.getValue();
-            c.port = Integer.parseInt(portPanel.getValue());
             //initialize simlist
-            try{
-                CcsThread ccs = new CcsThread( new Label(),c.host,c.port );
-//                System.out.println("Requesting simulations");
-                ccs.addRequest( new ListSimulations() );
-            } 
-            catch (UnknownHostException uhe) {
-                System.err.println("Unknow host: "+uhe);} 
-            catch (IOException ioe) {
-                System.err.println("Couldn't connect: "+ioe);}
+            ccs.addRequest( new ListSimulations() );
         }
     }
 
@@ -106,23 +95,22 @@ public class ConnectFrame extends JFrame
 
         public void handleReply(byte[] data) {
             String reply = new String(data);
-            c.simlist = new DefaultListModel();
+            Vector simlist = new Vector();
             int index = -1;
             int lastindex = 0;
             while( index < reply.length()-1 ){
                 lastindex = index + 1;
                 index = reply.indexOf(",",lastindex);
                 System.out.println("Adding:  "+reply.substring(lastindex,index));
-                c.simlist.addElement(reply.substring(lastindex,index));
+                simlist.addElement(reply.substring(lastindex,index));
             }
             // we've established a connection, now we can choose what
             // to look at
-            ChooseSimulationFrame csf = new ChooseSimulationFrame(c);
+            ChooseSimulationFrame csf = new ChooseSimulationFrame(ccs,simlist);
         }
     }
 
     public static void main(String s[]){
-        Connection connection = new Connection();
-        ConnectFrame cf = new ConnectFrame(connection);
+        ConnectFrame cf = new ConnectFrame();
     }
 }
