@@ -323,7 +323,7 @@ void Worker::recolor(CkCcsRequestMsg* m) {
 			cout << ", linearly" << endl;
 	}
 	
-	float delta = maxVal - minVal;
+	float invdelta = 1.0 / (maxVal - minVal);
 	float value;
 	for(u_int64_t i = 0; i < numParticles; ++i) {
 		value = myParticles[i].value;
@@ -334,10 +334,12 @@ void Worker::recolor(CkCcsRequestMsg* m) {
 				value = maxValue;
 		}
 		
-		if(value >= minVal && value < maxValue)
-			myParticles[i].color = static_cast<byte>(1 + numColors * (value - minVal) / delta);
-		else
+		value = floor(numColors * (value - minValue) * invdelta);
+		
+		if(value < 0 || value >= numColors)
 			myParticles[i].color = 0;
+		else
+			myParticles[i].color = 1 + static_cast<byte>(value);
 	}
 	
 	unsigned char success = 1;
