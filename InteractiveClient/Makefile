@@ -6,7 +6,6 @@ all:: $(TARGET).jar
 
 $(TARGET).jar: Manifest $(CLASSES)
 	jar cmf Manifest $@ *.class
-	tar zcf salsa.tar.gz $@ salsa
 
 .SUFFIXES: .java .class
 
@@ -67,10 +66,13 @@ $(TARGET).jar: Manifest $(CLASSES)
 
 dist::
 	mkdir $(TARGET)-$(VERSION)
-	cp Makefile Manifest *.java $(TARGET)-$(VERSION)/
+	cp salsa Makefile Manifest *.java $(TARGET)-$(VERSION)/
 	tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
 	rm -Rf $(TARGET)-$(VERSION)
+
+binarydist::
+	tar zcvf salsa.tar.gz salsa Salsa.jar
 	
 clean::
-	rm -f *.class *.jar
+	rm -f *.class *.jar salsa.tar.gz
 	
