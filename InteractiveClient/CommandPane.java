@@ -62,7 +62,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		groupNames = new String[numGroups];
 		groups = new JComboBox(/*groupNames*/);
 		groups.addItemListener(this);
-		status = new JLabel("Welcome to the big NChilada!");
+		status = new JLabel("Welcome to NChilada");
 
 		/* setup menu */
 		JMenu file = new JMenu("File");

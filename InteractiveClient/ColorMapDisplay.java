@@ -8,7 +8,7 @@ public class ColorMapDisplay extends JLabel {
 	private byte[] image;
 	
 	public ColorMapDisplay(int w, int h) {
-		//System.out.println("Colomap called with width of " + w);
+		//System.out.println("Colormap called with width of " + w);
 		width = w;
 		height = h;
 		image = new byte[width * height];

@@ -82,7 +82,8 @@ class CcsThread implements Runnable {
 	private String hostName;
 	private int port;
 	
-	public CcsThread(Label status_, String hostName_, int port_) {
+	public CcsThread (Label status_, String hostName_, int port_) 
+            throws UnknownHostException, IOException {
 		requests=new Stack();
 		status=status_;
 		hostName=hostName_;
@@ -91,6 +92,7 @@ class CcsThread implements Runnable {
 		keepGoing=true;
 		//Start our run method
 		myThread=new Thread(this);
+                ccs=new CcsServer(hostName,port);
 		myThread.start();
 	}
 		
@@ -125,11 +127,6 @@ class CcsThread implements Runnable {
 		
 	public void run() {
 		status.setText("Connecting to "+hostName+":"+port+"...");
-		try {
-			ccs=new CcsServer(hostName,port);
-		} 
-		catch (UnknownHostException e) {ioError(e,"Bad host name");}
-		catch (IOException e) {ioError(e,"Could not connect");}
 		
 		if (!keepGoing) return;
 		status.setText("Connected to "+hostName+" ("+

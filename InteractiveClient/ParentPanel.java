@@ -6,9 +6,13 @@ import java.awt.image.*;
 import java.io.*;
 import java.lang.*;
 import java.util.*;
+import java.io.*;
+import java.net.UnknownHostException;
 
 public class ParentPanel extends JPanel implements ActionListener, MouseListener, MouseMotionListener{
 	private CcsThread ccs;
+        Connection c;
+        Simulation s;
 	public ColorModel wrbb;
 	public ColorMapDisplay cmdisplay;
 	private MainView mainView;
@@ -17,8 +21,6 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	private Config config;
 	private double boxSize;
 	//private int width, height;
-	public String host;
-	public int port;
 	public String initialView;
 	public JButton xButton, yButton, zButton;
 	public int start_x, start_y;
@@ -38,31 +40,35 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	private long firstClick;
 	public boolean isOpen, mouseDragged;
 	private String colorMapType;
-	public ConfigPanel refConfigPanel;	//currently only used to pack the JFrame containing this ParentPanel (aug. 20, '03)
-	private CommandPane refComPane;
+//	private CommandPane refComPane;
 	public boolean resizeCall;
 	private JPopupMenu rightClickMenu;
 
 	/*
 	 * constructor
-	 * @param hostname the hostname, used to initialize the ccs thread
-	 * @param portNumber the port number, used to initialize the ccs thread
+	 * @param con is used to initialize the ccs thread
 	 * @param theView xall, yall, or zall
-	 * @param cp the ConfigPanel object that instantiated this ParentPanel-->for accessor methods
 	 * @param c the COmmandPane object controlling everything
 	 */
 
-	public ParentPanel(String hostname, int portNumber, String theView, ConfigPanel cp, CommandPane c){
-		super(new BorderLayout());
-		host = hostname;
-		port = portNumber;
-		ccs = new CcsThread(new Label(), host, port);
+	public ParentPanel(Connection con, Simulation sim, String theView){
+                setLayout(new BorderLayout());
+                c = con;
+                s = sim;
+                try {
+                    ccs = new CcsThread(new Label(), c.host, c.port);
+                } catch (UnknownHostException uhe) {            
+                    JOptionPane.showMessageDialog(this, "Couldn't find host "+
+                        c.host+":"+c.port+".");
+                } catch (IOException ioe) {
+                    JOptionPane.showMessageDialog(this, "Couldn't connect to "+
+                        c.host+":"+c.port+".");
+                }
 		initialView = theView;
 		mainDrawn = false;
 		auxDrawn = false;
 		isOpen = true;
-		refConfigPanel = cp;
-		refComPane = c;
+//		refComPane = c;
 		resizeCall = false;
 
 		/*
@@ -363,8 +369,8 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		}else if(command.equals("clear")){
 			ccs.addRequest(new ClearBoxes());
 			ccs.addRequest(new ClearSpheres());
-			refComPane.clearGroups();
-			refComPane.updateGroupList("All Particles");
+//			refComPane.clearGroups();
+//			refComPane.updateGroupList("All Particles");
 			reView();
 		}else if(command.equals("boxes")){
 			typeOfSelection = "boxes";
@@ -471,7 +477,8 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 	public void reColor(String argOne, double argTwo, double argThree){
 		if(argOne==null){
-			//this block is used when the button is pressed, from actionPerformed
+                    ReColorFrame rcf = new ReColorFrame(c,s,ccs);
+/*			//this block is used when the button is pressed, from actionPerformed
 			String choice;
 			int type;
 			double one;
@@ -501,7 +508,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 					System.out.println("Didn't enter a number");
 					//ex.printStackTrace();
 				}
-			}
+			}*/
 		}else{
 			//this block is used when this method is called from CommandParser
 			int type;
@@ -564,7 +571,6 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		//splitPanel.resize(wid*2, hei);
 		//resize(wid*2, getHeight());
 		//southPanel.resize(wid*2, southPanel.getHeight());
-		//refConfigPanel.packFrame();
 	}
 
 	//*******************************************************************************************************//
@@ -1386,7 +1392,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		public void handleReply(byte[] data){
 			String reply = new String(data);
 			System.out.println("The box is: " + reply);
-			refComPane.updateGroupList(reply);
+//			refComPane.updateGroupList(reply);
 		}
 	}
 
@@ -1401,7 +1407,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		public void handleReply(byte[] data){
 			String reply = new String(data);
 			System.out.println("The sphere is: " + reply);
-			refComPane.updateGroupList(reply);
+//			refComPane.updateGroupList(reply);
 		}
 	}
 	

@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
+import java.net.UnknownHostException;
 import java.lang.*;
 import java.util.*;
 
@@ -23,7 +24,15 @@ public class MainView extends JPanel implements ComponentListener{
 	public MainView(ParentPanel arg, String sign){
 		super(new BorderLayout());
 		theParent = arg;
-		ccs = new CcsThread(new Label(), theParent.host, theParent.port);
+                try {
+                    ccs = new CcsThread(new Label(), theParent.c.host, theParent.c.port);
+                } catch (UnknownHostException uhe) {            
+                    JOptionPane.showMessageDialog(this, "Couldn't find host "+
+                        theParent.c.host+":"+theParent.c.port+".");
+                } catch (IOException ioe) {
+                    JOptionPane.showMessageDialog(this, "Couldn't connect to "+
+                        theParent.c.host+":"+theParent.c.port+".");
+                }
 		addComponentListener(this);
 		signature = sign;
 
@@ -422,7 +431,7 @@ public class MainView extends JPanel implements ComponentListener{
 			displayImage(data);
 			if(theParent.resizeCall){
 				theParent.resizeCall = false;
-				theParent.refConfigPanel.packFrame();
+//				theParent.refConfigPanel.packFrame();
 			}
 		}
 	}
