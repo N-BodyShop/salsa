@@ -9,12 +9,12 @@ import javax.swing.event.*;
 import java.io.*;
 
 public class SimulationView extends JLabel 
-							implements ActionListener, 
-									   MouseListener, 
-									   ComponentListener {
+    implements ActionListener, 
+	       MouseInputListener, 
+	       ComponentListener {
 	WindowManager windowManager;
 	CcsThread ccs;
-	Vector3D x, y, z, origin;
+	Vector3D x, y, z, origin;  // Axes directions and origin of simulation
 	double boxSize;
 	double zoomFactor;
 	int activeColoring = 0;
@@ -25,6 +25,11 @@ public class SimulationView extends JLabel
 	double minMass = 0;
 	double maxMass = 1;
 	int doSplatter = 0;
+	int selectState = 0;	// State of box selection
+		Vector3D selectCorner1, selectCorner2, // Box vectors
+	         selectCorner3, selectCorner4;
+    int selStartX, selStartY;
+    int oldCurrentX, oldCurrentY;
 	
 	int height, width;
 	MemoryImageSource source;
@@ -36,6 +41,7 @@ public class SimulationView extends JLabel
 
 	ColorModel colorModel;
 	RightClickMenu rcm;
+	GroupQuery gquery;
 	
 	EventListenerList listenerList = new EventListenerList();
 	ViewEvent viewEvent = null;
@@ -60,12 +66,14 @@ public class SimulationView extends JLabel
         source.setAnimated(true);
         setIcon(new ImageIcon(createImage(source)));
         
-		xall();
+	zall();
 		
         addMouseListener(this);
-		addComponentListener(this);
+        addMouseMotionListener(this);
+	addComponentListener(this);
 		
-		rcm = new RightClickMenu(windowManager, this);
+	rcm = new RightClickMenu(windowManager, this);
+	gquery = new GroupQuery();
 	}
 	
 	public void redisplay(ColorModel cm) {
@@ -91,24 +99,164 @@ public class SimulationView extends JLabel
 	}
 	
 	public void mousePressed(MouseEvent e) {
-		if(e.isPopupTrigger()) {
+	    if(e.isPopupTrigger()) {
             //rcm.refresh();
-            rcm.show(e.getComponent(), e.getX(), e.getY());
-        }
+		rcm.show(e.getComponent(), e.getX(), e.getY());
+		return;
+		}
+	    if(e.getModifiers()
+	       == (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK)) {
+		    switch(selectState) {
+		    case 0:
+			selectCorner1 = coordEvent(e);
+			selStartX = e.getX();
+			selStartY = e.getY();
+			oldCurrentX = selStartX;
+			oldCurrentY = selStartY;
+			selectState = 1;
+			System.out.println("Corner 1: " + selectCorner1.toString());
+			break;
+		    case 2:
+			selectCorner3 = coordEvent(e);
+			selectState = 3;
+			selStartY = e.getY();
+			oldCurrentY = selStartY;
+			System.out.println("Corner 3: " + selectCorner3.toString());
+			break;
+		    default:
+			System.out.println("Bad state in press: " + selectState);
+			}
+		}
 	}
 	
-	public void mouseClicked(MouseEvent e) {
+    public void mouseReleased(MouseEvent e) {
+	    switch(selectState) {
+		    case 0:
+			break;
+		
+		    case 1:
+			selectCorner2 = coordEvent(e);
+			selectState = 2;
+			System.out.println("Corner 2: " + selectCorner2.toString());
+			rotateUp(0.5*Math.PI);
+			getNewImage();
+			getNewDepth();
+			selStartX = xCoord(selectCorner1);
+			selStartY = -1;
+			oldCurrentX = xCoord(selectCorner2);
+			oldCurrentY = -1;
+			break;
+		    case 3:
+			selectCorner4 = coordEvent(e);
+			selectState = 0;
+			System.out.println("Corner 4: " + selectCorner4.toString());
+			gquery.setVisible(true);
+			break;
+		    default:
+			System.out.println("Bad state in release: " + selectState);
+		}
+    }
+
+    Vector3D coordEvent(MouseEvent e) // get simulation coordinates of
+				      // mouse click
+    {
+	return origin.plus(x.scalarMultiply(2.0 * (e.getX() - (width - 1) / 2.0) / (width - 1))).plus(y.scalarMultiply(2.0 * ((height - 1) / 2.0 - e.getY()) / (height - 1)));
+    }
+    
+    public void mouseDragged(MouseEvent e) {
+	if(selectState == 0) return;
+	
+	Graphics g = getGraphics();
+	g.setXORMode(Color.green);
+
+	if(selectState == 3) {	// selecting "z" bounds
+	    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
+	    int deltaX = Math.abs(oldCurrentX - selStartX);
+	    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
+	    int deltaY = Math.abs(oldCurrentY - selStartY);
+	    g.drawRect(rectX, rectY, deltaX, deltaY);
+
+	    int currentY = e.getY();
+	    rectY = selStartY < currentY ? selStartY : currentY;
+	    deltaY = Math.abs(currentY - selStartY);
+	    g.drawRect(rectX, rectY, deltaX, deltaY);
+	    oldCurrentY = currentY;
+	    }
+	else { // selecting x and y bounds
+	    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
+	    int deltaX = Math.abs(oldCurrentX - selStartX);
+	    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
+	    int deltaY = Math.abs(oldCurrentY - selStartY);
+	    g.drawRect(rectX, rectY, deltaX, deltaY);
+
+	    int currentX = e.getX();
+	    int currentY = e.getY();
+	    rectX = selStartX < currentX ? selStartX : currentX;
+	    deltaX = Math.abs(currentX - selStartX);
+	    rectY = selStartY < currentY ? selStartY : currentY;
+	    deltaY = Math.abs(currentY - selStartY);
+	    g.drawRect(rectX, rectY, deltaX, deltaY);
+	    oldCurrentX = currentX;
+	    oldCurrentY = currentY;
+	    }
+    }
+    
+    public void mouseMoved(MouseEvent e) { 
+	if(selectState == 0) return;
+	
+	if(selectState == 2) {	// box is rotated, now draw a line
+	    Graphics g = getGraphics();
+	    g.setXORMode(Color.green);
+	    g.drawLine(selStartX, oldCurrentY, oldCurrentX, oldCurrentY);
+	    int currentY = e.getY();
+	    g.drawLine(selStartX, currentY, oldCurrentX, currentY);
+	    oldCurrentY = currentY;
+	    
+	    return;
+	    }
+    }
+
+    int xCoord(Vector3D c) 	// Return x pixel value for a
+				// simulation coordinate
+    {
+	double xval = x.dot(c.minus(origin))/x.lengthSquared();
+	return (new Double(width*(xval + 1.0)*.5)).intValue();
+    }
+    int yCoord(Vector3D c) 	// Return a y pixel value for a
+				// simulation coordinate
+    {
+	double yval = y.dot(c.minus(origin))/y.lengthSquared();
+	return (new Double(width*(yval + 1.0)*.5)).intValue();
+    }
+	
+    public void mouseClicked(MouseEvent e) {
  		switch(e.getModifiers()) {
-			case MouseEvent.BUTTON1_MASK:
-				origin = origin.plus(x.scalarMultiply(2.0 * (e.getX() - (width - 1) / 2.0) / (width - 1))).plus(y.scalarMultiply(2.0 * ((height - 1) / 2.0 - e.getY()) / (height - 1)));
-				zoom(1.0 / zoomFactor);
-				break;
-			case MouseEvent.BUTTON2_MASK:
-				origin = origin.plus(x.scalarMultiply(2.0 * (e.getX() - (width - 1) / 2.0) / (width - 1))).plus(y.scalarMultiply(2.0 * ((height - 1) / 2.0 - e.getY()) / (height - 1)));
-				zoom(zoomFactor);
-				break;
-			default:
-				break;
+		case MouseEvent.BUTTON1_MASK:  // Zoom in.
+		    if(selectState == 1 || selectState == 3)
+			return;
+		    origin = coordEvent(e);
+		    zoom(1.0 / zoomFactor);
+		    if(selectState == 2) {
+			selStartX = xCoord(selectCorner1);
+			selStartY = -1;
+			oldCurrentX = xCoord(selectCorner2);
+			oldCurrentY = -1;
+			}
+		    break;
+		case MouseEvent.BUTTON2_MASK:  // Zoom out
+		    if(selectState == 1 || selectState == 3)
+			return;
+		    origin = coordEvent(e);
+		    zoom(zoomFactor);
+		    if(selectState == 2) {
+			selStartX = xCoord(selectCorner1);
+			selStartY = -1;
+			oldCurrentX = xCoord(selectCorner2);
+			oldCurrentY = -1;
+			}
+		    break;
+		default:
+		    break;
 		}
 	}
 			
@@ -329,7 +477,6 @@ public class SimulationView extends JLabel
         }
     }
 
-	public void mouseReleased(MouseEvent e) { }
 	public void mouseEntered(MouseEvent e) { }
 	public void mouseExited(MouseEvent e) { }
 	public void componentHidden(ComponentEvent e) { }
