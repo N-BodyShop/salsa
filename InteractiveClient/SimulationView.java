@@ -20,6 +20,7 @@ public class SimulationView extends JLabel
 	int activeColoring = 0;
 	double activeGroup = 0; //double so that we can write it to network stream in binary
 	double centeringMethod = 2;
+	int radius = 0;
 	
 	int height, width;
 	MemoryImageSource source;
@@ -218,7 +219,7 @@ public class SimulationView extends JLabel
 				double val = Double.parseDouble(new String(data));
 				origin = origin.plus(z.unitVector().scalarMultiply(val));
 			} catch(NumberFormatException e) {
-				System.err.println("Problem decoding the z value");
+				System.err.println("Problem decoding the z value.  String: " + (new String(data)));
 			}
 		}
 	}
@@ -228,7 +229,7 @@ public class SimulationView extends JLabel
         try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			dos.writeInt(1); /*Client version*/
-			dos.writeInt(activeColoring);
+			dos.writeInt(activeColoring | (radius << 16));
 			dos.writeInt(width);
 			dos.writeInt(height);
 			dos.writeDouble(x.x);
