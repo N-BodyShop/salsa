@@ -111,12 +111,10 @@ public class ToolBarPanel extends JPanel
 		String command =  e.getActionCommand();
 		if(command.equals("chooseColoring")) {
 			System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
-			//view.activeColoring = ((JComboBox) e.getSource()).getSelectedIndex();
 			view.activeColoring = ((Simulation.Coloring) windowManager.sim.colorings.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
 			view.getNewImage();
 		} else if(command.equals("activateGroup")) {
 			System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
-			//view.activeGroup = ((JComboBox) e.getSource()).getSelectedIndex();
 			view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
 			view.getNewImage();
 		}

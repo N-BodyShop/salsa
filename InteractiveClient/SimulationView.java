@@ -51,7 +51,6 @@ public class SimulationView extends JLabel
 		setSize(width, height);
 		
 		pixels = new byte[width * height];
-		//display = new JLabel();
         source = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
         source.setAnimated(true);
         setIcon(new ImageIcon(createImage(source)));
@@ -87,7 +86,7 @@ public class SimulationView extends JLabel
 	
 	public void mousePressed(MouseEvent e) {
 		if(e.isPopupTrigger()) {
-            rcm.refresh();
+            //rcm.refresh();
             rcm.show(e.getComponent(), e.getX(), e.getY());
         }
 	}
@@ -153,7 +152,6 @@ public class SimulationView extends JLabel
 	}
 	
     public void xall() {
-        //tbp.resetSliders();
 		//invariant: must keep \delta = x.length() / width = y.length()  / height fixed to maintain aspect ratio
         origin = new Vector3D(windowManager.sim.origin);
 		double delta = boxSize / (height < width ? height : width);
@@ -165,7 +163,6 @@ public class SimulationView extends JLabel
     }
 	
     public void yall() {
-        //tbp.resetSliders();
         origin = new Vector3D(windowManager.sim.origin);
 		double delta = boxSize / (height < width ? height : width);
         x = new Vector3D(-width * delta / 2.0, 0, 0);
@@ -176,7 +173,6 @@ public class SimulationView extends JLabel
     }
 	
     public void zall() {
-        //tbp.resetSliders();
         origin = new Vector3D(windowManager.sim.origin);
 		double delta = boxSize / (height < width ? height : width);
         x = new Vector3D(width * delta / 2.0, 0, 0);
@@ -285,7 +281,7 @@ public class SimulationView extends JLabel
 				// Lazily create the event:
 				if(viewEvent == null)
 					viewEvent = new ViewEvent(this);
-				((ViewListener) listeners[i+1]).viewReset(viewEvent);
+				((ViewListener) listeners[i + 1]).viewReset(viewEvent);
 			}
 		}
 	}

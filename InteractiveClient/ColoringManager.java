@@ -35,7 +35,6 @@ public class ColoringManager extends Manager
 		sim = windowManager.sim;
 		
 		coloringList = new JList(sim.createColoringModel());
-		//coloringList = new JList(sim.new ColoringListModel());
 		coloringList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		coloringList.setVisibleRowCount(8);
 		coloringList.setPrototypeCellValue("Log Density Color");
@@ -55,7 +54,6 @@ public class ColoringManager extends Manager
 		displayPanel.add(b);
 		
 		infoPanel = new Box(BoxLayout.PAGE_AXIS);
-		//infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.PAGE_AXIS));
 		
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Active families: "));
@@ -116,7 +114,6 @@ public class ColoringManager extends Manager
 		buttonPanel.add(button);
 		buttonPanel.add(applyButton);
 		
-		//JPanel rhs = new JPanel();
 		Box rhs = new Box(BoxLayout.PAGE_AXIS);
 		rhs.add(displayPanel);
 		rhs.add(Box.createVerticalGlue());
@@ -230,6 +227,10 @@ public class ColoringManager extends Manager
 						maxVal = attr.maxValue;
 				}
 			}
+			if(((String) logLinearBox.getSelectedItem()).equals("Logarithmic")) {
+				minVal = Math.log(minVal) / Math.log(10);
+				maxVal = Math.log(maxVal) / Math.log(10);
+			}
 			minValField.setValue(new Double(minVal));
 			maxValField.setValue(new Double(maxVal));
 		} else if(command.equals("chooseScaling")) {
@@ -263,6 +264,7 @@ public class ColoringManager extends Manager
 		
 		public void handleReply(byte[] data) {
 			try {
+				// The server will give me a number with which to refer to this coloring
 				c.id = Integer.parseInt(new String(data));
 			} catch(NumberFormatException e) {
 				System.err.println("Problem parsing coloring id");

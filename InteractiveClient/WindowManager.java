@@ -125,7 +125,7 @@ public class WindowManager extends WindowAdapter {
 	public void quit() {
 		attributeManager.setVisible(false);
 		coloringManager.setVisible(false);
-		//groupManager.setVisible(false);
+		groupManager.setVisible(false);
 		
 		ccs.doBlockingRequest(new SalsaRequests.ShutdownServer());
 		System.exit(1);

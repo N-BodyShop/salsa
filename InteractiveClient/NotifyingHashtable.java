@@ -6,6 +6,9 @@ import javax.swing.event.EventListenerList;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+/** A NotifyingHashtable is a source of ChangeEvents, fired when the contents
+ of the hashtable change.
+ */
 public class NotifyingHashtable extends Hashtable {
 	
 	protected EventListenerList listenerList = new EventListenerList();
@@ -45,7 +48,7 @@ public class NotifyingHashtable extends Hashtable {
 				// Lazily create the event:
 				if(changeEvent == null)
 					changeEvent = new ChangeEvent(this);
-				((ChangeListener) listeners[i+1]).stateChanged(changeEvent);
+				((ChangeListener) listeners[i + 1]).stateChanged(changeEvent);
 			}
 		}
 	}

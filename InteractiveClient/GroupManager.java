@@ -31,7 +31,6 @@ public class GroupManager extends Manager
 		sim = windowManager.sim;
 		
 		groupList = new JList(sim.createGroupModel());
-		//coloringList = new JList(sim.new ColoringListModel());
 		groupList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		groupList.setVisibleRowCount(8);
 		groupList.setPrototypeCellValue("Log Density Color");
@@ -51,7 +50,6 @@ public class GroupManager extends Manager
 		displayPanel.add(b);
 		
 		infoPanel = new Box(BoxLayout.PAGE_AXIS);
-		//infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.PAGE_AXIS));
 				
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Attribute: "));
@@ -90,7 +88,6 @@ public class GroupManager extends Manager
 		buttonPanel.add(button);
 		buttonPanel.add(applyButton);
 		
-		//JPanel rhs = new JPanel();
 		Box rhs = new Box(BoxLayout.PAGE_AXIS);
 		rhs.add(displayPanel);
 		rhs.add(Box.createVerticalGlue());
@@ -144,14 +141,12 @@ public class GroupManager extends Manager
 			if(g.name != oldName) {
 				sim.groups.remove(oldName);
 				sim.groups.put(g.name, g);
-				//sim.groupModel.update();
 			}
 		} else if(command.equals("new")) {
 			++groupCount;
 			Simulation.Group g = new Simulation.Group("New Group " + groupCount);
 			//fill g more correctly here
 			sim.groups.put(g.name, g);
-			//sim.groupModel.update();
 		} else if(command.equals("chooseAttribute")) {
 			String attribute = (String) attributeNameBox.getSelectedItem();
 			double minVal = 1E200;

@@ -11,36 +11,22 @@ import java.util.*;
 import java.awt.image.*;
 import javax.swing.event.*;
 
+/** A instance of Simulation holds information about the families of particles,
+ colorings, and groups that can be used to manipulate a simulation.
+ */
 public class Simulation {
     String name;
+	
+	//clients can register to be notified when these structures change
     NotifyingHashtable families = new NotifyingHashtable();
 	NotifyingHashtable colorings = new NotifyingHashtable();
 	NotifyingHashtable groups = new NotifyingHashtable();
-	//Vector colorings = new Vector();
-	//Vector groups = new Vector();
 	
+	/// The original origin of the simulation
 	Vector3D origin;
 	double boxSize;
-	
-	//ColoringModel coloringModel;
-	//GroupModel groupModel;
-	
-	/*
-    ColorModel cm;
-    int selectedAttributeIndex, selectedVectorIndex;
-    int selectedClippingIndex;
-    Hashtable Groups;
-    String selectedGroup;
-    boolean groupSelecting;
-    int centerMethod;
-    Vector3D rotationOrigin;
-    
-	*/
-	
-	public Simulation() {
-		//coloringModel = new ColoringModel(colorings);
-		//groupModel = new GroupModel(groups);
-	}
+		
+	public Simulation() { }
 
 	static public class Family {
 		public String name;
@@ -51,7 +37,6 @@ public class Simulation {
 		public int defaultColor;
 	}
 	
-	
 	static public class Attribute {
 		public String name;
 		public String dimensionality;
@@ -61,6 +46,7 @@ public class Simulation {
 		public double maxValue;
 	}
 	
+	/// Get family information out of a Properties
 	public void fill(Properties props) {
 		name = props.getProperty("simulationName");
 		try {
@@ -113,25 +99,7 @@ public class Simulation {
 			maxValue = 0;
 		}
 	}
-	
-	static public class Group {
-		public String name;
-		public int id;
-		public boolean infoKnown;
-		public String attributeName;
-		public double minValue;
-		public double maxValue;
 		
-		public Group(String n) {
-			name = n;
-			id = 0;
-			infoKnown = true;
-			attributeName = "";
-			minValue = 0;
-			maxValue = 0;
-		}
-	}
-	
 	public void fillColorings(Properties props) {
 		try {
 			int numColorings = Integer.parseInt(props.getProperty("numColorings"));
@@ -148,47 +116,13 @@ public class Simulation {
 				}
 				colorings.put(c.name, c);
 			}
-			//coloringModel.update();
 		} catch(NumberFormatException e) {
 			System.err.println("Problem parsing simulation properties");
 			e.printStackTrace();
 		}
 	}
 	
-	public void fillGroups() {
-		Group g = new Group("All");
-		g.id = 0;
-		g.infoKnown = false;
-		groups.put(g.name, g);
-		//groupModel.update();
-	}
-	/*
-	static public class ColoringModel extends DefaultComboBoxModel {
-		Vector colorings;
-		Vector coloringNames = new Vector();
-		
-		public ColoringModel(Vector v) {
-			colorings = v;
-			update();
-		}
-		
-		public int getSize() {
-			return coloringNames.size();
-		}
-		
-		public Object getElementAt(int index) {
-			return coloringNames.get(index);
-		}
-		
-		public void update() {
-			coloringNames.clear();
-			for(Enumeration e = colorings.elements(); e.hasMoreElements(); )
-				coloringNames.add(((Coloring) e.nextElement()).name);
-			fireContentsChanged(this, -1, -1);
-		}
-		
-	}
-	*/
+	/// A ColoringModel can be used to present a view of the names of the Colorings
 	static public class ColoringModel extends DefaultComboBoxModel implements ChangeListener {
 		Vector coloringNames = new Vector();
 		Hashtable colorings = null;
@@ -218,33 +152,32 @@ public class Simulation {
 	public ColoringModel createColoringModel() {
 		return new ColoringModel(colorings);
 	}
-	/*
-	static public class GroupModel extends DefaultComboBoxModel {
-		Vector groups;
-		Vector groupNames = new Vector();
+
+	static public class Group {
+		public String name;
+		public int id;
+		public boolean infoKnown;
+		public String attributeName;
+		public double minValue;
+		public double maxValue;
 		
-		public GroupModel(Vector v) {
-			groups = v;
-			update();
+		public Group(String n) {
+			name = n;
+			id = 0;
+			infoKnown = true;
+			attributeName = "";
+			minValue = 0;
+			maxValue = 0;
 		}
-		
-		public int getSize() {
-			return groupNames.size();
-		}
-		
-		public Object getElementAt(int index) {
-			return groupNames.get(index);
-		}
-		
-		public void update() {
-			groupNames.clear();
-			for(Enumeration e = groups.elements(); e.hasMoreElements(); )
-				groupNames.add(((Group) e.nextElement()).name);
-			fireContentsChanged(this, -1, -1);
-		}
-		
 	}
-	*/
+
+	public void fillGroups() {
+		Group g = new Group("All");
+		g.id = 0;
+		g.infoKnown = false;
+		groups.put(g.name, g);
+	}
+
 	static public class GroupModel extends DefaultComboBoxModel implements ChangeListener {
 		Vector groupNames = new Vector();
 		Hashtable groups = null;
