@@ -118,26 +118,34 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
 
     public void mouseReleased(MouseEvent e) {
         maybeShowPopup(e);
+        if (s.groupSelecting && 
+            (e.getModifiers() == (MouseEvent.BUTTON1_MASK | InputEvent.SHIFT_MASK) ) ) {
+            repaint();
+            Graphics graph = this.getGraphics();
+            graph.setColor(Color.green);
+            double x = e.getX()-rect.getX();
+            double y = e.getY()-rect.getY();
+            rect.setSize((int)x, (int)y);
+            graph.drawRect(rect.x,rect.y,rect.width,rect.height);
+            System.out.println("Draw rectangle: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
+        }
     }
 
     public void mouseClicked(MouseEvent e) {
         maybeShowPopup(e);
-        if ( s.groupSelecting ){
-        } else {
-            switch ( e.getModifiers() ) {
-                case MouseEvent.BUTTON1_MASK:
-                    origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
-                    origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
-                    zoom(1.0/(e.getClickCount()+1.0));
-                    break;
-                case MouseEvent.BUTTON2_MASK:
-                    origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
-                    origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
-                    zoom(e.getClickCount()+1.0);
-                    break;
-                default:
-                    break;
-            }
+        switch ( e.getModifiers() ) {
+            case MouseEvent.BUTTON1_MASK:
+                origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
+                origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
+                zoom(1.0/(e.getClickCount()+1.0));
+                break;
+            case MouseEvent.BUTTON2_MASK:
+                origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
+                origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
+                zoom(e.getClickCount()+1.0);
+                break;
+            default:
+                break;
         }
     }
 
@@ -148,13 +156,14 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
     }
 
     public void mouseDragged(MouseEvent e) {
-        if (s.groupSelecting){
+        if (s.groupSelecting && 
+            (e.getModifiers() == (MouseEvent.BUTTON1_MASK | InputEvent.SHIFT_MASK) ) ) {
             repaint();
             Graphics graph = this.getGraphics();
-            graph.setColor(Color.white);
-            Double x = new Double(e.getX()-rect.getX());
-            Double y = new Double(e.getY()-rect.getY());
-            rect.setSize(x.intValue(), y.intValue());
+            graph.setColor(Color.green);
+            double x = e.getX()-rect.getX();
+            double y = e.getY()-rect.getY();
+            rect.setSize((int)x, (int)y);
             graph.drawRect(rect.x,rect.y,rect.width,rect.height);
             System.out.println("Draw rectangle: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
         }

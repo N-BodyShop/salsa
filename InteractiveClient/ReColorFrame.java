@@ -39,6 +39,9 @@ public class ReColorFrame extends JFrame
         JPanel particlePanel = new JPanel();
         particlePanel.setLayout(new BoxLayout(particlePanel, 
                                 BoxLayout.X_AXIS));
+
+        JLabel particleLabel = new JLabel("Display:");
+        particlePanel.add(particleLabel);
         Family family;
         Vector tempAttrib;
         // This is the fun java way of parsing through all the elements
@@ -141,7 +144,6 @@ public class ReColorFrame extends JFrame
         } else if ( "clip set".equals(e.getActionCommand()) ){
             s.selectedClippingIndex = clipList.getSelectedIndex();            
         } else {
-            attrib = (String)attributeList.getSelectedItem();
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
             // attribute selected, so we need to find out its possible values
             s.ccs.addRequest( new ValueRange(attrib) );
@@ -161,6 +163,7 @@ public class ReColorFrame extends JFrame
             }
         }
         
+            attrib = (String)attributeList.getSelectedItem();
         attributes = new Vector();
         attributeList.removeAllItems();
         for ( Enumeration en = s.Families.elements(); en.hasMoreElements(); ){
@@ -168,10 +171,14 @@ public class ReColorFrame extends JFrame
             for ( int j = 0; j < family.attributes.size(); j++ ){
                 if ( !attributes.contains(family.attributes.get(j)) && family.on ){
                     attributes.addElement(family.attributes.get(j));
+                    if ( attrib.equals(family.attributes.get(j)) ) {
+                        s.selectedAttributeIndex = attributes.size() -1;
+                    }
                     attributeList.addItem(family.attributes.get(j));
                 }
             }
         }
+        attributeList.setSelectedIndex(s.selectedAttributeIndex);
     }
     
     private class ValueRange extends CcsThread.request{
