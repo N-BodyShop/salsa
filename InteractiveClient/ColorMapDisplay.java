@@ -4,21 +4,18 @@ import java.awt.image.ColorModel;
 import java.awt.image.MemoryImageSource;
 
 public class ColorMapDisplay extends JLabel {
+	private int numColorsReserved;
 	private int width, height;
 	private byte[] image;
+	private ColorModel cm;
+	
+	public ColorMapDisplay(int w, int h, int reserved) {
+		numColorsReserved = reserved;
+		reset(w, h);
+	}
 	
 	public ColorMapDisplay(int w, int h) {
-		//System.out.println("Colormap called with width of " + w);
-		width = w;
-		height = h;
-		image = new byte[width * height];
-		byte value;
-		for(int i = 0; i < width; i++) {
-			value = (byte) (1 + 254.0 * i / width);
-			for(int j = 0; j < height; j++)
-				image[j * width + i] = value;
-		}
-		setSize(width, height);
+		this(w, h, 5);
 	}
 	
 	public ColorMapDisplay() {
@@ -32,14 +29,15 @@ public class ColorMapDisplay extends JLabel {
 	public void reset(int w, int h) {
 		width = w;
 		height = h;
+		
 		byte value = 0;
 		image = new byte[width * height];
+		double numColors = 256 - numColorsReserved;
 		for(int i = 0; i < width; i++) {
-		    value = (byte) (1 + 254.0 * i / width);
+			value = (byte) ((byte) (numColorsReserved) + (byte) (numColors * i / width));
 			for(int j = 0; j < height; j++)
 				image[j * width + i] = value;
 		}
 		setSize(width, height);
-
 	}
 }

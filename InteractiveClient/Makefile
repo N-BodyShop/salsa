@@ -1,4 +1,4 @@
-CLASSES = CcsServer.class CcsThread.class JSliderOldValue.class Vector3D.class ColorMapDisplay.class Config.class ParentPanel.class MainView.class PngEncoder.class Connection.class Simulation.class ConnectFrame.class ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.java Simulation.class NameValue.class ColorBarPanel.class
+CLASSES = CcsServer.class CcsThread.class JSliderOldValue.class Vector3D.class ColorMapDisplay.class Config.class ParentPanel.class MainView.class PngEncoder.class Connection.class Simulation.class ConnectFrame.class ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.java Simulation.class NameValue.class
 
 TARGET = InteractiveClient
 VERSION = 0.1

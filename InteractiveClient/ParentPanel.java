@@ -107,14 +107,24 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 
 		cmdisplay.addMouseMotionListener(new MouseMotionListener(){
 			public void mouseDragged(MouseEvent e){
-				wrbb = resetWRBB(e);
+				int diff = (int) ((256.0 - 5) * (color_start - e.getX()) / cmdisplay.getWidth());
+				color_start = e.getX();
+				wrbb = rotateColorMap(diff);
 				cmdisplay.redisplay(wrbb);
 				mainView.messageHub("newColor", true);
 				auxView.messageHub("newColor", true);
-
 			}
 
 			public void mouseMoved(MouseEvent e){}
+		});
+		
+		cmdisplay.addMouseWheelListener(new MouseWheelListener() {
+			public void mouseWheelMoved(MouseWheelEvent e) {
+				wrbb = rotateColorMap(e.getWheelRotation());
+				cmdisplay.redisplay(wrbb);
+				mainView.messageHub("newColor", true);
+				auxView.messageHub("newColor", true);
+			}
 		});
 
 		/* 
@@ -1460,13 +1470,15 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	 * returns a standard color map
 	 */
 	private ColorModel createWRBBColorModel() {
-		int cmap_size=254;
+		int numColorsReserved = 5;
+		int cmap_size = 256 - numColorsReserved;
 		wrbb_red = new byte[256];
 		wrbb_green = new byte[256];
 		wrbb_blue = new byte[256];
-    		int i;
-		int nextColor = 1;
-    		int chunk_size = ((cmap_size - 1) / 5);
+		
+    	int i;
+		int nextColor = numColorsReserved;
+    	int chunk_size = ((cmap_size - 1) / 5);
 
 		for(i = 0; i < chunk_size; i++) {
         		wrbb_red[nextColor] = 0;
@@ -1507,9 +1519,19 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		wrbb_red[0] = 0;
 		wrbb_green[0] = 0;
 		wrbb_blue[0] = 0;
-		wrbb_red[255] = 0;
-		wrbb_green[255] = (byte)255;
-		wrbb_blue[255] = 0;
+		wrbb_red[1] = 0;
+		wrbb_green[1] = (byte) 255;
+		wrbb_blue[1] = 0;
+		wrbb_red[2] = (byte) 64;
+		wrbb_green[2] = (byte) 64;
+		wrbb_blue[2] = (byte) 255;
+		wrbb_red[3] = (byte) 255;
+		wrbb_green[3] = 0;
+		wrbb_blue[3] = 0;
+		wrbb_red[4] = (byte) 255;
+		wrbb_green[4] = (byte) 255;
+		wrbb_blue[4] = 0;
+		
 
 		colorMapType = "standard";
 		return new IndexColorModel(8, 256, wrbb_red, wrbb_green, wrbb_blue);
@@ -1520,26 +1542,27 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	/*
 	 * returns a colormap that is simply the current map translated according to mousedrags
 	 */
-	private ColorModel resetWRBB(MouseEvent e){
+	private ColorModel rotateColorMap(int diff) {
+//	private ColorModel resetWRBB(MouseEvent e){
 		//System.out.println("Resetting colors");
 		//System.out.println("color_start is: " + color_start);
 		//System.out.println("e.getX() is: " + e.getX());
-		int diff = color_start - e.getX();
-		diff = (int) (254.0 * diff / (mainView.width + auxView.width));
-		color_start = e.getX();
-		byte[] transferRed = new byte[254];
-		byte[] transferGreen = new byte[254];
-		byte[] transferBlue = new byte[254];
+		int numColors = 256 - 5;
+		//int diff = (int) (numColors * ((double) color_start - e.getX()) / cmdisplay.getWidth());
+		//color_start = e.getX();
+		byte[] transferRed = new byte[numColors];
+		byte[] transferGreen = new byte[numColors];
+		byte[] transferBlue = new byte[numColors];
 
-		for(int x = 0; x < 254; x++){
-			transferRed[x] = wrbb_red[((diff+x+254)%254)+1];
-			transferGreen[x] = wrbb_green[((diff+x+254)%254)+1];
-			transferBlue[x] = wrbb_blue[((diff+x+254)%254)+1];
+		for(int i = 0; i < numColors; ++i) {
+			transferRed[i] = wrbb_red[5 + (i + diff + numColors) % numColors];
+			transferGreen[i] = wrbb_green[5 + (i + diff + numColors) % numColors];
+			transferBlue[i] = wrbb_blue[5 + (i + diff + numColors) % numColors];
 		}
-		for(int x = 0; x < transferRed.length; x++){
-			wrbb_red[x+1] = transferRed[x];
-			wrbb_green[x+1] = transferGreen[x];
-			wrbb_blue[x+1] = transferBlue[x];
+		for(int i = 0; i < numColors; ++i) {
+			wrbb_red[i + 5] = transferRed[i];
+			wrbb_green[i + 5] = transferGreen[i];
+			wrbb_blue[i + 5] = transferBlue[i];
 		}
 
 		return new IndexColorModel(8, 256, wrbb_red, wrbb_green, wrbb_blue);
@@ -1550,7 +1573,20 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	/*
 	 * returns a color map that is simply the current color map inverted
 	 */
-	private ColorModel invertWRBB(){
+	private ColorModel invertWRBB() {
+		byte temp;
+		for(int i = 0; i < (255 - 5) / 2; ++i) {
+			temp = wrbb_red[i + 5];
+			wrbb_red[i + 5] = wrbb_red[255 - i];
+			wrbb_red[255 - i] = temp;
+			temp = wrbb_green[i + 5];
+			wrbb_green[i + 5] = wrbb_green[255 - i];
+			wrbb_green[255 - i] = temp;
+			temp = wrbb_blue[i + 5];
+			wrbb_blue[i + 5] = wrbb_blue[255 - i];
+			wrbb_blue[255 - i] = temp;
+		}
+		/*
 		byte[] transferRed = new byte[254];
 		byte[] transferGreen = new byte[254];
 		byte[] transferBlue = new byte[254];
@@ -1564,6 +1600,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			wrbb_green[x+1] = transferGreen[x];
 			wrbb_blue[x+1] = transferBlue[x];
 		}
+		*/
 		return new IndexColorModel(8, 256, wrbb_red, wrbb_green, wrbb_blue);
 	}
 	
