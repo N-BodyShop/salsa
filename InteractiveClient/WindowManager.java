@@ -101,12 +101,8 @@ public class WindowManager extends WindowAdapter {
 	}
 	
 	public void addView() {
-		JFrame frame = new JFrame("Salsa: Simulation View");
-		frame.getContentPane().add(new ViewingPanel(this));
-		frame.addWindowListener(this);
+		JFrame frame = new ViewingPanel(this);
 		windowList.add(frame);
-		frame.pack();
-		frame.setVisible(true);
 	}
 	
 	public void addCodeFrame() {

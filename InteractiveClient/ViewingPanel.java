@@ -5,16 +5,18 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
-public class ViewingPanel extends JPanel {
+public class ViewingPanel extends JFrame {
 	WindowManager windowManager;
-	SimulationView view;
 	ColorBarPanel colorBar;
+	SimulationView view;
 	ToolBarPanel tools;
 	
 	public ViewingPanel(WindowManager wm) {
-		super(new BorderLayout());
-		
+		super("Salsa: Simulation View");
 		windowManager = wm;
+                addWindowListener(wm);
+                Container c = getContentPane();
+                c.setLayout(new BorderLayout());
 		
 		int width = 512;
 		
@@ -23,11 +25,12 @@ public class ViewingPanel extends JPanel {
 		colorBar.setView(view);		
 		tools = new ToolBarPanel(windowManager, view);
 		
-		add(colorBar, BorderLayout.NORTH);
-		add(view, BorderLayout.CENTER);
-		add(tools, BorderLayout.SOUTH);
+		setJMenuBar(new MenuBar(windowManager,view));
+		c.add(colorBar, BorderLayout.NORTH);
+		c.add(view, BorderLayout.CENTER);
+		c.add(tools, BorderLayout.SOUTH);
 		
-		Action newViewAction = new AbstractAction() {
+/*		Action newViewAction = new AbstractAction() {
 			public void actionPerformed(ActionEvent e) {
 				windowManager.addView();
 			}
@@ -52,8 +55,10 @@ public class ViewingPanel extends JPanel {
 		getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("control W"), "closeView");
 		getActionMap().put("closeView", closeAction);
 		getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("control Q"), "quit");
-		getActionMap().put("quit", quitAction);
+		getActionMap().put("quit", quitAction);*/
 		
+		pack();
+		setVisible(true);
 	}
 		
 }

@@ -135,15 +135,15 @@ public class ToolBarPanel extends JPanel
     public void actionPerformed(ActionEvent e) {
 		String command =  e.getActionCommand();
 		if(command.equals("chooseColoring")) {
-			System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
+			//System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
 			view.activeColoring = ((Simulation.Coloring) windowManager.sim.colorings.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
 			view.getNewImage();
 		} else if(command.equals("activateGroup")) {
-			System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
+			//System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
 			view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).name;
 			view.getNewImage();
 		} else if(command.equals("changeMassRange")) {
-			System.out.println("Changing mass range");
+			//System.out.println("Changing mass range");
 			view.minMass = ((Number) minMassText.getValue()).doubleValue();
 			view.maxMass = ((Number) maxMassText.getValue()).doubleValue();
 			System.out.println("Min mass: " + view.minMass);
