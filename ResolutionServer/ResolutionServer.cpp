@@ -158,6 +158,8 @@ void Main::startVisualization(CkReductionMsg* m) {
 }
 
 void Main::shutdownServer(CkCcsRequestMsg* m) {
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;
 	CkExit();
 }
@@ -171,10 +173,11 @@ void Main::activate(CkCcsRequestMsg* m) {
 }
 
 void Main::collectStats(CkCcsRequestMsg* m) {
-	regionString.assign(m->data, m->length);
+	//regionString.assign(m->data, m->length);
+	regionString = string(m->data, m->data + m->length);
 	delayedReply = m->reply;
 	workers.collectStats(regionString, CkCallback(CkIndex_Main::statsCollected(0), thishandle));
-	delete m;
+	//delete m;
 }
 
 void Main::statsCollected(CkReductionMsg* m) {

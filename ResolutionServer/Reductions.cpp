@@ -17,13 +17,16 @@ CkReduction::reducerType minmax_double;
 
 /// Combine statistics about a collection of particles
 CkReductionMsg* mergeParticleStats(int nMsg, CkReductionMsg** msgs) {
+	//what if one box is uninitialized?
 	GroupStatistics* stats = static_cast<GroupStatistics *>(msgs[0]->getData());
 	GroupStatistics* otherStats;
 	for(int i = 1; i < nMsg; ++i) {
 		otherStats = static_cast<GroupStatistics *>(msgs[i]->getData());
 		stats->numParticles += otherStats->numParticles;
-		stats->boundingBox.grow(otherStats->boundingBox.lesser_corner);
-		stats->boundingBox.grow(otherStats->boundingBox.greater_corner);
+		if(otherStats->boundingBox.initialized()) {
+			stats->boundingBox.grow(otherStats->boundingBox.lesser_corner);
+			stats->boundingBox.grow(otherStats->boundingBox.greater_corner);
+		}
 	}
 	return CkReductionMsg::buildNew(sizeof(GroupStatistics), stats);
 }
@@ -35,8 +38,10 @@ CkReductionMsg* boxGrowth(int nMsg, CkReductionMsg** msgs) {
 	OrientedBox<T>* msgpbox;
 	for(int i = 1; i < nMsg; i++) {
 		msgpbox = static_cast<OrientedBox<T> *>(msgs[i]->getData());
-		pbox->grow(msgpbox->lesser_corner);
-		pbox->grow(msgpbox->greater_corner);
+		if(msgpbox->initialized()) {
+			pbox->grow(msgpbox->lesser_corner);
+			pbox->grow(msgpbox->greater_corner);
+		}
 	}
 	
 	return CkReductionMsg::buildNew(sizeof(OrientedBox<T>), pbox);

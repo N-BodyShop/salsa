@@ -15,20 +15,22 @@ void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 		//cout << "Vertex " << (i + 1) << ": " << vertices[i] << endl;
 	}
 	
-	Box<double> box(vertices);
+	Box<double>* box = new Box<double>(vertices);
 	boxes.push_back(box);
 	
 	//give it identifier, send identifier back to client
 	ostringstream oss;
 	oss << "Box " << boxes.size();
 	string stringID = oss.str();
-	regionMap[stringID] = &boxes.back();
+	regionMap[stringID] = box;
 	if(CkMyNode() == 0)
 		CcsSendDelayedReply(m->reply, stringID.length(), stringID.c_str());
 	delete m;
 }
 
 void MetaInformationHandler::clearBoxes(CkCcsRequestMsg* m) {
+	for(vector<Box<double> *>::iterator iter = boxes.begin(); iter != boxes.end(); ++iter)
+		delete *iter;
 	boxes.clear();
 	if(CkMyNode() == 0) {
 		unsigned char success = 1;
@@ -41,25 +43,27 @@ void MetaInformationHandler::clearBoxes(CkCcsRequestMsg* m) {
 void MetaInformationHandler::specifySphere(CkCcsRequestMsg* m) {
 	if(m->length != 4 * sizeof(double))
 		return;
-	Sphere<double> s;
-	s.origin = *reinterpret_cast<Vector3D<double> *>(m->data);
-	s.radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
-	s.origin.x = swapEndianness(s.origin.x);
-	s.origin.y = swapEndianness(s.origin.y);
-	s.origin.z = swapEndianness(s.origin.z);
-	s.radius = swapEndianness(s.radius);
-	cout << "Got a sphere definition: " << s << endl;
+	Sphere<double>* s = new Sphere<double>;
+	s->origin = *reinterpret_cast<Vector3D<double> *>(m->data);
+	s->radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
+	s->origin.x = swapEndianness(s->origin.x);
+	s->origin.y = swapEndianness(s->origin.y);
+	s->origin.z = swapEndianness(s->origin.z);
+	s->radius = swapEndianness(s->radius);
+	cout << "Got a sphere definition: " << *s << endl;
 	spheres.push_back(s);
 	ostringstream oss;
 	oss << "Sphere " << spheres.size();
 	string stringID = oss.str();
-	regionMap[stringID] = &spheres.back();
+	regionMap[stringID] = s;
 	if(CkMyNode() == 0)
 		CcsSendDelayedReply(m->reply, stringID.length(), stringID.c_str());
 	delete m;
 }
 
 void MetaInformationHandler::clearSpheres(CkCcsRequestMsg* m) {
+	for(vector<Sphere<double> *>::iterator iter = spheres.begin(); iter != spheres.end(); ++iter)
+		delete *iter;
 	spheres.clear();
 	if(CkMyNode() == 0) {
 		unsigned char success = 1;

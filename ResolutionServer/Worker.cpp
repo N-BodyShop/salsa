@@ -460,9 +460,9 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			//draw boxes onto canvas
 			pair<int, int> vertices[8];
 			Vector3D<double> vertex;
-			for(vector<Box<double> >::iterator iter = meta->boxes.begin(); iter != meta->boxes.end(); ++iter) {
+			for(vector<Box<double>* >::iterator iter = meta->boxes.begin(); iter != meta->boxes.end(); ++iter) {
 				for(int i = 0; i < 8; ++i) {
-					vertex = iter->vertex(i);
+					vertex = (*iter)->vertex(i);
 					vertices[i].first = static_cast<int>(floor(req.width * (dot(req.x, vertex - req.o) + 1) / 2));
 					vertices[i].second = static_cast<int>(floor(req.height * (1 - dot(req.y, vertex - req.o)) / 2));
 				}
@@ -478,10 +478,10 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			//draw spheres onto canvas
 			int x0, y0;
 			int radius;
-			for(vector<Sphere<double> >::iterator iter = meta->spheres.begin(); iter != meta->spheres.end(); ++iter) {
-				x0 = static_cast<int>(floor(req.width * (dot(req.x, iter->origin - req.o) + 1) / 2));
-				y0 = static_cast<int>(floor(req.height * (1 - dot(req.y, iter->origin - req.o)) / 2));
-				radius = static_cast<int>(iter->radius / delta);
+			for(vector<Sphere<double>* >::iterator iter = meta->spheres.begin(); iter != meta->spheres.end(); ++iter) {
+				x0 = static_cast<int>(floor(req.width * (dot(req.x, (*iter)->origin - req.o) + 1) / 2));
+				y0 = static_cast<int>(floor(req.height * (1 - dot(req.y, (*iter)->origin - req.o)) / 2));
+				radius = static_cast<int>((*iter)->radius / delta);
 				drawCircle(image, req.width, req.height, x0, y0, radius);
 			}
 		}
@@ -499,14 +499,19 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 		cerr << "Well this sucks!  Couldn't get local pointer to meta handler" << endl;
 		return;
 	}
+	
+	
+	cout << "Finding region pointer for \"" << id << "\"" << endl;
 	Shape<double>* activeRegion = 0;
 	MetaInformationHandler::RegionMap::iterator selectedRegion = meta->regionMap.find(id);
 	if(selectedRegion != meta->regionMap.end())
 		activeRegion = selectedRegion->second;
-	
+	else
+		cout << "Didn't find region pointer" << endl;
 	GroupStatistics stats;
 	
 	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(activeRegion)) {
+		cout << "It's a sphere" << endl;
 		for(u_int64_t i = 0; i < numParticles; ++i) {
 			if(Space::contains(*activeSphere, myParticles[i].position)) {
 				stats.numParticles++;
@@ -514,6 +519,7 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 			}
 		}
 	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(activeRegion)) {
+		cout << "It's a box" << endl;
 		for(u_int64_t i = 0; i < numParticles; ++i) {
 			if(Space::contains(*activeBox, myParticles[i].position)) {
 				stats.numParticles++;
@@ -521,11 +527,12 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 			}
 		}
 	} else {
+		cout << "It's everything" << endl;
 		for(u_int64_t i = 0; i < numParticles; ++i) {
 			stats.boundingBox.grow(myParticles[i].position);
 		}
 		stats.numParticles += numParticles;
 	}
-	
+	cout << "contributing stats" << endl;
 	contribute(sizeof(GroupStatistics), &stats, mergeStatistics, cb);
 }

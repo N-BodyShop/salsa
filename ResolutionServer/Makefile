@@ -1,7 +1,7 @@
 STRUCTURES_PATH = $(HOME)/projects/structures
 CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH)
 LDFLAGS += -L$(STRUCTURES_PATH) -language charm++
-LDLIBS += -lTipsy -lpopt -module liveViz
+LDLIBS += -lTipsy -lpopt -module liveViz -memory paranoid
 
 CHARMC = $(HOME)/projects/charm/bin/charmc
 CXX = $(CHARMC)

@@ -62,8 +62,8 @@ public:
 
 class MetaInformationHandler : public Group {
 	
-	std::vector<Box<double> > boxes;
-	std::vector<Sphere<double> > spheres;
+	std::vector<Box<double> * > boxes;
+	std::vector<Sphere<double> * > spheres;
 	typedef std::map<std::string, Shape<double>* > RegionMap;
 	RegionMap regionMap;
 	Shape<double>* activeRegion;
