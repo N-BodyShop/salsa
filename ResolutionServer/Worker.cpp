@@ -212,10 +212,10 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	unsigned int pixel;
 	for(u_int64_t i = 0; i < numParticles; ++i) {
 		x = dot(req.x, myParticles[i].position - req.o);
-		if(x >= 0 && x < 1) {
+		if(x > -1 && x < 1) {
 			y = dot(req.y, myParticles[i].position - req.o);
-			if(y >= 0 && y < 1) {
-				pixel = static_cast<unsigned int>(req.width * x) + req.width * static_cast<unsigned int>(req.height * y);
+			if(y > -1 && y < 1) {
+				pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (y + 1) / 2);
 				if(pixel >= imageSize)
 					cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
 				if(image[pixel] < myParticles[i].color)
@@ -228,6 +228,25 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			}
 		}
 	}
-	
+	/*
+	for(u_int64_t i = 0; i < numParticles; ++i) {
+		x = dot(req.x, myParticles[i].position - req.o);
+		if(x >= 0 && x < 1) {
+			y = dot(req.y, myParticles[i].position - req.o);
+			if(y >= 0 && y < 1) {
+				pixel = static_cast<unsigned int>(req.width * x) + req.width * static_cast<unsigned int>(req.height * y);
+				if(pixel >= imageSize)
+					cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+				if(image[pixel] < myParticles[i].color)
+					image[pixel] = myParticles[i].color;
+				/*if(image[pixel] + myParticles[i].color > 255)
+					image[pixel] = 255;
+				else
+					image[pixel] += myParticles[i].color;
+				
+			}
+		}
+	}
+	*/
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
 }
