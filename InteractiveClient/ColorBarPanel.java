@@ -72,7 +72,6 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
                 pixels[j * width + i] = value;
         }
 		cbsource = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
-        cbsource.setAnimated(true);
         setIcon(new ImageIcon(createImage(cbsource)));
 	}
       
@@ -91,7 +90,8 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     public void mouseClicked(MouseEvent e) {
         if(e.getClickCount() == 2) { 
             invertCM();
-			cbsource.newPixels(pixels, colorModel, 0, width);
+	    cbsource.newPixels(pixels, colorModel, 0, width);
+	    setIcon(new ImageIcon(createImage(cbsource)));
             view.redisplay(colorModel);
         }
     }
@@ -104,6 +104,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     public void mouseDragged(MouseEvent e) {
         translateCM((cbstartx - e.getX()) * cmap_size / width );
         cbsource.newPixels(pixels, colorModel, 0, width);
+        setIcon(new ImageIcon(createImage(cbsource)));
         view.redisplay(colorModel);
         cbstartx = e.getX();
     }
@@ -111,6 +112,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     public void mouseWheelMoved(MouseWheelEvent e) {
         translateCM(e.getWheelRotation());
         cbsource.newPixels(pixels, colorModel, 0, width);
+        setIcon(new ImageIcon(createImage(cbsource)));
         view.redisplay(colorModel);
     }
 
@@ -146,6 +148,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
             else if(command.equals("swapBackground"))
                 swapBackground();
             cbsource.newPixels(pixels, colorModel, 0, width);
+	    setIcon(new ImageIcon(createImage(cbsource)));
             view.redisplay(colorModel);
         }
     }
@@ -292,7 +295,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
             cm_blue[i] = puke_blue[i];
         }
 
-		colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+	colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
     }
 	
 	/** Switch the background color between black and white.

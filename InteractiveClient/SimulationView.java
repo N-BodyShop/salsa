@@ -67,6 +67,7 @@ public class SimulationView extends JLabel
 	public void redisplay(ColorModel cm) {
 		colorModel = cm;
 		source.newPixels(pixels, colorModel, 0, width);
+		setIcon(new ImageIcon(createImage(source)));
 	}
 	
 	public void getNewImage() {
@@ -268,6 +269,7 @@ public class SimulationView extends JLabel
         } else {
             pixels = data;
             source.newPixels(pixels, colorModel, 0, width);
+	    setIcon(new ImageIcon(createImage(source)));
         }
     }
 	
