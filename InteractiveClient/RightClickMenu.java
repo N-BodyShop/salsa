@@ -157,8 +157,8 @@ public class RightClickMenu extends JPopupMenu
     }
     public void yall(){
         tbp.resetSliders();
-        vp.x = new Vector3D(0, 0, vp.boxSize*0.5);
-        vp.y = new Vector3D(vp.boxSize*0.5, 0, 0);
+        vp.x = new Vector3D(-vp.boxSize*0.5, 0, 0);
+        vp.y = new Vector3D(0, 0, vp.boxSize*0.5);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
         s.ccs.addRequest( new ActivateGroup( "All", vp ) );
