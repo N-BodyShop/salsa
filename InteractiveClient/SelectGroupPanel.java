@@ -46,11 +46,6 @@ public class SelectGroupPanel extends JPanel
         attributeList.setSelectedIndex(selectedAttributeIndex);
         attributeList.addActionListener(this);
         
-        String[] linLogStrings = {"lin","log"};
-        linLog = new JComboBox(linLogStrings);
-        linLog.setSelectedIndex(0);
-        linLog.addActionListener(this);
-
         minPanel = new NameValue("min. value:");
         maxPanel = new NameValue("max. value:");
         attrib = (String)attributeList.getSelectedItem();
@@ -65,7 +60,6 @@ public class SelectGroupPanel extends JPanel
         minusButton.addActionListener(this);
         
         add(attributeList);
-        add(linLog);
         add(minPanel);
         add(maxPanel);
         add(plusButton);
@@ -81,6 +75,7 @@ public class SelectGroupPanel extends JPanel
             attrib = (String)attributeList.getSelectedItem();
             selectedAttributeIndex = attributeList.getSelectedIndex();
             // attribute selected, so we need to find out its possible values
+            if ( sgf.sgps.get(0).equals(this) ) sgf.groupName.setValue(attrib+"1");
             s.ccs.addRequest( new ValueRange(attrib) );
         }
     }
@@ -95,14 +90,8 @@ public class SelectGroupPanel extends JPanel
          // set boundary values
             String pass = new String();
             try {
-                String ll = (String)linLog.getSelectedItem();
-                if (ll.equals("lin") ){
-                    minPanel.setValue(pass.valueOf(dis.readDouble()));
-                    maxPanel.setValue(pass.valueOf(dis.readDouble()));
-                } else {
-                    minPanel.setValue(pass.valueOf(Math.log(dis.readDouble())/Math.log(10)));
-                    maxPanel.setValue(pass.valueOf(Math.log(dis.readDouble())/Math.log(10)));
-                }
+                minPanel.setValue(pass.valueOf(dis.readDouble()));
+                maxPanel.setValue(pass.valueOf(dis.readDouble()));
             } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
        }
     }

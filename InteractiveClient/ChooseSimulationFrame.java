@@ -65,6 +65,7 @@ public class ChooseSimulationFrame extends JFrame
     }
 
     public void actionPerformed(ActionEvent e){
+        s.reset();
         s.Name = (String)simlist.get( simJList.getSelectedIndex() );
         System.out.println("Selected "+s.Name);
         s.ccs.addRequest( new ChooseSimulation(s.Name) );

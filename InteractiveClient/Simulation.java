@@ -19,6 +19,7 @@ public class Simulation {
     Vector Families;
     int selectedAttributeIndex;
     Vector Groups;
+    boolean groupSelecting;
     int centerMethod;
     Vector3D rotationOrigin;
     

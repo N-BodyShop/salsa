@@ -13,7 +13,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
-public class ViewPanel extends JPanel implements MouseListener {
+public class ViewPanel extends JPanel implements MouseListener, MouseMotionListener {
 
     Simulation s;
     Config config;
@@ -25,6 +25,8 @@ public class ViewPanel extends JPanel implements MouseListener {
     byte [] pixels;
     JLabel display;
     double angleLeft, angleCcw, angleUp;
+    double xBegin, yBegin;
+    Rectangle rect;
     
     public ViewPanel( Simulation sim, int w, int h,double bs, Vector3D oh ){
         s = sim;
@@ -117,19 +119,23 @@ public class ViewPanel extends JPanel implements MouseListener {
 
     public void mouseClicked(MouseEvent e) {
         maybeShowPopup(e);
-        switch ( e.getModifiers() ) {
-            case MouseEvent.BUTTON1_MASK:
-                origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
-                origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
-                zoom(1.0/(e.getClickCount()+1.0));
-                break;
-            case MouseEvent.BUTTON2_MASK:
-                origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
-                origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
-                zoom(e.getClickCount()+1.0);
-                break;
-            default:
-                break;
+        if ( s.groupSelecting ){
+            rect = new Rectangle(e.getX(),e.getY(),0,0);
+        } else {
+            switch ( e.getModifiers() ) {
+                case MouseEvent.BUTTON1_MASK:
+                    origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
+                    origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
+                    zoom(1.0/(e.getClickCount()+1.0));
+                    break;
+                case MouseEvent.BUTTON2_MASK:
+                    origin = origin.plus(x.scalarMultiply(2.0*(e.getX()-(getWidth()*0.5))/getWidth()));
+                    origin = origin.plus(y.scalarMultiply(2.0*((getHeight()*0.5)-e.getY())/getHeight()));
+                    zoom(e.getClickCount()+1.0);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -137,6 +143,21 @@ public class ViewPanel extends JPanel implements MouseListener {
     }
 
     public void mouseExited(MouseEvent e) {
+    }
+
+    public void mouseDragged(MouseEvent e) {
+        if (s.groupSelecting){
+            repaint();
+            Graphics graph = this.getGraphics();
+            graph.setColor(Color.white);
+            Double x = new Double(e.getX()-rect.getX());
+            Double y = new Double(e.getY()-rect.getY());
+            rect.setSize(x.intValue(), y.intValue());
+            graph.drawRect(rect.x,rect.y,rect.width,rect.height);
+        }
+    }
+
+    public void mouseMoved(MouseEvent e) {
     }
 
     private void maybeShowPopup(MouseEvent e) {

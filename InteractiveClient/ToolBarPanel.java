@@ -61,15 +61,18 @@ public class ToolBarPanel extends JPanel
         
         JToolBar sliderBar = new JToolBar();
         sliderBar.setLayout( new GridLayout(3,1) );
+//        JLabel rotateLabel = new JLabel("Rotations");
         leftRightSlider = new RotateSlider("left","right");
         leftRightSlider.addChangeListener(this);
         clockwiseSlider = new RotateSlider("cw","ccw");
         clockwiseSlider.addChangeListener(this);
         upDownSlider = new RotateSlider("down","up");
         upDownSlider.addChangeListener(this);
+//        sliderBar.add(rotateLabel);
         sliderBar.add(leftRightSlider);
         sliderBar.add(clockwiseSlider);
         sliderBar.add(upDownSlider);
+        resetSliders();
         
         add(viewBar);
         add(middleBar);

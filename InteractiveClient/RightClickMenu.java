@@ -75,7 +75,7 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         if ( command.equals("xall") ) { xall();}
         else if (command.equals("yall"))  { yall();}
         else if (command.equals("zall"))  { zall();}
-        else if (command.equals("chooseCenter"))  { PreferencesFrame pf = new PreferencesFrame(s);}
+        else if (command.equals("chooseCenter"))  { PreferencesFrame pf = new PreferencesFrame(s,vp);}
         else if (command.equals("center"))  { vp.center();}
         else if (command.equals("fixo"))  { System.out.println("Origin fixed");}
         else if (command.equals("recolor"))  { 

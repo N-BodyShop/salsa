@@ -16,10 +16,12 @@ import java.lang.Math;
 public class PreferencesFrame extends JFrame
                         implements ActionListener {
     Simulation s;
+    ViewPanel vp;
     JComboBox centerChoice;
 
-    public PreferencesFrame( Simulation sim ){
+    public PreferencesFrame( Simulation sim, ViewPanel viewP ){
         s = sim;
+        vp = viewP;
     
         setTitle("Preferences");
         Container contentPane = getContentPane();
@@ -52,6 +54,7 @@ public class PreferencesFrame extends JFrame
             s.centerMethod = centerChoice.getSelectedIndex();
 //            int type = 0;
 //            if (ll.equals("average z") ){s.centerMethod = 0;} else { s.centerMethod = 1;};
+            vp.center();
             setVisible(false);
         } 
     }
