@@ -174,6 +174,8 @@ public:
 	void initializePython();
 	void executePythonCode(CkCcsRequestMsg* m);
 	void localParticleCode(CkCcsRequestMsg * m);
+	void getNumParticles(int);
+	void runLocalParticleCode(int handle);
 };
 
 class MetaInformationHandler : public Group {

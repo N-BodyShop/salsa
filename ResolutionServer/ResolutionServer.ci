@@ -26,6 +26,8 @@ mainmodule ResolutionServer {
 		entry [threaded] void localParticleCode(CkCcsRequestMsg* m);
 		
 		entry void executePythonCode(CkCcsRequestMsg* m);
+		entry [python] void getNumParticles(int);
+		entry [python] void runLocalParticleCode(int handle);
 	};
 	
 	array [1D] [python] Worker {
