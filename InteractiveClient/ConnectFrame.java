@@ -64,8 +64,9 @@ public class ConnectFrame extends JFrame
         try{
             ccs = new CcsThread( new Label(), 
                 hostPanel.getValue(), Integer.parseInt(portPanel.getValue()) );
-            ccs.addRequest( new AuthenticationRequest(userPanel.getValue(), 
-                        passPanel.getValue(),ccs));
+/*            ccs.addRequest( new AuthenticationRequest(userPanel.getValue(), 
+                        passPanel.getValue(),ccs));*/
+            ccs.addRequest( new ListSimulations(ccs) );
             setVisible(false);
         } catch (UnknownHostException uhe) {            
             JOptionPane.showMessageDialog(this, "Couldn't find host "+

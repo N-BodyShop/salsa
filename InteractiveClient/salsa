@@ -2,12 +2,14 @@
 
 set FILE = ""
 if ( $#argv == 1 ) then
-  if ( "`echo $0|cut -c1`" == "/" ) then
-    set FILE = "$0"
+  if ( "`echo $1|cut -c1`" == "/" ) then
+    set FILE = "$1"
   else
-    set FILE = "`pwd`/${0}"
+    set FILE = "`pwd`/${1}"
   endif
 endif
 
-ssh squall.astro.washington.edu "cd ~gwl/public/ResolutionServer-0.2-alpha; ./run_server.sh +p4 $FILE" |tail -1 | xargs java -jar Salsa.jar
+set SALSAARGS = `ssh squall.astro.washington.edu "cd ~gwl/public/ResolutionServer-0.2-alpha; ./run_server.sh +p4 $FILE" |tail -1`
+set SALSAARGS = "$SALSAARGS $FILE"
+java -jar Salsa.jar $SALSAARGS
 ssh squall.astro.washington.edu pkill charmrun

@@ -16,7 +16,8 @@ public class Salsa  {
             try{
                 CcsThread ccs = new CcsThread( new Label(), s[0], Integer.parseInt(s[1]) );
                 if(s.length == 2) {
-                    ccs.addRequest( new AuthenticationRequest("nobody","nowhere",ccs));
+                    ccs.addRequest( new ListSimulations(ccs));
+ //                   ccs.addRequest( new AuthenticationRequest("nobody","nowhere",ccs));
                 }else if(s.length == 3) {
                     Simulation sim = new Simulation(ccs);
                     sim.Name = s[2];
