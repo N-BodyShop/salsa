@@ -1,6 +1,6 @@
 #!/bin/csh -f
 setenv XERCESCROOT /users/gwl/programs/xerces-c-src2_4_0
-#this is silly
+
 if !($?LD_LIBRARY_PATH) then
     setenv LD_LIBRARY_PATH $XERCESCROOT/lib
 else

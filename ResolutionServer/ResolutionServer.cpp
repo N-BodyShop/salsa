@@ -12,7 +12,11 @@
 
 #include "ResolutionServer.h"
 
+#include "SiXFormat.h"
+#include "TipsyFormat.h"
+
 using namespace std;
+using namespace SimulationHandling;
 
 int verbosity;
 
@@ -55,8 +59,7 @@ Main::Main(CkArgMsg* m) {
 		poptPrintUsage(context, stderr, 0);
 		CkExit();
 		return;
-	} else
-		simulationListFilename = fname;
+	}
 
 	poptFreeContext(context);
 	delete m;
@@ -64,13 +67,38 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;
 	
+	Simulation* sim = new SiXFormatReader(fname);
+	if(sim->size() == 0) {
+		//try plain tipsy format
+		sim->release();
+		delete sim;
+		sim = new TipsyFormatReader(fname);
+		if(sim->size() == 0) {
+			//it's a list of simulations, parse it
+			ifstream infile(fname);
+			string line, description, directoryname;
+			while(infile) {
+				getline(infile, line);
+				//split line, make entry into map
+				string::size_type index = line.find(',');
+				if(index != string::npos) {
+					description = line.substr(0, index);
+					directoryname = line.substr(index + 1);
+					simulationList[description] = directoryname;
+				}
+			}
+		} else
+			workers.loadSimulation(fname, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+	} else
+		workers.loadSimulation(fname, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+	sim->release();
+	delete sim;
+
 	metaProxy = CProxy_MetaInformationHandler::ckNew();
     workers = CProxy_Worker::ckNew(metaProxy, CkNumPes());
 	if(verbosity)
 		cout << "Created workers and meta handler" << endl;
 	
-	authenticated = false;
-	CcsRegisterHandler("AuthenticateNChilada", CkCallback(CkIndex_Main::authenticate(0), thishandle));
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
 	CcsRegisterHandler("ChooseColorValue", CkCallback(CkIndex_Main::chooseColorValue(0), thishandle));
@@ -89,52 +117,20 @@ Main::Main(CkArgMsg* m) {
 	cerr << "Waiting for ccs authentication" << endl;
 }
 
-void Main::authenticate(CkCcsRequestMsg* m) {
-	unsigned char reply = 0;
-	string message(m->data, m->data + m->length);
-	string::size_type index = message.find(':');
-	if(index != string::npos) {
-		string username = message.substr(0, index);
-		string password = message.substr(index + 1);
-		if(verbosity)
-			cout << "Asked to authenticate \"" << username << "\" with password \"" << password << "\"" << endl;
-		if(rand() % 3) {
-			reply = 1;
-			simulationList.clear();
-			ifstream infile(simulationListFilename.c_str());
-			string line, description, directoryname;
-			while(infile) {
-				getline(infile, line);
-				//split line, make entry into map
-				string::size_type index = line.find(',');
-				if(index != string::npos) {
-					description = line.substr(0, index);
-					directoryname = line.substr(index + 1);
-					simulationList[description] = directoryname;
-				}
-			}
-			authenticated = true;
-		}
-	}
-	CcsSendDelayedReply(m->reply, 1, &reply);
-	delete m;
-}
-
 void Main::listSimulations(CkCcsRequestMsg* m) {
 	string reply;
-	if(authenticated) {
-		for(simListType::iterator iter = simulationList.begin(); iter != simulationList.end(); ++iter) {
-			reply += iter->first + ',';
-		}
+	for(simListType::iterator iter = simulationList.begin(); iter != simulationList.end(); ++iter) {
+		reply += iter->first + ',';
 	}
 	CcsSendDelayedReply(m->reply, reply.length(), reply.c_str());
 	delete m;
 }
 
 void Main::chooseSimulation(CkCcsRequestMsg* m) {
-	cout << "You chose: \"" << string(m->data, m->length) << "\"" << endl;
+	if(verbosity)
+		cout << "You chose: \"" << string(m->data, m->length) << "\"" << endl;
 	simListType::iterator chosen = simulationList.find(string(m->data, m->length));
-	if(authenticated && chosen != simulationList.end()) {
+	if(chosen != simulationList.end()) {
 		workers.loadSimulation(chosen->second, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
 		delayedReply = m->reply;
 		//return a list of available attributes
@@ -187,11 +183,8 @@ void Main::chooseColorValue(CkCcsRequestMsg* m) {
 	p | maxVal;
 	string attributeName(m->data + sizeof(int) + 2 * sizeof(double), m->data + m->length);
 	cout << "You're choosing attribute \"" << attributeName << "\" to represent the color of particles" << endl;
-	unsigned char value = 0;
-	if(authenticated) {
-		workers.chooseColorValue(attributeName, beLogarithmic, minVal, maxVal, CkCallbackResumeThread());
-		value = 1;
-	}
+	workers.chooseColorValue(attributeName, beLogarithmic, minVal, maxVal, CkCallbackResumeThread());
+	unsigned char value = 1;
 	CcsSendDelayedReply(m->reply, 1, &value);
 	delete m;
 }

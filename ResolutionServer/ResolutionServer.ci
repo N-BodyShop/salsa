@@ -9,7 +9,6 @@ mainmodule ResolutionServer {
 	mainchare Main {
 		entry Main();
 		
-		entry void authenticate(CkCcsRequestMsg* m);
 		entry void listSimulations(CkCcsRequestMsg* m);
 		entry void chooseSimulation(CkCcsRequestMsg* m);
 		entry [threaded] void chooseColorValue(CkCcsRequestMsg* m);

@@ -112,18 +112,15 @@ public:
 class Main : public Chare {
 	CProxy_MetaInformationHandler metaProxy;
 	CProxy_Worker workers;
-	std::string simulationListFilename;
 	typedef std::map<std::string, std::string> simListType;
 	//typedef std::map<std::string, std::pair<std::string, std::string> > simListType;
 	simListType simulationList;
-	bool authenticated;
 	CcsDelayedReply delayedReply;
 	std::string regionString;
 public:
 	
 	Main(CkArgMsg* m);
 	
-	void authenticate(CkCcsRequestMsg* m);
 	void listSimulations(CkCcsRequestMsg* m);
 	void chooseSimulation(CkCcsRequestMsg* m);
 	void chooseColorValue(CkCcsRequestMsg* m);
