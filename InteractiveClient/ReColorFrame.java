@@ -57,7 +57,12 @@ public class ReColorFrame extends JFrame
         contentPane.add(chooseButton);
         
         pack();
-        setVisible(true);
+		
+		//place it in the center of the screen
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        setLocation(screenSize.width / 2 - getSize().width / 2, screenSize.height / 2 - getSize().height / 2);
+
+		setVisible(true);
     }
 
     public void actionPerformed(ActionEvent e){

@@ -23,7 +23,7 @@ public class ConnectFrame extends JFrame
     public ConnectFrame( Connection con ){
         c = con;
         setTitle("Connect to NChilada Server");
-        setLocationRelativeTo(null);
+        //setLocationRelativeTo(null);
         Container contentPane = getContentPane();
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
@@ -50,6 +50,11 @@ public class ConnectFrame extends JFrame
         
         //make it pretty
         pack();
+		
+		//place it in the center of the screen
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        setLocation(screenSize.width / 2 - getSize().width / 2, screenSize.height / 2 - getSize().height / 2);
+
         //make it appear now that it's pretty
         setVisible(true);
     }

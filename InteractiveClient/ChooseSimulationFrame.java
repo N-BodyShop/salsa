@@ -58,8 +58,19 @@ public class ChooseSimulationFrame extends JFrame
         contentPane.add(simScrollPane);
         contentPane.add(chooseButton);
         
+		addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				System.exit(1);
+			}
+		});
+			
         pack();
-        setVisible(true);
+		
+		//place it in the center of the screen
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        setLocation(screenSize.width / 2 - getSize().width / 2, screenSize.height / 2 - getSize().height / 2);
+        
+		setVisible(true);
     }
 
     public void actionPerformed(ActionEvent e){
@@ -99,8 +110,13 @@ public class ChooseSimulationFrame extends JFrame
                 index = reply.indexOf(",",lastindex);
                 s.attributes.addElement(reply.substring(lastindex,index));
             }
-         // we've chosen and initialized a simulation, now we can look at it
-        SimulationFrame sf = new SimulationFrame(c,s);
+         	// we've chosen and initialized a simulation, now we can look at it
+        	SimulationFrame sf = new SimulationFrame(c,s);
+			sf.addWindowListener(new WindowAdapter() {
+				public void windowClosing(WindowEvent e) {
+					setVisible(true);
+				}
+			});
        }
     }
 
