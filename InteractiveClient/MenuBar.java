@@ -80,6 +80,10 @@ public class MenuBar extends JMenuBar implements ActionListener{
 		item.setActionCommand("executeCode");
 		item.addActionListener(view);
 		menu.add(item);
+		item = new JMenuItem("Write and execute local code");
+		item.setActionCommand("executeLocalCode");
+		item.addActionListener(view);
+		menu.add(item);
 		item = new JMenuItem("Attributes",KeyEvent.VK_A);
 		item.setActionCommand("manageAttributes");
 		item.addActionListener(view);

@@ -113,6 +113,14 @@ public class WindowManager extends WindowAdapter {
 		frame.pack();
 		frame.setVisible(true);
 	}
+	public void addLocalCodeFrame() {
+		JFrame frame = new JFrame("Salsa: Local Code");
+		frame.getContentPane().add(new LocalParticle(this));
+		frame.addWindowListener(this);
+		windowList.add(frame);
+		frame.pack();
+		frame.setVisible(true);
+	}
 	
 	public void windowClosing(WindowEvent e) {
 		Object source = e.getSource();

@@ -298,6 +298,8 @@ public class SimulationView extends JLabel
 			writePng();
 		else if(command.equals("executeCode"))
 			windowManager.addCodeFrame();
+		else if(command.equals("executeLocalCode"))
+			windowManager.addLocalCodeFrame();
 	}
 	
 	//rotate the top half toward you, bottom away
