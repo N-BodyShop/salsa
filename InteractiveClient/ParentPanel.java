@@ -355,6 +355,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 					}
 					byte[] data = encodeNumbers(type, one, two);
 					ccs.addRequest(new ReColor(data));
+					reView();
 				}catch(NullPointerException ex){
 					System.out.println("Pressed cancel");
 				}catch(NumberFormatException ex){
@@ -373,6 +374,11 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			byte[] data = encodeNumbers(type, argTwo, argThree);
 			ccs.addRequest(new ReColor(data));
 		}
+	}
+	
+	public void reView(){
+		mainView.messageHub("review", true);
+		auxView.messageHub("review", true);
 	}
 
 	//*******************************************************************************************************//
@@ -1181,9 +1187,17 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 	
 	/**************************************************************************************************/
+	//												  //
+	//					Server requests end					  //
+	//												  //
+	//*************************************************************************************************/
 
 
 
+	/**************************************************************************************************/
+	/*												  */
+	/*					Color mapping stuff below here				  */
+	/*												  */
 	/**************************************************************************************************/
 
 	private ColorModel createWRBBColorModel() {

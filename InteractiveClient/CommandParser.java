@@ -51,7 +51,9 @@ public class CommandParser {
 			if(arg.equals("quit")){
 				goodCommand(arg);
 				System.exit(0);
-
+			}else if(arg.equals("review")){
+				goodCommand(arg);
+				theParent.reView();
 			}else if(arg.equals("clear")){
 				//System.out.println("clearing");
 				thePrompt.addCommand(arg);
@@ -114,7 +116,16 @@ public class CommandParser {
 			//space/args are included
 			try{
 				theCommand = arg.substring(0,firstSpace);
-				if(theCommand.equals("choosesim")){
+				if(theCommand.equals("resize")){
+					String secondString = arg.substring(firstSpace+1);
+					int secondSpace = secondString.indexOf(" ");
+					String secondArg = secondString.substring(0, secondSpace);
+					String thirdArg = secondString.substring(secondSpace+1);
+					int firstInt = Integer.parseInt(secondArg);
+					int secondInt = Integer.parseInt(thirdArg);
+					System.out.println("first arg is: " + firstInt);
+					System.out.println("second arg is: " + secondInt);
+				}else if(theCommand.equals("choosesim")){
 					String secondArg = arg.substring(firstSpace+1);
 					int intArg = Integer.parseInt(secondArg);
 					if(intArg<0 || intArg>theSimList.getSize()){
@@ -177,6 +188,7 @@ public class CommandParser {
 							double secondDouble = Double.parseDouble(fourthString);
 							goodCommand(arg);
 							theParent.reColor(secondArg, firstDouble, secondDouble);
+							theParent.reView();
 						}else{
 							badCommand("Check arguments: " + arg);
 						}

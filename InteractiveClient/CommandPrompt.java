@@ -72,6 +72,7 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		commandLog.append("Xall: " + " $xall\n");
 		commandLog.append("Yall: " + " $yall\n");
 		commandLog.append("Zall: " + " $zall\n");
+		commandLog.append("Arbitrary image request from server: " + " $review\n");
 		commandLog.append("Clear command: " + " $clear\n");
 		commandLog.append("Zoom command: " + " $zoom <double>\n");
 		commandLog.append("Rotating: " + " $rotate <left/right/up/down/counter/clock> <double>\n");
