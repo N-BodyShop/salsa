@@ -174,7 +174,18 @@ public:
 	void initializePython();
 	void executePythonCode(CkCcsRequestMsg* m);
 	void localParticleCode(CkCcsRequestMsg * m);
+	void getFamilies(int handle);
+	void getAttributes(int handle);
+	void getGroups(int handle);
 	void getNumParticles(int);
+	void getAttributeRange(int handle);
+	void getAttributeSum(int handle);
+	void getDimensions(int handle);
+	void getDataType(int handle);
+	void getCenterOfMass(int handle);
+	void createGroup_Family(int handle);
+	void createGroup_AttributeRange(int handle);
+	void createGroupAttributeSphere(int handle);
 	void runLocalParticleCode(int handle);
 };
 
@@ -271,6 +282,11 @@ public:
 	
 	void createGroup_Family(std::string const& familyName, CkCallback const& cb);
 	void createGroup_AttributeRange(std::string const& groupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
+	void createGroup_AttributeSphere(std::string const& groupName,
+					 std::string const& attributeName,
+					 Vector3D<double> center, double size,
+					 CkCallback const& cb);
+	
 	void localParticleCode(std::string s, const CkCallback &cb);
 	int buildIterator(PyObject*, void*); // for localParticle
 	int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle

@@ -18,6 +18,44 @@ void Main::executePythonCode(CkCcsRequestMsg* m) {
 	CcsSendDelayedReply(d, 1, &success);
 }
 
+void Main::getFamilies(int handle) {
+    Worker* w = this->workers[0].ckLocal();
+    PyObject *lFamily = PyList_New(0);
+    for(Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter)
+	PyList_Append(lFamily, Py_BuildValue("s", iter->first.c_str()));
+    pythonPrepareReturn(handle);
+    pythonReturn(handle, lFamily);
+    }
+
+void Main::getAttributes(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *familyName;
+    Worker* w = this->workers[0].ckLocal();
+    PyObject *lAttributes = PyList_New(0);
+    PyArg_ParseTuple(arg, "s", &familyName);
+    Simulation::iterator simIter = w->sim->find(familyName);
+
+    if(simIter != w->sim->end()) {
+	for(AttributeMap::iterator attrIter = simIter->second.attributes.begin(); attrIter != simIter->second.attributes.end(); ++attrIter)
+	    PyList_Append(lAttributes,
+			  Py_BuildValue("s", attrIter->first.c_str()));
+	}
+    pythonPrepareReturn(handle);
+    pythonReturn(handle, lAttributes);
+    }
+
+void Main::getGroups(int handle) {
+    Worker* w = this->workers[0].ckLocal();
+    PyObject *lGroup = PyList_New(0);
+    
+    for(Worker::GroupMap::iterator iter = w->groups.begin();
+	iter != w->groups.end(); ++iter)
+	PyList_Append(lGroup, Py_BuildValue("s", iter->first.c_str()));
+    pythonPrepareReturn(handle);
+    pythonReturn(handle, lGroup);
+    }
+
+/* usage: getNumParticles('family') */
 void Main::getNumParticles(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *familyName;
@@ -32,6 +70,134 @@ void Main::getNumParticles(int handle) {
     pythonPrepareReturn(handle);
     pythonReturn(handle,Py_BuildValue("i",
 				      iter->second.count.totalNumParticles));
+}
+
+void Main::getAttributeRange(int handle) {
+    char *familyName, *attributeName;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    Worker* w = this->workers[0].ckLocal();
+    Simulation::iterator simIter = w->sim->find(familyName);
+
+    if(simIter == w->sim->end())
+	return;
+    AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
+    if(attrIter == simIter->second.attributes.end())
+	return;
+    pythonPrepareReturn(handle);
+    pythonReturn(handle,Py_BuildValue("(dd)", getScalarMin(attrIter->second),
+				      getScalarMax(attrIter->second)));
+    }
+
+void Main::getAttributeSum(int handle)
+{
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *groupName, *attributeName;
+    PyArg_ParseTuple(arg, "ss", &groupName, &attributeName);
+    CkReductionMsg* mesg;
+    double sum;
+    workers.getAttributeSum(groupName, attributeName, createCallbackResumeThread(mesg, sum));
+    delete mesg;
+    pythonPrepareReturn(handle);
+    pythonReturn(handle,Py_BuildValue("d", sum));
+    }
+
+void Main::getDimensions(int handle)
+{
+    char *familyName, *attributeName;
+    Worker* w = this->workers[0].ckLocal();
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    int iDim;
+    
+    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end())
+	iDim = 0;
+    AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
+    if(attrIter == simIter->second.attributes.end())
+	iDim = 0;
+    else
+	iDim =  attrIter->second.dimensions;
+    pythonPrepareReturn(handle);
+    pythonReturn(handle,Py_BuildValue("i", iDim));
+    }
+
+void Main::getDataType(int handle)
+{
+    char *familyName, *attributeName;
+    int retcode;
+    Worker* w = this->workers[0].ckLocal();
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+
+    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end())
+	retcode = 0;
+    
+    AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
+    if(attrIter == simIter->second.attributes.end())
+	retcode = 0;
+    else
+	retcode =  attrIter->second.code;
+    pythonPrepareReturn(handle);
+    pythonReturn(handle,Py_BuildValue("i", retcode));
+    }
+
+void Main::getCenterOfMass(int handle)
+{
+    char *groupName;
+    CkReductionMsg* mesg;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    PyArg_ParseTuple(arg, "s", &groupName);
+    pair<double, Vector3D<double> > compair;
+
+    workers.getCenterOfMass(groupName, createCallbackResumeThread(mesg, compair));
+    delete mesg;
+    Vector3D<double> retval = compair.second / compair.first;
+    pythonPrepareReturn(handle);
+    pythonReturn(handle,Py_BuildValue("(ddd)", retval.x, retval.y, retval.z));
+    }
+	
+void Main::createGroup_Family(int handle)
+{
+    char *familyName;
+    CkReductionMsg* mesg;
+    int result;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+
+    PyArg_ParseTuple(arg, "s", &familyName);
+    workers.createGroup_Family(familyName, createCallbackResumeThread(mesg, result));
+    delete mesg;
+    }
+	
+void Main::createGroup_AttributeRange(int handle)
+{
+    char *groupName, *attributeName;
+    double minValue, maxValue;
+    int result;
+    CkReductionMsg* mesg;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+
+    PyArg_ParseTuple(arg, "ssdd", &groupName, &attributeName, &minValue,
+		     &maxValue);
+    workers.createGroup_AttributeRange(groupName, attributeName, minValue, maxValue, createCallbackResumeThread(mesg, result));
+    delete mesg;
+    }
+
+void Main::createGroupAttributeSphere(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *achGroupName, *attributeName;
+    double xCenter, yCenter, zCenter, dSize;
+    
+    PyArg_ParseTuple(arg, "ssdddd", &achGroupName, &attributeName, &xCenter,
+		     &yCenter, &zCenter, &dSize);
+    Vector3D<double> v3dCenter(xCenter, yCenter, zCenter);
+    string sGroupName(achGroupName);
+    string sAttributeName(attributeName);
+    
+    workers.createGroup_AttributeSphere(sGroupName, sAttributeName,
+					v3dCenter, dSize,
+					CkCallbackResumeThread());
 }
 
 void Main::runLocalParticleCode(int handle) {

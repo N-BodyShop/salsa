@@ -26,7 +26,18 @@ mainmodule ResolutionServer {
 		entry [threaded] void localParticleCode(CkCcsRequestMsg* m);
 		
 		entry void executePythonCode(CkCcsRequestMsg* m);
+		entry [python] void getFamilies(int handle);
+		entry [python] void getAttributes(int handle);
+		entry [python] void getGroups(int handle);
 		entry [python] void getNumParticles(int);
+		entry [python] void getAttributeRange(int handle);
+		entry [python] void getAttributeSum(int handle);
+		entry [python] void getDimensions(int handle);
+		entry [python] void getDataType(int handle);
+		entry [python] void getCenterOfMass(int handle);
+		entry [python] void createGroup_Family(int handle);
+		entry [python] void createGroup_AttributeRange(int handle);
+		entry [python] void createGroupAttributeSphere(int handle);
 		entry [python] void runLocalParticleCode(int handle);
 	};
 	
@@ -53,6 +64,7 @@ mainmodule ResolutionServer {
 		entry void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
 		entry void createGroup_Family(const std::string& familyName, const CkCallback& cb);
 		entry void createGroup_AttributeRange(const std::string& groupName, const std::string& attributeName, double minValue, double maxValue, const CkCallback& cb);
+		entry void createGroup_AttributeSphere(const std::string& groupName, const std::string& attributeName, Vector3D<double> center, double size, const CkCallback& cb);
 		entry void localParticleCode(std::string s, const CkCallback &cb);
 	};
 	

@@ -1389,6 +1389,17 @@ void Worker::createGroup_AttributeRange(std::string const& groupName, std::strin
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
+void Worker::createGroup_AttributeSphere(std::string const& groupName,
+std::string const& attributeName, Vector3D<double> center, double size, CkCallback const& cb) {
+	int result = 0;
+	boost::shared_ptr<SimulationHandling::Group> g = make_SphericalGroup(*sim, attributeName, center, size);
+	if(g) {
+		groups[groupName] = g;
+		result = 1;
+	}
+	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
 // Below is a test of Filippo's python integrator
 
 void Worker::localParticleCode(std::string s, const CkCallback &cb) 
