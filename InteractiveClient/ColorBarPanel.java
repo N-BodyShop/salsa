@@ -63,16 +63,18 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
 	}
 			
 	public void resize() {
-		if(pixels.length < width * height)
+	    if(pixels.length < width * height)
         	pixels = new byte[width * height];
-        byte value;
-		for(int i = 0; i < width; i++) {
-            value = (byte) (startColor + java.lang.Math.floor((255.0 - startColor) * i / (width - 1.0)));
-			for(int j = 0; j < height; j++) 
-                pixels[j * width + i] = value;
-        }
-		cbsource = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
-        setIcon(new ImageIcon(createImage(cbsource)));
+	    byte value;
+
+	    // Draw the colorbar, pixel by pixel.
+	    for(int i = 0; i < width; i++) {
+		value = (byte) (startColor + java.lang.Math.floor((255.0 - startColor) * i / (width - 1.0)));
+		for(int j = 0; j < height; j++) 
+		    pixels[j * width + i] = value;
+		}
+	    cbsource = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
+	    setIcon(new ImageIcon(createImage(cbsource)));
 	}
       
 	public void componentResized(ComponentEvent e) {
