@@ -32,6 +32,23 @@ public class ChooseSimulationFrame extends JFrame
         simJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         simJList.setSelectedIndex(0);
         simJList.setVisibleRowCount(8);
+        MouseListener mouseListener = new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) { actionPerformed(new ActionEvent(simJList,2,"clicked"));
+ /*                   s.Name = (String)c.simlist.get( simJList.locationToIndex(e.getPoint()) );
+                    System.out.println("Selected "+s.Name);
+                    try{
+                        CcsThread ccs = new CcsThread( new Label(), c.host,c.port );
+                        ccs.addRequest( new ChooseSimulation(s.Name) );
+                        setVisible(false);
+                    } catch (IOException ioe) {
+                        System.err.println("Couldn't connect to "+
+                                    c.host+":"+c.port+".");
+                    }*/
+                }
+            }
+        };
+        simJList.addMouseListener(mouseListener);
         JScrollPane simScrollPane = new JScrollPane(simJList);
         
         JButton chooseButton = new JButton("Choose");
@@ -47,6 +64,7 @@ public class ChooseSimulationFrame extends JFrame
 
     public void actionPerformed(ActionEvent e){
         s.Name = (String)c.simlist.get( simJList.getSelectedIndex() );
+        System.out.println("Selected "+s.Name);
         try{
             CcsThread ccs = new CcsThread( new Label(), c.host,c.port );
             ccs.addRequest( new ChooseSimulation(s.Name) );

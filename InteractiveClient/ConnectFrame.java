@@ -31,7 +31,9 @@ public class ConnectFrame extends JFrame
         userPanel = new NameValue("username:");
         passPanel = new NameValue("password:");
         hostPanel = new NameValue("hostname:","localhost");
+        hostPanel.addActionListener(this);
         portPanel = new NameValue("port:","1235");
+        portPanel.addActionListener(this);
 
         contentPane.add(hostPanel);
         contentPane.add(portPanel);

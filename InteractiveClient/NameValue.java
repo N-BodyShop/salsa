@@ -8,6 +8,7 @@
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.*;
 
 public class NameValue extends JPanel{
 
@@ -19,7 +20,6 @@ public class NameValue extends JPanel{
 
         valueField = new JTextField(value);
         JLabel nameLabel = new JLabel(name,JLabel.LEFT);
-        nameLabel.setLabelFor(valueField);
         
         add(nameLabel,BorderLayout.WEST);
         add(valueField,BorderLayout.EAST);
@@ -42,5 +42,9 @@ public class NameValue extends JPanel{
 
     public void setValue(String value){
         valueField.setText(value);
+    }
+    
+    public void addActionListener(ActionListener l){
+        valueField.addActionListener(l);
     }
 }
