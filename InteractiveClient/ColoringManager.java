@@ -259,7 +259,7 @@ public class ColoringManager extends Manager
 	public class CreateColoring extends CcsThread.request {
 		Simulation.Coloring c;
 		public CreateColoring(Simulation.Coloring coloring) {
-			super("CreateColoring", null);
+			super("CreateColoring", (byte[]) null);
 			c = coloring;
 			setData((c.name + "," + (c.logarithmic ? "logarithmic," : "linear,") + c.attributeName + "," + c.minValue + "," + c.maxValue + "," + c.clipping + "," + c.activeFamilies).getBytes());
 		}

@@ -6,7 +6,7 @@ public class SalsaRequests {
 
 	public static class ShutdownServer extends CcsThread.request {
 		public ShutdownServer() {
-			super("ShutdownServer", null);
+			super("ShutdownServer", (byte[])null);
 		}
 		
 		public void handleReply(byte[] data) {
@@ -19,7 +19,7 @@ public class SalsaRequests {
 		Vector simulationList = new Vector();
 
     	public ListSimulations() {
-			super("ListSimulations", null);
+			super("ListSimulations", (byte[])null);
     	}
 
     	public void handleReply(byte[] data) {
@@ -39,7 +39,7 @@ public class SalsaRequests {
 		boolean status = false;
 
     	public ChooseSimulation() {
-        	super("ChooseSimulation", null);
+        	super("ChooseSimulation", (byte[])null);
     	}
 
     	public ChooseSimulation(String name) {

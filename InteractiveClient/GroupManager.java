@@ -173,7 +173,7 @@ public class GroupManager extends Manager
 	public class CreateGroup extends CcsThread.request {
 		Simulation.Group g;
 		public CreateGroup(Simulation.Group group) {
-			super("CreateGroup", null);
+			super("CreateGroup", (byte[]) null);
 			g = group;
 			setData((g.name + "," + g.attributeName + "," + g.minValue + "," + g.maxValue).getBytes());
 		}

@@ -41,7 +41,7 @@ public class WindowManager extends WindowAdapter {
 	
 	private class GetAttributeInformation extends CcsThread.request {
 		public GetAttributeInformation() {
-			super("GetAttributeInformation", null);
+			super("GetAttributeInformation", (byte[]) null);
 		}
 		
 		public void handleReply(byte[] data) {
@@ -58,7 +58,7 @@ public class WindowManager extends WindowAdapter {
 	
 	private class GetColoringInformation extends CcsThread.request {
 		public GetColoringInformation() {
-			super("GetColoringInformation", null);
+			super("GetColoringInformation", (byte[]) null);
 		}
 		
 		public void handleReply(byte[] data) {
@@ -75,7 +75,7 @@ public class WindowManager extends WindowAdapter {
 	
 	private class lvConfig extends CcsThread.request {
 		public lvConfig() {
-			super("lvConfig", null);
+			super("lvConfig", (byte[]) null);
 		}
 		
 		public void handleReply(byte[] configData) {
