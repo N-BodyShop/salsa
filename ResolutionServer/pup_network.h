@@ -23,32 +23,32 @@
 
 #define __u16 unsigned short
 #define __u32 unsigned int
-#define __u64 u_int64_t
+#define __u64 uint64_t
 
 //Macros to do the arithmetic of byte swapping
 
-#define ___swab16(x) \
-({ \
-	__u16 __x = (x); \
-	((__u16)( \
+static inline
+__u16 ___swab16(__u16 __x) \
+{ \
+	return ((__u16)( \
 		(((__u16)(__x) & (__u16)0x00ffU) << 8) | \
 		(((__u16)(__x) & (__u16)0xff00U) >> 8) )); \
-})
+}
 
-#define ___swab32(x) \
-({ \
-	__u32 __x = (x); \
-	((__u32)( \
+static inline
+__u32 ___swab32(__u32 __x) \
+{ \
+	return ((__u32)( \
 		(((__u32)(__x) & (__u32)0x000000ffUL) << 24) | \
 		(((__u32)(__x) & (__u32)0x0000ff00UL) <<  8) | \
 		(((__u32)(__x) & (__u32)0x00ff0000UL) >>  8) | \
 		(((__u32)(__x) & (__u32)0xff000000UL) >> 24) )); \
-})
+}
 
-#define ___swab64(x) \
+static inline
+__u32 ___swab64(__u64 __x) \
 ({ \
-	__u64 __x = (x); \
-	((__u64)( \
+	return ((__u64)( \
 		(__u64)(((__u64)(__x) & (__u64)0x00000000000000ffULL) << 56) | \
 		(__u64)(((__u64)(__x) & (__u64)0x000000000000ff00ULL) << 40) | \
 		(__u64)(((__u64)(__x) & (__u64)0x0000000000ff0000ULL) << 24) | \
@@ -57,7 +57,7 @@
 		(__u64)(((__u64)(__x) & (__u64)0x0000ff0000000000ULL) >> 24) | \
 		(__u64)(((__u64)(__x) & (__u64)0x00ff000000000000ULL) >> 40) | \
 		(__u64)(((__u64)(__x) & (__u64)0xff00000000000000ULL) >> 56) )); \
-})
+}
 
 #endif
 
@@ -77,7 +77,7 @@ class toNetwork : public er {
 			*p = ___swab32(*p);
 	}
 	
-	void swap64(u_int64_t* p, int n) {
+	void swap64(uint64_t* p, int n) {
 		for(; n > 0; --n, ++p)
 			*p = ___swab64((*p));
 	}
@@ -103,7 +103,7 @@ protected:
 			case Tlonglong:
 			case Tulonglong:
 			case Tdouble:
-				return swap64(reinterpret_cast<u_int64_t *>(p), n);
+				return swap64(reinterpret_cast<uint64_t *>(p), n);
 			default:
 				break;
 				//throw UnsupportedTypeException;
