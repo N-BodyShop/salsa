@@ -1,5 +1,10 @@
 //SimulationView.java
 
+import charm.ccs.PythonAbstract;
+import charm.ccs.PythonExecute;
+import charm.ccs.PythonPrint;
+import charm.ccs.PythonFinished;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;

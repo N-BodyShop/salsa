@@ -1,5 +1,9 @@
 //CodePanel.java
 
+import charm.ccs.PythonAbstract;
+import charm.ccs.PythonExecute;
+import charm.ccs.PythonPrint;
+import charm.ccs.PythonFinished;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -61,7 +65,9 @@ public class CodePanel extends JPanel /*implements ActionListener*/ {
 			PythonExecute myrequest
 			    = new PythonExecute(codeText.getText()+"\n",
 						true,true,interpreterHandle);
+			printRequest = 0;
 			myrequest.setKeepPrint(true);
+			myrequest.setWait(true);
 			windowManager.ccs.addRequest(new ExecutePythonCode(myrequest.pack()));
 			}
 		};
@@ -92,12 +98,13 @@ public class CodePanel extends JPanel /*implements ActionListener*/ {
 			interpreterHandle = CcsServer.readInt(data, 0);
 			printRequest = 1;
 			System.err.println("Request print " + interpreterHandle);
-			windowManager.ccs.addRequest(new ExecutePythonCode((new PythonPrint(interpreterHandle, true)).pack()));
+			windowManager.ccs.addRequest(new ExecutePythonCode((new PythonPrint(interpreterHandle, false)).pack()));
 			}
 		    else {
                         String result = new String(data);
 			if (result.length() > 0) {
-			    responseText.append(result);
+			    if (result.length() == 4 && data[0]==0 && data[1]==0 && data[2]==0 && data[3]==0) responseText.append("No prints.\n");
+			    else responseText.append(result+"\n");
 			    }
                         //System.out.println("Return from code execution: \"" + result + "\"");
 			}

@@ -7,7 +7,7 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 	SalsaRequests.class ChooseSimulationFrame.class \
 	Salsa.class DelimitedStringEnumeration.class GroupManager.class \
 	CodePanel.class GroupQuery.class MenuBar.class LocalParticle.class \
-	PythonExecute.class HighLevelPython.class PyPrintHandler.class
+	HighLevelPython.class PyPrintHandler.class
 	
 #	ConnectFrame.class \
 #	ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class \
@@ -19,17 +19,19 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 #	ListSimulations.class ChooseSimulation.class AttributeManager.class \
 #	WindowManager.class
 
+CHARM_JAVA = -classpath .:$(HOME)/peak/src/charm/java
+
 TARGET = Salsa
 VERSION = 0.1
 all: $(TARGET).jar
 
 $(TARGET).jar: Manifest $(CLASSES)
-	jar cmf Manifest $@ *.class
+	jar cmf Manifest $@ *.class charm/ccs/*.class
 
 .SUFFIXES: .java .class
 
 .java.class :
-	javac $<
+	javac $(CHARM_JAVA) $<
 	
 .PHONY: all clean dist binarydist
 
