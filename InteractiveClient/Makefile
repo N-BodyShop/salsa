@@ -26,7 +26,8 @@ VERSION = 0.1
 all: $(TARGET).jar
 
 $(TARGET).jar: Manifest $(CLASSES)
-	jar cmf Manifest $@ *.class $(CHARM_JAVA)/bin/charmdebug.jar
+	unzip $(CHARM_JAVA)/bin/charmdebug.jar 
+	jar cmf Manifest $@ *.class charm
 
 .SUFFIXES: .java .class
 
