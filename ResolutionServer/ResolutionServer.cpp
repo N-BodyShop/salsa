@@ -66,7 +66,8 @@ Main::Main(CkArgMsg* m) {
 	
 	metaProxy = CProxy_MetaInformationHandler::ckNew();
     workers = CProxy_Worker::ckNew(metaProxy, CkNumPes());
-	cout << "Created workers and meta handler" << endl;
+	if(verbosity)
+		cout << "Created workers and meta handler" << endl;
 	
 	authenticated = false;
 	CcsRegisterHandler("AuthenticateNChilada", CkCallback(CkIndex_Main::authenticate(0), thishandle));
@@ -82,6 +83,8 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), thishandle));
 	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
 	CcsRegisterHandler("Center", CkCallback(CkIndex_Main::calculateDepth(0), thishandle));
+	CcsRegisterHandler("CreateGroup", CkCallback(CkIndex_Main::createGroup(0), thishandle));
+	CcsRegisterHandler("ActivateGroup", CkCallback(CkIndex_Main::activateGroup(0), thishandle));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -93,7 +96,8 @@ void Main::authenticate(CkCcsRequestMsg* m) {
 	if(index != string::npos) {
 		string username = message.substr(0, index);
 		string password = message.substr(index + 1);
-		cout << "Asked to authenticate \"" << username << "\" with password \"" << password << "\"" << endl;
+		if(verbosity)
+			cout << "Asked to authenticate \"" << username << "\" with password \"" << password << "\"" << endl;
 		if(rand() % 3) {
 			reply = 1;
 			simulationList.clear();
@@ -158,8 +162,12 @@ void Main::startVisualization(CkReductionMsg* m) {
 		oss << static_cast<int>(w->startColor) << "," << w->sim->size() << ",";
 		for(SimulationHandling::Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter) {
 			oss << iter->first << "," << iter->second.attributes.size() << ",";
-			for(SimulationHandling::AttributeMap::iterator attrIter = iter->second.attributes.begin(); attrIter != iter->second.attributes.end(); ++attrIter)
-				oss << attrIter->first << ",";
+			for(SimulationHandling::AttributeMap::iterator attrIter = iter->second.attributes.begin(); attrIter != iter->second.attributes.end(); ++attrIter) {
+				if(attrIter->first == "color")
+					oss << "family,";
+				else
+					oss << attrIter->first << ",";
+			}
 		}
 		const string& reply = oss.str();
 		CcsSendDelayedReply(delayedReply, reply.length(), reply.c_str());
@@ -238,22 +246,38 @@ void Main::depthCalculated(CkReductionMsg* m) {
 		case 3 * sizeof(double):
 			z = static_cast<double *>(m->getData());
 			*z /= *(z + 1);
-			cout << "Depth calculated by average, z = " << *z << " with " << *(z + 1) << " particles in the frame" << endl;
+			//cout << "Depth calculated by average, z = " << *z << " with " << *(z + 1) << " particles in the frame" << endl;
 			break;
 		case sizeof(pair<byte, double>):
 			mostPair = static_cast<pair<byte, double> *>(m->getData());
-			cout << "Depth calculated by mostest, z = " << mostPair->second << " with value " << int(mostPair->first) << endl;
+			//cout << "Depth calculated by mostest, z = " << mostPair->second << " with value " << int(mostPair->first) << endl;
 			z = &(mostPair->second);
 			break;
 		case sizeof(pair<double, double>):
 			potPair = static_cast<pair<double, double> *>(m->getData());
-			cout << "Depth calculated by potential, z = " << potPair->second << " with potential " << potPair->first << endl;
+			//cout << "Depth calculated by potential, z = " << potPair->second << " with potential " << potPair->first << endl;
 			z = &(potPair->second);
 			break;
 	}
 	PUP::toNetwork p;
 	p | *z;
 	CcsSendDelayedReply(delayedReply, sizeof(double), z);
+	delete m;
+}
+
+void Main::createGroup(CkCcsRequestMsg* m) {
+	string s(m->data, m->length);
+	workers.createGroup(s, CkCallbackResumeThread());
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
+void Main::activateGroup(CkCcsRequestMsg* m) {
+	string s(m->data, m->length);
+	workers.setActiveGroup(s, CkCallbackResumeThread());
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;
 }
 

@@ -76,6 +76,8 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	}
 	startColor = familyColor;
 	
+	activeGroupName = "All";
+	
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
@@ -175,7 +177,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	
 	MyVizRequest req(m->req);
 	
-	if(thisIndex == 0)
+	if(verbosity > 2 && thisIndex == 0)
 		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
 		
 	if(imageSize < req.width * req.height) {
@@ -192,7 +194,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	
 	float delta = 2 * req.x.length() / req.width;
-	if(thisIndex == 0)
+	if(verbosity > 3 && thisIndex == 0)
 		cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
@@ -202,16 +204,35 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 		Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 		byte* colors = simIter->second.getAttribute("color", Type2Type<byte>());
-		for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
-			x = dot(req.x, positions[i] - req.o);
-			if(x > -1 && x < 1) {
-				y = dot(req.y, positions[i] - req.o);
-				if(y > -1 && y < 1) {
-					pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-					if(pixel >= imageSize)
-						cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-					if(image[pixel] < colors[i])
-						image[pixel] = colors[i];
+		if(activeGroupName == "All") {
+			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+				x = dot(req.x, positions[i] - req.o);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, positions[i] - req.o);
+					if(y > -1 && y < 1) {
+						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+						if(pixel >= imageSize)
+							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+						if(image[pixel] < colors[i])
+							image[pixel] = colors[i];
+					}
+				}
+			}
+		} else {
+			ParticleGroup& activeGroup = simIter->second.groups[activeGroupName];
+			if(thisIndex == 0)
+				cerr << "Drawing using group " << activeGroupName << " which has " << activeGroup.size() << " particles" << endl;
+			for(ParticleGroup::iterator iter = activeGroup.begin(); iter != activeGroup.end(); ++iter) {
+				x = dot(req.x, positions[*iter] - req.o);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, positions[*iter] - req.o);
+					if(y > -1 && y < 1) {
+						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+						if(pixel >= imageSize)
+							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+						if(image[pixel] < colors[*iter])
+							image[pixel] = colors[*iter];
+					}
 				}
 			}
 		}
@@ -439,7 +460,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	//z component of the viewing frame
 	double z = 0;
 	
-	if(thisIndex == 0)
+	if(verbosity > 2 && thisIndex == 0)
 		cout << "Got request for centering: " << req << endl;
 	
 	req.z = cross(req.x, req.y);
@@ -450,6 +471,8 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	u_int64_t numParticlesInFrame = 0;
 	byte maxPixel = 0;
 	double minPotential = HUGE_VAL;
+	
+	//should only use active particles to calculate this!!!!
 	
 	switch(req.code) {
 		case 0: { //average of all pixels in frame	
@@ -499,6 +522,11 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 				float* potentials = simIter->second.getAttribute("potential", Type2Type<float>());
+				if(potentials == 0) {
+					sim->loadAttribute(simIter->first, "potential", simIter->second.count.numParticles, simIter->second.count.startParticle);
+					potentials = simIter->second.getAttribute("potential", Type2Type<float>());
+				}
+				//should only look at active particles here!
 				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
 					x = dot(req.x, positions[i] - req.o);
 					if(x > -1 && x < 1) {
@@ -517,4 +545,75 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 			break;
 		}
 	}
+}
+
+std::string trim(const std::string& s) {
+	std::string trimmed(s);
+	trimmed.erase(0, trimmed.find_first_not_of(" \t\r\n"));
+	trimmed.erase(trimmed.find_last_not_of(" \t\r\n") + 1);
+	return trimmed;
+}
+
+bool toDouble(const std::string& s, double& d) {
+	std::istringstream iss(s);
+	iss >> d;
+	return iss;
+}
+
+template <typename T>
+bool extract(const std::string& s, T& value) {
+	std::istringstream iss(s);
+	iss >> value;
+	return iss;
+}
+
+std::list<std::string> splitString(const std::string& s, const char c = ',') {
+	std::list<std::string> l;
+	std::string::size_type past, pastOld = 0;
+	while(pastOld < s.size()) {
+		past = s.find(c, pastOld);
+		if(past == std::string::npos) {
+			l.push_back(trim(s.substr(pastOld)));
+			break;
+		} else
+			++past;
+		l.push_back(trim(s.substr(pastOld, past - pastOld - 1)));
+		pastOld = past;
+	}
+	return l;
+}
+
+void Worker::createGroup(const string& s, const CkCallback& cb) {
+	string groupName, attributeName;
+	list<string> parts = splitString(s);
+	float minValue, maxValue;
+	if(parts.size() >= 4) {
+		list<string>::iterator iter = parts.begin();
+		groupName = *iter;
+		++iter;
+		attributeName = *iter;
+		if(extract(*++iter, minValue) && extract(*++iter, maxValue)) {
+			if(thisIndex == 0)
+				cerr << "Defining group " << groupName << " on attribute " << attributeName << " from " << minValue << " to " << maxValue << endl;
+			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+				sim->loadAttribute(simIter->first, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
+				ParticleGroup& g = simIter->second.createGroup(groupName, attributeName, static_cast<void *>(&minValue), static_cast<void *>(&maxValue));
+				cout << "Piece " << thisIndex << ": My part of the group includes " << g.size() << " particles" << endl;
+			}
+		} else
+			cerr << "Problem getting group range values, no group created" << endl;
+	} else
+		cerr << "Group definition string malformed, no group created" << endl;
+	
+	if(verbosity > 2 && thisIndex == 0)
+		cout << "Created group " << groupName << endl;
+	
+	contribute(0, 0, CkReduction::concat, cb);
+}
+
+void Worker::setActiveGroup(const std::string& s, const CkCallback& cb) {
+	activeGroupName = s;
+	if(thisIndex == 0)
+		cerr << "Activated group " << activeGroupName << endl;
+	contribute(0, 0, CkReduction::concat, cb);
 }

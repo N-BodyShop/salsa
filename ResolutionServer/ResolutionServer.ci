@@ -20,6 +20,8 @@ mainmodule ResolutionServer {
 		entry void statsCollected(CkReductionMsg* m);
 		entry void calculateDepth(CkCcsRequestMsg* m);
 		entry void depthCalculated(CkReductionMsg* m);
+		entry void createGroup(CkCcsRequestMsg* m);
+		entry void activateGroup(CkCcsRequestMsg* m);
 		
 	};
 	
@@ -35,6 +37,8 @@ mainmodule ResolutionServer {
 		entry void chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb);
 		
 		entry void calculateDepth(MyVizRequest req, const CkCallback& cb);
+		entry void createGroup(const std::string& s, const CkCallback& cb);
+		entry void setActiveGroup(const std::string& s, const CkCallback& cb);
 	};
 	
 	group MetaInformationHandler {

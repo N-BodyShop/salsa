@@ -134,6 +134,8 @@ public:
 	void statsCollected(CkReductionMsg* m);
 	void calculateDepth(CkCcsRequestMsg* m);
 	void depthCalculated(CkReductionMsg* m);
+	void createGroup(CkCcsRequestMsg* m);
+	void activateGroup(CkCcsRequestMsg* m);
 	
 };
 
@@ -168,13 +170,14 @@ class Worker : public ArrayElement1D {
 	OrientedBox<float> boundingBox;
 	byte startColor;
 	std::string currentAttribute;
+	std::string activeGroupName;
 	
 	template <typename T>
 	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic);
 	
 public:
 	
-	Worker(const CkGroupID& metaID) : metaProxy(metaID), sim(0), image(new byte[0]), imageSize(0) { }
+	Worker(const CkGroupID& metaID) : metaProxy(metaID), sim(0), image(new byte[0]), imageSize(0), activeGroupName("All") { }
 	Worker(CkMigrateMessage* m) { }
 	~Worker() {
 		if(sim)
@@ -193,6 +196,8 @@ public:
 	
 	void chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb);
 	void calculateDepth(MyVizRequest req, const CkCallback& cb);
+	void createGroup(const std::string& s, const CkCallback& cb);
+	void setActiveGroup(const std::string& s, const CkCallback& cb);
 };
 
 #endif //RESOLUTIONSERVER_H
