@@ -171,7 +171,7 @@ void Main::activate(CkCcsRequestMsg* m) {
 }
 
 void Main::collectStats(CkCcsRequestMsg* m) {
-	regionString = string(m->data, m->data + m->length);
+	regionString.assign(m->data, m->length);
 	delayedReply = m->reply;
 	workers.collectStats(regionString, CkCallback(CkIndex_Main::statsCollected(0), thishandle));
 	delete m;

@@ -506,14 +506,14 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 	
 	GroupStatistics stats;
 	
-	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(meta->activeRegion)) {
+	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(activeRegion)) {
 		for(u_int64_t i = 0; i < numParticles; ++i) {
 			if(Space::contains(*activeSphere, myParticles[i].position)) {
 				stats.numParticles++;
 				stats.boundingBox.grow(myParticles[i].position);
 			}
 		}
-	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(meta->activeRegion)) {
+	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(activeRegion)) {
 		for(u_int64_t i = 0; i < numParticles; ++i) {
 			if(Space::contains(*activeBox, myParticles[i].position)) {
 				stats.numParticles++;
