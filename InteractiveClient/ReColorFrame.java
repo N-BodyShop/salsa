@@ -69,6 +69,7 @@ public class ReColorFrame extends JFrame
         JButton chooseButton = new JButton("Recolor");
         chooseButton.setActionCommand("choose");
         chooseButton.addActionListener(this);
+        chooseButton.setAlignmentX(CENTER_ALIGNMENT);
 
         contentPane.add(particlePanel);
         contentPane.add(attributeList);

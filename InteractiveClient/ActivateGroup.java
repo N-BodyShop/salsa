@@ -11,7 +11,6 @@ public class ActivateGroup extends CcsThread.request{
     public ActivateGroup(String gName, ViewPanel viewP){
         super("ActivateGroup", gName.getBytes());
         vp = viewP;
-        System.out.println("Sent ActivateGroup message: "+gName);
     }
     public void handleReply(byte[] data) {
         vp.getNewImage();

@@ -49,7 +49,7 @@ public class ViewPanel extends JPanel implements MouseListener {
     }
     
     public void zoom( double zoomFactor ){
-        System.out.println("zoom by: "+zoomFactor);
+  //      System.out.println("zoom by: "+zoomFactor);
         x = x.scalarMultiply(zoomFactor);
         y = y.scalarMultiply(zoomFactor);
         z = z.scalarMultiply(zoomFactor);
@@ -144,7 +144,7 @@ public class ViewPanel extends JPanel implements MouseListener {
     private void maybeShowPopup(MouseEvent e) {
         if (e.isPopupTrigger()) {
         // needed if menu is updated, but I'm thinking it won't be now
-            rcm = new RightClickMenu(s, this);
+            rcm.refresh();
             rcm.show(e.getComponent(), e.getX(), e.getY());
         }
     }
@@ -153,7 +153,7 @@ public class ViewPanel extends JPanel implements MouseListener {
 
         public ImageRequest() {
                 super("lvImage", null);
-                System.out.println("requesting new image");
+     //           System.out.println("requesting new image");
                 setData(encodeRequest());
         }
 
@@ -174,7 +174,7 @@ public class ViewPanel extends JPanel implements MouseListener {
             try {
                 double m = dis.readDouble();
                 origin = origin.plus(z.unitVector().scalarMultiply( m ));
-                System.out.println("Server response: "+m+"  New origin for rotation: "+origin);
+   //             System.out.println("Server response: "+m+"  New origin for rotation: "+origin);
             } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
         }
     }
@@ -201,7 +201,7 @@ public class ViewPanel extends JPanel implements MouseListener {
             dos.writeDouble(origin.x);
             dos.writeDouble(origin.y);
             dos.writeDouble(origin.z);
-            System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
+   //         System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
         } catch(IOException e) {
             System.err.println("Couldn't encode request!");
             e.printStackTrace();
@@ -230,7 +230,7 @@ public class ViewPanel extends JPanel implements MouseListener {
             dos.writeDouble(origin.x);
             dos.writeDouble(origin.y);
             dos.writeDouble(origin.z);
-            System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
+  //          System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
         } catch(IOException e) {
             System.err.println("Couldn't encode request!");
             e.printStackTrace();

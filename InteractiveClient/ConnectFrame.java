@@ -27,6 +27,7 @@ public class ConnectFrame extends JFrame
         Container contentPane = getContentPane();
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
          
         userPanel = new NameValue("username:");
         passPanel = new NameValue("password:");
@@ -64,7 +65,7 @@ public class ConnectFrame extends JFrame
             ccs = new CcsThread( new Label(), 
                 hostPanel.getValue(), Integer.parseInt(portPanel.getValue()) );
             ccs.addRequest( new AuthenticationRequest(userPanel.getValue(), 
-                        passPanel.getValue()) );
+                        passPanel.getValue(),ccs));
             setVisible(false);
         } catch (UnknownHostException uhe) {            
             JOptionPane.showMessageDialog(this, "Couldn't find host "+
@@ -75,42 +76,5 @@ public class ConnectFrame extends JFrame
         }    
     }
 
-    private class AuthenticationRequest extends CcsThread.request {
 
-        public AuthenticationRequest(String username, String password) {
-                super("AuthenticateNChilada", (username + ":" + password).getBytes());
-        }
-
-        public void handleReply(byte[] data) {
-            //initialize simlist
-            ccs.addRequest( new ListSimulations() );
-        }
-    }
-
-    private class ListSimulations extends CcsThread.request {
-
-        public ListSimulations() {
-                super("ListSimulations", null);
-        }
-
-        public void handleReply(byte[] data) {
-            String reply = new String(data);
-            Vector simlist = new Vector();
-            int index = -1;
-            int lastindex = 0;
-            while( index < reply.length()-1 ){
-                lastindex = index + 1;
-                index = reply.indexOf(",",lastindex);
-                System.out.println("Adding:  "+reply.substring(lastindex,index));
-                simlist.addElement(reply.substring(lastindex,index));
-            }
-            // we've established a connection, now we can choose what
-            // to look at
-            ChooseSimulationFrame csf = new ChooseSimulationFrame(ccs,simlist);
-        }
-    }
-
-    public static void main(String s[]){
-        ConnectFrame cf = new ConnectFrame();
-    }
 }

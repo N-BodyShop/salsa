@@ -107,7 +107,6 @@ public class SelectGroupFrame extends JFrame
     private class CreateGroup extends CcsThread.request{
         public CreateGroup(String groupInfo){
             super("CreateGroup", groupInfo.getBytes());
-            System.out.println("Sent CreateGroup message: "+groupInfo);
         }
         public void handleReply(byte[] data) {
             s.ccs.addRequest( new ActivateGroup( groupName.getValue(), vp ) );

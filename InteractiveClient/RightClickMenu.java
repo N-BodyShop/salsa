@@ -18,6 +18,7 @@ public class RightClickMenu extends JPopupMenu
     Simulation s;
     ViewPanel vp;
     ToolBarPanel tbp;
+    JMenu groupSubmenu;
     String[] centerChoiceStrings = {"average z","largest value","lowest potential"};
     
     public RightClickMenu( Simulation sim, ViewPanel viewP ) {
@@ -63,16 +64,6 @@ public class RightClickMenu extends JPopupMenu
         item.setActionCommand("Create a Group...");
         item.addActionListener(this);
         add(item);
-        ButtonGroup group2 = new ButtonGroup();
-        submenu = new JMenu("Display groups...");
-        for (int i=0; i < s.Groups.size(); i++) {
-            rbItem = new JRadioButtonMenuItem(((Group)s.Groups.get(i)).Name);
-            rbItem.addActionListener(this);
-            rbItem.setActionCommand("ActivateGroup");
-            group2.add(rbItem);
-            submenu.add(rbItem);
-        }
-        add(submenu);
         item = new JMenuItem("Save image as png...");
         item.setActionCommand("Save image as png...");
         item.addActionListener(this);
@@ -89,6 +80,16 @@ public class RightClickMenu extends JPopupMenu
         item.setActionCommand("review");
         item.addActionListener(this);
 //        add(item);
+        ButtonGroup group2 = new ButtonGroup();
+        groupSubmenu = new JMenu("Display groups...");
+        for (int i=0; i < s.Groups.size(); i++) {
+            rbItem = new JRadioButtonMenuItem(((Group)s.Groups.get(i)).Name);
+            rbItem.addActionListener(this);
+            rbItem.setActionCommand("ActivateGroup");
+            group2.add(rbItem);
+            groupSubmenu.add(rbItem);
+        }
+        add(groupSubmenu);
     }
     
     public void actionPerformed(ActionEvent e){
@@ -123,7 +124,21 @@ public class RightClickMenu extends JPopupMenu
         else if (command.equals("clear")) {}
     }
     
-
+    public void refresh(){
+        remove(groupSubmenu);
+        ButtonGroup group2 = new ButtonGroup();
+        JRadioButtonMenuItem rbItem;        
+        groupSubmenu = new JMenu("Display groups...");
+        for (int i=0; i < s.Groups.size(); i++) {
+            rbItem = new JRadioButtonMenuItem(((Group)s.Groups.get(i)).Name);
+            rbItem.addActionListener(this);
+            rbItem.setActionCommand("ActivateGroup");
+            group2.add(rbItem);
+            groupSubmenu.add(rbItem);
+        }
+        add(groupSubmenu);
+    }
+    
     public void xall(){
         tbp.resetSliders();
         vp.x = new Vector3D(0, vp.boxSize*0.5, 0);

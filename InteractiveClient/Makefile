@@ -1,11 +1,12 @@
-CLASSES = CcsServer.class CcsThread.class Vector3D.class Config.class PngEncoder.class Simulation.class ConnectFrame.class ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class Simulation.class NameValue.class ColorBarPanel.class ToolBarPanel.class ViewPanel.class RightClickMenu.class RotateSlider.class RotatedViewFrame.class MovieMakerFrame.class SelectGroupFrame.class SelectGroupPanel.class Family.class Group.class GroupPiece.class ActivateGroup.class
+CLASSES = CcsServer.class CcsThread.class Vector3D.class Config.class PngEncoder.class Simulation.class ConnectFrame.class ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class Simulation.class NameValue.class ColorBarPanel.class ToolBarPanel.class ViewPanel.class RightClickMenu.class RotateSlider.class RotatedViewFrame.class MovieMakerFrame.class SelectGroupFrame.class SelectGroupPanel.class Family.class Group.class GroupPiece.class ActivateGroup.class Salsa.class AuthenticationRequest.class ListSimulations.class
 
-TARGET = InteractiveClient
+TARGET = Salsa
 VERSION = 0.1
 all:: $(TARGET).jar
 
 $(TARGET).jar: Manifest $(CLASSES)
 	jar cmf Manifest $@ *.class
+	tar zcf salsa.tar.gz $@ salsa
 
 .SUFFIXES: .java .class
 

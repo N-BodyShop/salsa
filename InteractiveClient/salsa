@@ -1,0 +1,4 @@
+#!/bin/csh
+
+ssh squall.astro.washington.edu "cd ~gwl/public/ResolutionServer-0.2-alpha ; ./run_server.sh +p4" |tail -1 | xargs java -jar Salsa.jar
+ssh squall.astro.washington.edu pkill charmrun

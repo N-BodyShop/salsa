@@ -30,7 +30,7 @@ public class NameValue extends JPanel{
         setBorder(BorderFactory.createEmptyBorder(2,10,2,10));
 
         JLabel nameLabel = new JLabel(name);
-        valueField = new JTextField(8);
+        valueField = new JTextField(12);
 
         add(nameLabel,BorderLayout.WEST);
         add(valueField,BorderLayout.EAST);

@@ -26,6 +26,7 @@ public class ToolBarPanel extends JPanel
         s = sim;
         vp = viewP;
         vp.rcm.tbp = this;
+        System.out.println("Set toolbar in right click menu");
     
         setLayout( new BoxLayout(this,BoxLayout.X_AXIS) );
         
@@ -47,7 +48,7 @@ public class ToolBarPanel extends JPanel
         JToolBar middleBar = new JToolBar();
         middleBar.setLayout( new GridLayout(3,1) );
         JButton reColor = new JButton("ReColor");
-        reColor.setActionCommand("recolor");
+        reColor.setActionCommand("recolor image");
         reColor.addActionListener(this);
         JCheckBox fixO = new JCheckBox("Fix origin for rotation");
         fixO.setActionCommand("fixo");

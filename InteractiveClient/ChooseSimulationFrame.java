@@ -78,7 +78,7 @@ public class ChooseSimulationFrame extends JFrame
         }
         public void handleReply(byte[] data) {
             String reply = new String(data);
-            System.out.println(reply);
+ //           System.out.println(reply);
             int index = -1;
             int lastindex = 0;
             index = reply.indexOf(",",lastindex);
