@@ -6,6 +6,8 @@
 #include <set>
 #include <iterator>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include <popt.h>
 
 #include "pup_network.h"
@@ -21,7 +23,6 @@ using namespace SimulationHandling;
 int verbosity;
 
 Main::Main(CkArgMsg* m) {
-	cout << "Started main!" << endl;
 	verbosity = 0;
 	
 	poptOption optionsTable[] = {
@@ -32,7 +33,7 @@ Main::Main(CkArgMsg* m) {
 	
 	poptContext context = poptGetContext("ResolutionServer", m->argc, const_cast<const char **>(m->argv), optionsTable, 0);
 	
-	poptSetOtherOptionHelp(context, " [OPTION ...] simulation_list_file");
+	poptSetOtherOptionHelp(context, " [OPTION ...] simulation_file");
 	
 	int rc;
 	while((rc = poptGetNextOpt(context)) >= 0) {
@@ -66,6 +67,9 @@ Main::Main(CkArgMsg* m) {
 	
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;
+	
+	//if(verbosity > 2)
+	//	cout << "Started at " << boost::posix_time::second_clock::local_time() << endl;
 	
 	Simulation* sim = new SiXFormatReader(fname);
 	if(sim->size() == 0) {
@@ -101,8 +105,7 @@ Main::Main(CkArgMsg* m) {
 	
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
-	CcsRegisterHandler("SetDefaultColors", CkCallback(CkIndex_Main::defaultColor(0), thishandle));
-	CcsRegisterHandler("ChooseColorValue", CkCallback(CkIndex_Main::chooseColorValue(0), thishandle));
+	CcsRegisterHandler("CreateColoring", CkCallback(CkIndex_Main::makeColoring(0), thishandle));
 	CcsRegisterHandler("ShutdownServer", CkCallback(CkIndex_Main::shutdownServer(0), thishandle));
 	CcsRegisterHandler("SpecifyBox", CkCallback(CkIndex_MetaInformationHandler::specifyBox(0), metaProxy));
 	CcsRegisterHandler("ClearBoxes", CkCallback(CkIndex_MetaInformationHandler::clearBoxes(0), metaProxy));
@@ -112,9 +115,11 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), thishandle));
 	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
 	CcsRegisterHandler("Center", CkCallback(CkIndex_Main::calculateDepth(0), thishandle));
-	CcsRegisterHandler("CreateGroup", CkCallback(CkIndex_Main::createGroup(0), thishandle));
+	CcsRegisterHandler("CreateGroup", CkCallback(CkIndex_Main::makeGroup(0), thishandle));
 	CcsRegisterHandler("ActivateGroup", CkCallback(CkIndex_Main::activateGroup(0), thishandle));
 	CcsRegisterHandler("DrawVectors", CkCallback(CkIndex_Main::drawVectors(0), thishandle));
+	CcsRegisterHandler("GetAttributeInformation", CkCallback(CkIndex_Worker::getAttributeInformation(0), CkArrayIndex1D(0), workers));
+	CcsRegisterHandler("GetColoringInformation", CkCallback(CkIndex_Worker::getColoringInformation(0), CkArrayIndex1D(0), workers));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -154,45 +159,31 @@ void Main::startVisualization(CkReductionMsg* m) {
 	//cfg.moreVerbose();
     liveVizInit(cfg, workers, CkCallback(CkIndex_Worker::generateImage(0), workers));
 	
-	Worker* w = workers[0].ckLocal();
-	if(w) {
-		ostringstream oss;
-		oss << static_cast<int>(w->startColor) << "," << w->sim->size() << ",";
-		for(SimulationHandling::Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter) {
-			oss << iter->first << "," << iter->second.attributes.size() << ",";
-			for(SimulationHandling::AttributeMap::iterator attrIter = iter->second.attributes.begin(); attrIter != iter->second.attributes.end(); ++attrIter) {
-				if(attrIter->first == "color")
-					oss << "family,";
-				else
-					oss << attrIter->first << ",";
-			}
-		}
-		const string& reply = oss.str();
-		CcsSendDelayedReply(delayedReply, reply.length(), reply.c_str());
-
+	unsigned char success = 1;
+	CcsSendDelayedReply(delayedReply, 1, &success);
+	if(verbosity)
 		cerr << "Ready for visualization" << endl;
-	} else
-		cerr << "How the hell did this happen?!" << endl;
 }
 
-void Main::defaultColor(CkCcsRequestMsg* m) {
-	//workers.defaultColor(CkCallback(m->reply));
-	workers.defaultColor(CkCallbackResumeThread());
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
+void Main::makeColoring(CkCcsRequestMsg* m) {
+	workers.makeColoring(string(m->data, m->length), CkCallback(CkIndex_Main::coloringMade(0), thishandle));
+	//doing this is dangerous, could reset delayedReply before it's used by the next handler in the chain
+	delayedReply = m->reply;
 	delete m;
 }
 
-void Main::chooseColorValue(CkCcsRequestMsg* m) {
-	//workers.chooseColorValue(string(m->data, m->length), CkCallback(m->reply));
-	cout << "Color spec: \"" << string(m->data, m->length) << "\"" << endl;
-	workers.chooseColorValue(string(m->data, m->length), CkCallbackResumeThread());
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
+void Main::coloringMade(CkReductionMsg* m) {
+	assert(sizeof(int) == m->getSize());
+	int value = *static_cast<int *>(m->getData());
+	ostringstream oss;
+	oss << value;
+	string result = oss.str();
+	CcsSendDelayedReply(delayedReply, result.length(), result.c_str());
 	delete m;
 }
 
 void Main::shutdownServer(CkCcsRequestMsg* m) {
+	cerr << "Quitting" << endl;
 	unsigned char success = 1;
 	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;
@@ -255,17 +246,18 @@ void Main::depthCalculated(CkReductionMsg* m) {
 			z = &(potPair->second);
 			break;
 	}
-	PUP::toNetwork p;
-	p | *z;
-	CcsSendDelayedReply(delayedReply, sizeof(double), z);
+	ostringstream oss;
+	oss << *z;
+	string result = oss.str();
+	CcsSendDelayedReply(delayedReply, result.length(), result.c_str());
 	delete m;
 }
 
-void Main::createGroup(CkCcsRequestMsg* m) {
-	string s(m->data, m->length);
-	workers.createGroup(s, CkCallbackResumeThread());
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
+void Main::makeGroup(CkCcsRequestMsg* m) {
+	//coloringMade does what we want, just use it
+	workers.makeGroup(string(m->data, m->length), CkCallback(CkIndex_Main::coloringMade(0), thishandle));
+	//doing this is dangerous, could reset delayedReply before it's used by the next handler in the chain
+	delayedReply = m->reply;
 	delete m;
 }
 

@@ -22,12 +22,6 @@ std::string trim(const std::string& s) {
 	return trimmed;
 }
 
-bool toDouble(const std::string& s, double& d) {
-	std::istringstream iss(s);
-	iss >> d;
-	return iss;
-}
-
 template <typename T>
 bool extract(const std::string& s, T& value) {
 	std::istringstream iss(s);
@@ -53,6 +47,8 @@ std::list<std::string> splitString(const std::string& s, const char c = ',') {
 
 using namespace std;
 using namespace SimulationHandling;
+
+const string Worker::coloringPrefix = "__internal_coloring";
 
 void Worker::loadSimulation(const std::string& simulationName, const CkCallback& cb) {
 	if(MetaInformationHandler* meta = metaProxy.ckLocalBranch()) {
@@ -103,18 +99,23 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		boundingBox.grow(arr.getMaxValue(Type2Type<Vector3D<float> >()));
 	}
 	
+	
 	//create color attribute for all families
 	byte familyColor = 2;
-	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+	Coloring c;
+	c.name = "Family Colors";
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
+		c.activeFamilies.insert(iter->first);
 		byte* colors = new byte[iter->second.count.numParticles];
-		for(u_int64_t i = 0; i < iter->second.count.numParticles; ++i)
-			colors[i] = familyColor;
-		familyColor++;
-		iter->second.addAttribute("color", colors);
+		memset(colors, familyColor, iter->second.count.numParticles);
+		iter->second.addAttribute(coloringPrefix + c.name, colors);
 	}
+	colorings.push_back(c);
 	startColor = familyColor;
 	
+	groupNames.push_back("All");
 	activeGroupName = "All";
+	
 	drawVectors = false;
 	vectorScale = 0.01;
 	
@@ -339,10 +340,19 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	
 	SimplePredicate* pred = new SimplePredicate;
 	
+	Coloring& c = colorings[req.coloring];
+	activeGroupName = groupNames[static_cast<int>(req.maxZ)];
+	
 	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-		//Vector3D<float>* positions = any_cast<TypedArray<Vector3D<float> > >(simIter->second.getAttribute("position")).data;
+		//don't try to draw inactive families
+		if(c.activeFamilies.find(simIter->first) == c.activeFamilies.end())
+			continue;
+		
 		Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
-		byte* colors = simIter->second.getAttribute("color", Type2Type<byte>());
+		byte* colors = simIter->second.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
+		//if the color doesn't exist, use the family color
+		if(colors == 0)
+			colors = simIter->second.getAttribute(coloringPrefix + "familyColor", Type2Type<byte>());
 		if(activeGroupName != "All") {
 			ParticleGroup& activeGroup = simIter->second.groups[activeGroupName];
 			if(thisIndex == 0)
@@ -418,7 +428,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	delete pred;
 	//XXX removed active region drawing from here
-	
+	/*
 	if(thisIndex == 0) {
 		if(meta->boxes.size() > 0) {
 			//draw boxes onto canvas
@@ -450,7 +460,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			}
 		}
 	}
-
+	*/
 	double stop = CkWallTimer();
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, max_image_data);
 	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
@@ -571,111 +581,206 @@ void Worker::assignColors(const unsigned int dimensions, byte* colors, void* val
 	}
 }
 
-void Worker::defaultColor(const CkCallback& cb) {
-	byte familyColor = startColor - sim->size();
-	byte* colors = 0;
-	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
-		colors = iter->second.getAttribute("color", Type2Type<byte>());
-		//color particles by the family they're in
-		memset(colors, familyColor, iter->second.count.numParticles);
-		++familyColor;
+/*
+class ColoringVisitor : public static_visitor<> {
+	double minValue, maxValue;
+	double invdelta;
+	bool beLogarithmic;
+	Clipping clipping;
+	byte minColor, maxColor;
+public:
+		
+	ColoringVisitor(double minVal, double maxVal, bool beLog, Clipping clip, byte minC, byte maxC) : minValue(minVal), maxValue(maxVal), invdelta(1.0 / (maxVal - minVal)), beLogarithmic(beLog), clipping(clip), minColor(minC), maxColor(maxC) { }
+
+	//needed, but unused
+	template <typename T, typename U>
+	void operator()(T&, U&) const { }
+	
+	//this visitor can only be applied when the second operand is an array of color values (bytes)
+	template <typename T>
+	void operator()(ArrayWithLimits<T>& attribute, ArrayWithLimits<byte>& colors) const {
+		typename ArrayWithLimits<byte>::iterator colorIter = colors.begin();
+		double value = 0;
+		for(typename ArrayWithLimits<T>::iterator iter = arr.begin(); iter != arr.end(); ++iter, ++colorIter) {
+			value = *iter;
+			if(beLogarithmic) {
+				if(value == 0) {
+					*colorIter = 0;
+					continue;
+				}
+				value = log10(value);
+			}
+			value = (value - minValue) * invdelta;
+			if(value < 0) {
+				if(clipping == both || clipping == low)
+					*colorIter = 0;
+				else
+					*colorIter = minColor;
+			} else if(value >= 1) {
+				if(clipping == both || clipping == high)
+					*colorIter = 0;
+				else
+					*colorIter = maxColor;
+			} else
+				*colorIter = minColor + static_cast<byte>((1 + maxColor - minColor) * value);
+		}
 	}
-	contribute(0, 0, CkReduction::concat, cb);
+
+	//for vector quantities use the length of the vector
+	template <typename T>
+	void operator()(ArrayWithLimits<Vector3D<T> >& attribute, ArrayWithLimits<byte>& colors) const {
+		typename ArrayWithLimits<byte>::iterator colorIter = colors.begin();
+		double value = 0;
+		for(typename ArrayWithLimits<Vector3D<T> >::iterator iter = arr.begin(); iter != arr.end(); ++iter, ++colorIter) {
+			value = iter->length();
+			if(beLogarithmic) {
+				if(value == 0) {
+					*colorIter = 0;
+					continue;
+				}
+				value = log10(value);
+			}
+			value = (value - minValue) * invdelta;
+			if(value < 0) {
+				if(clipping == both || clipping == low)
+					*colorIter = 0;
+				else
+					*colorIter = minColor;
+			} else if(value >= 1) {
+				if(clipping == both || clipping == high)
+					*colorIter = 0;
+				else
+					*colorIter = maxColor;
+			} else
+				*colorIter = minColor + static_cast<byte>((1 + maxColor - minColor) * value);
+		}
+	}
+};
+
+void Worker::createNewColoring(const std::string& specification, const CkCallback& cb) {
+	//decode specification, get colorName, attributeName, minValue, maxValue, beLogarithmic
+	
+	ColoringVisitor coloring(minValue, maxValue, beLogarithmic, startColor, 255)
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+		AttributeMap::iterator attrIter = iter->second.attributes.find(attributeName);
+		if(attrIter != iter->second.attributes.end()) {
+			variant_attribute_type color_variant(ArrayWithLimits<byte>(new byte[iter->second.count.numParticles], iter->second.count.numParticles));
+			apply_visitor(coloring, attrIter->second, color_variant);
+			iter->second.addAttribute(colorName, color_variant);
+		}
+	}
+}
+*/
+
+Coloring::Coloring(const string& s) {
+	infoKnown = false;
+	
+	list<string> args(splitString(s));
+	assert(args.size() >= 7);
+	
+	list<string>::iterator iter = args.begin();
+	
+	name = *iter;
+	
+	beLogarithmic = false;
+	if(*++iter == "logarithmic")
+		beLogarithmic = true;
+	
+	attributeName = *++iter;
+	
+	extract(*++iter, minValue);
+	extract(*++iter, maxValue);
+	
+	++iter;
+	clip = none;
+	if(*iter == "cliplow")
+		clip = low;
+	else if(*iter == "cliphigh")
+		clip = high;
+	else if(*iter == "clipboth")
+		clip = both;
+	
+	activeFamilies.insert(++iter, args.end());
+	
+	infoKnown = true;
 }
 
-void Worker::chooseColorValue(const std::string& specification, const CkCallback& cb) {
-	list<string> args = splitString(specification);
-	if(args.size() >= 6) {
-		list<string>::iterator iter = args.begin();
+class NamePredicate {
+	string name;
+public:
+	NamePredicate(const string& s) : name(s) { }
 
-		bool beLogarithmic = false;
-		if(*iter == "logarithmic")
-			beLogarithmic = true;
+	template <typename T>
+	bool operator()(const T& val) const {
+		return val.name == name;
+	}
+};
 
-		string& currentAttribute = *++iter;
-
-		double minVal, maxVal;
-		if(extract(*++iter, minVal) && extract(*++iter, maxVal)) {
-
-			clipping clip = none;
-			++iter;
-			if(*iter == "cliplow")
-				clip = low;
-			else if(*iter == "cliphigh")
-				clip = high;
-			else if(*iter == "clipboth")
-				clip = both;
-
-			set<string> activeFamilies(++iter, args.end());
-
-			if(verbosity > 2 && thisIndex == 0) {
-				cout << "Re-coloring using " << currentAttribute << " from " << minVal << " to " << maxVal;
-				if(beLogarithmic)
-					cout << ", logarithmically" << endl;
-				else
-					cout << ", linearly" << endl;
-			}
-
-			byte familyColor = startColor - sim->size();
-			for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
-				byte* colors = iter->second.getAttribute("color", Type2Type<byte>());
-				if(activeFamilies.count(iter->first) != 0) { //it's active
-					AttributeMap::iterator attrIter = iter->second.attributes.find(currentAttribute);
-					if(attrIter != iter->second.attributes.end()) {	
-						if(attrIter->second.length == 0)
-							sim->loadAttribute(iter->first, currentAttribute, iter->second.count.numParticles, iter->second.count.startParticle);
-						void* values = iter->second.attributes[currentAttribute].data;
-						if(values != 0) {
-							switch(attrIter->second.code) {
-								case int8:
-									assignColors<char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case uint8:
-									assignColors<unsigned char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case int16:
-									assignColors<short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case uint16:
-									assignColors<unsigned short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case int32:
-									assignColors<int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case uint32:
-									assignColors<unsigned int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case int64:
-									assignColors<int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case uint64:
-									assignColors<u_int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case float32:
-									assignColors<float>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								case float64:
-									assignColors<double>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic, clip);
-									break;
-								default:
-									break;
-							}
-						}
-					} else {
-						//color particles by the family they're in
-						memset(colors, familyColor, iter->second.count.numParticles);
+void Worker::makeColoring(const std::string& specification, const CkCallback& cb) {
+	Coloring c(specification);
+	
+	int index = 0;
+	vector<Coloring>::iterator coloringIter = find_if(colorings.begin(), colorings.end(), NamePredicate(c.name));
+	if(coloringIter != colorings.end()) {
+		*coloringIter = c;
+		index = coloringIter - colorings.begin();
+	} else {
+		colorings.push_back(c);
+		index = colorings.size() - 1;
+	}
+		
+	byte familyColor = startColor - sim->size();
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
+		if(c.activeFamilies.count(iter->first) != 0) { //it's active
+			AttributeMap::iterator attrIter = iter->second.attributes.find(c.attributeName);
+			if(attrIter != iter->second.attributes.end()) {	//this family has the desired attribute
+				byte* colors = new byte[iter->second.count.numParticles];
+				if(attrIter->second.length == 0)
+					sim->loadAttribute(iter->first, c.attributeName, iter->second.count.numParticles, iter->second.count.startParticle);
+				void* values = iter->second.attributes[c.attributeName].data;
+				if(values != 0) {
+					switch(attrIter->second.code) {
+						case int8:
+							assignColors<char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case uint8:
+							assignColors<unsigned char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case int16:
+							assignColors<short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case uint16:
+							assignColors<unsigned short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case int32:
+							assignColors<int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case uint32:
+							assignColors<unsigned int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case int64:
+							assignColors<int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case uint64:
+							assignColors<u_int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case float32:
+							assignColors<float>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						case float64:
+							assignColors<double>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
+							break;
+						default:
+							break;
 					}
-				} else { //this family is not active, make it black
-					memset(colors, 0, iter->second.count.numParticles);
+					iter->second.addAttribute(coloringPrefix + c.name, colors);
 				}
 			}
-
-			if(verbosity > 3 && thisIndex == 0)
-				cout << "Re-colored particles" << endl;
 		}
 	}
 	
-	contribute(0, 0, CkReduction::concat, cb);
+	contribute(sizeof(int), &index, CkReduction::max_int, cb);
+	//contribute(0, 0, CkReduction::concat, cb);
 }
 
 void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
@@ -696,7 +801,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	
 	//should only use active particles to calculate this!!!!
 	
-	switch(req.code) {
+	switch(static_cast<int>(req.minZ)) {
 		case 0: { //average of all pixels in frame	
 			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
@@ -769,22 +874,31 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	}
 }
 
-void Worker::createGroup(const string& s, const CkCallback& cb) {
+void Worker::makeGroup(const string& s, const CkCallback& cb) {
 	string groupName, attributeName;
 	list<string> parts = splitString(s);
 	float minValue, maxValue;
+	int index = 0;
 	if(parts.size() >= 4) {
 		list<string>::iterator iter = parts.begin();
 		groupName = *iter;
 		++iter;
 		attributeName = *iter;
 		if(extract(*++iter, minValue) && extract(*++iter, maxValue)) {
-			if(thisIndex == 0)
+			if(verbosity > 2 && thisIndex == 0)
 				cerr << "Defining group " << groupName << " on attribute " << attributeName << " from " << minValue << " to " << maxValue << endl;
+			vector<string>::iterator groupIter = find(groupNames.begin(), groupNames.end(), groupName);
+			if(groupIter != groupNames.end())
+				index = groupIter - groupNames.begin();
+			else {
+				groupNames.push_back(groupName);
+				index = groupNames.size() - 1;
+			}
 			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 				sim->loadAttribute(simIter->first, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
 				ParticleGroup& g = simIter->second.createGroup(groupName, attributeName, static_cast<void *>(&minValue), static_cast<void *>(&maxValue));
-				cout << "Piece " << thisIndex << ": My part of the group includes " << g.size() << " particles" << endl;
+				if(verbosity > 3)
+					cout << "Piece " << thisIndex << ": My part of the group includes " << g.size() << " particles" << endl;
 			}
 		} else
 			cerr << "Problem getting group range values, no group created" << endl;
@@ -794,7 +908,8 @@ void Worker::createGroup(const string& s, const CkCallback& cb) {
 	if(verbosity > 2 && thisIndex == 0)
 		cout << "Created group " << groupName << endl;
 	
-	contribute(0, 0, CkReduction::concat, cb);
+	//contribute(0, 0, CkReduction::concat, cb);
+	contribute(sizeof(int), &index, CkReduction::max_int, cb);
 }
 
 void Worker::setActiveGroup(const std::string& s, const CkCallback& cb) {
@@ -820,3 +935,97 @@ void Worker::setDrawVectors(const string& s, const CkCallback& cb) {
 	
 	contribute(0, 0, CkReduction::concat, cb);
 }
+
+int makeColor(const string& s) {
+	if(s == "dark")
+		return ((190 << 16) | (200 << 8) | (255));
+	else if(s == "gas")
+		return ((255 << 16) | (63 << 8) | (63));
+	else if(s == "star")
+		return ((255 << 16) | (255 << 8) | (140));
+	else
+		return ((255 << 16) | (255 << 8) | (255));
+}
+
+template <typename T>
+string javaFormat(T x) {
+	ostringstream oss;
+	if(!(x == x))
+		oss << "NaN";
+	else if(x > numeric_limits<T>::max())
+		oss << "Infinity";
+	else if(x < -numeric_limits<T>::max())
+		oss << "-Infinity";
+	else
+		oss << x;
+	return oss.str();
+}
+
+void Worker::getAttributeInformation(CkCcsRequestMsg* m) {	
+	ostringstream oss;
+	oss << "simulationName = " << sim->name << "\n";
+	oss << "numFamilies = " << sim->size() << "\n";
+	int familyNumber = 0;
+	for(SimulationHandling::Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyNumber) {
+		ParticleFamily& family = iter->second;
+		oss << "family-" << familyNumber << ".name = " << family.familyName << "\n";
+		oss << "family-" << familyNumber << ".numParticles = " << family.count.totalNumParticles << "\n";
+		oss << "family-" << familyNumber << ".defaultColor = " << makeColor(family.familyName) << "\n";
+		int numAttributes = 0;
+		for(SimulationHandling::AttributeMap::iterator attrIter = family.attributes.begin(); attrIter != family.attributes.end(); ++attrIter) {
+			if(attrIter->first.find("__internal") != 0) {
+				oss << "family-" << familyNumber << ".attribute-" << numAttributes << ".name = " << attrIter->first << "\n";
+				TypedArray& arr = attrIter->second;
+				oss << "family-" << familyNumber << ".attribute-" << numAttributes << ".dimensionality = ";
+				if(arr.dimensions == 1)
+					oss << "scalar\n";
+				else
+					oss << "vector\n";
+				oss << "family-" << familyNumber << ".attribute-" << numAttributes << ".dataType = " << arr.code << "\n";
+				oss << "family-" << familyNumber << ".attribute-" << numAttributes << ".definition = external\n";
+				oss << "family-" << familyNumber << ".attribute-" << numAttributes << ".minScalarValue = " << javaFormat(getScalarMin(arr)) << "\n";
+				oss << "family-" << familyNumber << ".attribute-" << numAttributes << ".maxScalarValue = " << javaFormat(getScalarMax(arr)) << "\n";
+				++numAttributes;
+			}
+		}
+		oss << "family-" << familyNumber << ".numAttributes = " << numAttributes << "\n";
+	}		
+	string result(oss.str());
+	CcsSendDelayedReply(m->reply, result.length(), result.c_str());
+	delete m;
+}
+
+void Worker::getColoringInformation(CkCcsRequestMsg* m) {	
+	ostringstream oss;
+	oss << "numColorings = " << colorings.size() << "\n";
+	for(int i = 0; i < colorings.size(); ++i) {
+		oss << "coloring-" << i << ".name = " << colorings[i].name << "\n";
+		oss << "coloring-" << i << ".id = " << i << "\n";
+		oss << "coloring-" << i << ".infoKnown = " << (colorings[i].infoKnown ? "true\n" : "false\n");
+		if(colorings[i].infoKnown) {
+			oss << "coloring-" << i << ".activeFamilies = ";
+			copy(colorings[i].activeFamilies.begin(), colorings[i].activeFamilies.end(), ostream_iterator<string>(oss, ","));
+			oss << "\n";
+			oss << "coloring-" << i << ".logarithmic = " << (colorings[i].beLogarithmic ? "true\n" : "false\n");
+			oss << "coloring-" << i << ".clipping = ";
+			switch(colorings[i].clip) {
+				case low: oss << "cliplow\n"; break;
+				case high: oss << "cliphigh\n"; break;
+				case both: oss << "clipboth\n"; break;
+				case none: oss << "clipnone\n"; break;
+			}
+			oss << "coloring-" << i << ".minValue = " << colorings[i].minValue << "\n";
+			oss << "coloring-" << i << ".maxValue = " << colorings[i].maxValue << "\n";
+		}
+	}
+	string result(oss.str());
+	CcsSendDelayedReply(m->reply, result.length(), result.c_str());
+	delete m;
+}
+/*
+void Worker::getGroupInformation(CkCcsRequestMsg* m) {	
+
+	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
+	delete m;
+}
+*/

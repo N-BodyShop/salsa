@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 #include "pup_stl.h"
 #include "liveViz.h"
@@ -17,6 +18,22 @@
 #include "Sphere.h"
 #include "Box.h"
 #include "Simulation.h"
+
+enum clipping { low, high, both, none };
+
+struct Coloring {
+	std::string name;
+	bool infoKnown;
+	std::set<std::string> activeFamilies;
+	std::string attributeName;
+	bool beLogarithmic;
+	clipping clip;
+	double minValue;
+	double maxValue;
+	
+	Coloring() : infoKnown(false), beLogarithmic(false), clip(none), minValue(0), maxValue(0) { }
+	Coloring(const std::string& s);
+};
 
 inline void operator|(PUP::er& p, liveVizRequest3d& req) {
 	p | req.code;
@@ -42,7 +59,7 @@ CkVector3d switchVector(const Vector3D<T2>& v) {
 
 class MyVizRequest {
 public:
-	int code;
+	int coloring;
 	int width;
 	int height;
 	Vector3D<double> x;
@@ -52,10 +69,11 @@ public:
 	double minZ;
 	double maxZ;
 	
+	
 	MyVizRequest() : width(0), height(0) { }
 	
 	MyVizRequest(const liveVizRequest3d& req) {
-		code = req.code;
+		coloring = req.code;
 		width = req.wid;
 		height = req.ht;
 		x = switchVector<double>(req.x);
@@ -67,7 +85,7 @@ public:
 	}
 	
 	friend std::ostream& operator<< (std::ostream& os, const MyVizRequest& r) {
-		return os << "code: " << r.code
+		return os << "coloring: " << r.coloring
 				<< "\nwidth: " << r.width
 				<< "\nheight: " << r.height
 				<< "\nx axis: " << r.x
@@ -79,7 +97,7 @@ public:
 };
 
 inline void operator|(PUP::er& p, MyVizRequest& req) {
-	p | req.code;
+	p | req.coloring;
 	p | req.width;
 	p | req.height;
 	p | req.x;
@@ -123,8 +141,8 @@ public:
 	
 	void listSimulations(CkCcsRequestMsg* m);
 	void chooseSimulation(CkCcsRequestMsg* m);
-	void defaultColor(CkCcsRequestMsg* m);
-	void chooseColorValue(CkCcsRequestMsg* m);
+	void makeColoring(CkCcsRequestMsg* m);
+	void coloringMade(CkReductionMsg* m);
 	void startVisualization(CkReductionMsg* m);
 	void shutdownServer(CkCcsRequestMsg* m);
 	void activate(CkCcsRequestMsg* m);
@@ -132,7 +150,7 @@ public:
 	void statsCollected(CkReductionMsg* m);
 	void calculateDepth(CkCcsRequestMsg* m);
 	void depthCalculated(CkReductionMsg* m);
-	void createGroup(CkCcsRequestMsg* m);
+	void makeGroup(CkCcsRequestMsg* m);
 	void activateGroup(CkCcsRequestMsg* m);
 	void drawVectors(CkCcsRequestMsg* m);
 	
@@ -168,9 +186,10 @@ class Worker : public ArrayElement1D {
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
 	byte startColor;
+	static const std::string coloringPrefix;
+	std::vector<Coloring> colorings;
 	std::string activeGroupName;
-	
-	enum clipping { low, high, both, none };
+	std::vector<std::string> groupNames;
 	
 	std::string drawVectorAttributeName;
 	bool drawVectors;
@@ -198,12 +217,14 @@ public:
 	
 	void collectStats(const std::string& id, const CkCallback& cb);
 	
-	void defaultColor(const CkCallback& cb);
-	void chooseColorValue(const std::string& specification, const CkCallback& cb);
+	void makeColoring(const std::string& specification, const CkCallback& cb);
 	void calculateDepth(MyVizRequest req, const CkCallback& cb);
-	void createGroup(const std::string& s, const CkCallback& cb);
+	void makeGroup(const std::string& s, const CkCallback& cb);
 	void setActiveGroup(const std::string& s, const CkCallback& cb);
 	void setDrawVectors(const std::string& s, const CkCallback& cb);
+
+	void getAttributeInformation(CkCcsRequestMsg* m);
+	void getColoringInformation(CkCcsRequestMsg* m);
 };
 
 #endif //RESOLUTIONSERVER_H

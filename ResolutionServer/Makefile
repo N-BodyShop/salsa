@@ -8,8 +8,8 @@ CXX = $(CHARMC)
 CC = $(CXX)
 
 TARGET = ResolutionServer
-VERSION = 0.2-beta
-all:: $(TARGET)
+VERSION = 0.2-beta2
+all: $(TARGET)
 
 $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
 
@@ -22,19 +22,21 @@ Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../Simu
 %.decl.h %.def.h : %.ci
 	$(CHARMC) $<
 
-docs::
+.PHONY: all clean docs dist binarydist
+
+docs:
 	doxygen $(TARGET).doxygen
 
-dist::
+dist:
 	mkdir $(TARGET)-$(VERSION)
 	cp Makefile $(TARGET).doxygen *.h *.cpp *.ci $(TARGET)-$(VERSION)/
 	tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
 	rm -Rf $(TARGET)-$(VERSION)
 
-clean::
+clean:
 	rm -f core* *.o *~ $(TARGET) *.decl.h *.def.h charmrun conv-host 
 
-binarydist::
+binarydist: all
 	mkdir -p $(HOME)/public/$(TARGET)-$(VERSION)
 	cp charmrun $(TARGET) simlist nodelist run_server.sh wrapper $(HOME)/public/$(TARGET)-$(VERSION)
 	#mkdir $(TARGET)-$(VERSION)
