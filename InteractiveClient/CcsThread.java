@@ -39,7 +39,12 @@ class CcsThread implements Runnable {
 	public static class request extends message {
 		int onPE = 0;
 		String handler;
-
+		
+		public request(String handler_, String data_) {
+			super(data_.getBytes());
+			handler = handler_;
+		}
+			
 		public request(String handler_, byte[] data_) {
 			super(data_);
 			handler=handler_;

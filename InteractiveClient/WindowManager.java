@@ -109,6 +109,15 @@ public class WindowManager extends WindowAdapter {
 		frame.setVisible(true);
 	}
 	
+	public void addCodeFrame() {
+		JFrame frame = new JFrame("Salsa: Code");
+		frame.getContentPane().add(new CodePanel(this));
+		frame.addWindowListener(this);
+		windowList.add(frame);
+		frame.pack();
+		frame.setVisible(true);
+	}
+	
 	public void windowClosing(WindowEvent e) {
 		Object source = e.getSource();
 		if(source instanceof Manager) {

@@ -46,6 +46,10 @@ public class RightClickMenu extends JPopupMenu {
 
 		addSeparator();
 
+		item = new JMenuItem("Write and execute code ...");
+		item.setActionCommand("executeCode");
+		item.addActionListener(view);
+		add(item);
 		item = new JMenuItem("Manage attributes ...");
 		item.setActionCommand("manageAttributes");
 		item.addActionListener(view);

@@ -5,7 +5,8 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 	ToolBarPanel.class ViewListener.class ViewEvent.class \
 	AttributeManager.class RotateSlider.class ColoringManager.class \
 	SalsaRequests.class ChooseSimulationFrame.class \
-	Salsa.class DelimitedStringEnumeration.class GroupManager.class
+	Salsa.class DelimitedStringEnumeration.class GroupManager.class \
+	CodePanel.class
 	
 #	ConnectFrame.class \
 #	ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class \

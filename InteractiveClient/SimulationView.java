@@ -18,9 +18,13 @@ public class SimulationView extends JLabel
 	double boxSize;
 	double zoomFactor;
 	int activeColoring = 0;
-	int activeGroup = 0;
+	//int activeGroup = 0;
+	String activeGroup = "All";
 	int centeringMethod = 2;
 	int radius = 0;
+	double minMass = 0;
+	double maxMass = 1;
+	int doSplatter = 0;
 	
 	int height, width;
 	MemoryImageSource source;
@@ -127,6 +131,8 @@ public class SimulationView extends JLabel
 			windowManager.groupManager.setVisible(true);
 		else if(command.equals("screenCapture"))
 			writePng();
+		else if(command.equals("executeCode"))
+			windowManager.addCodeFrame();
 	}
 	
 	//rotate the top half toward you, bottom away
@@ -253,7 +259,12 @@ public class SimulationView extends JLabel
 			dos.writeDouble(origin.y);
 			dos.writeDouble(origin.z);
 			dos.writeInt(centeringMethod);
-			dos.writeInt(activeGroup);
+			//dos.writeInt(activeGroup);
+			dos.writeInt(activeGroup.length());
+			dos.writeBytes(activeGroup);
+			dos.writeDouble(minMass);
+			dos.writeDouble(maxMass);
+			dos.writeInt(doSplatter);
 			//System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
         } catch(IOException e) {
             System.err.println("Couldn't encode request!");

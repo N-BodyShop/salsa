@@ -13,6 +13,7 @@ import java.awt.event.*;
 import java.util.*;
 import java.io.*;
 import java.net.UnknownHostException;
+import java.text.*;
 
 public class ToolBarPanel extends JPanel 
 						  implements ActionListener, 
@@ -24,6 +25,9 @@ public class ToolBarPanel extends JPanel
 	RotateSlider leftRightSlider;
 	RotateSlider clockwiseSlider;
     //JTextField zoomFactor;
+	JFormattedTextField minMassText;
+	JFormattedTextField maxMassText;
+	JCheckBox splatterCheck;
 	
 	public ToolBarPanel(WindowManager wm, SimulationView v) {
 		windowManager = wm;
@@ -101,10 +105,31 @@ public class ToolBarPanel extends JPanel
         
 		view.addViewListener(this);
 		
-        //add(middleBar);
+		DecimalFormat format = new DecimalFormat("0.######E0");
+		minMassText = new JFormattedTextField(format);
+		minMassText.setValue(new Double(0));
+		minMassText.setActionCommand("changeMassRange");
+		minMassText.addActionListener(this);
+		minMassText.setColumns(10);
+		maxMassText = new JFormattedTextField(format);
+		maxMassText.setValue(new Double(1E-7));
+		maxMassText.setActionCommand("changeMassRange");
+		maxMassText.addActionListener(this);
+		maxMassText.setColumns(10);
+		splatterCheck = new JCheckBox("Splatter Visual", false);
+		splatterCheck.setActionCommand("changeMassRange");
+		splatterCheck.addActionListener(this);
+		//arrowCheck = new JCheckBox("Velocity Arrows", false);
+		//JButton butt = new JButton("Update mass range");
+		//butt.addActionListener(this);
+		Box b3 = new Box(BoxLayout.PAGE_AXIS);
+		b3.add(minMassText);
+		b3.add(maxMassText);
+		b3.add(splatterCheck);
+
 		add(b);
         add(sliderBar);
-
+		add(b3);
     }
 
     public void actionPerformed(ActionEvent e) {
@@ -115,7 +140,16 @@ public class ToolBarPanel extends JPanel
 			view.getNewImage();
 		} else if(command.equals("activateGroup")) {
 			System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
-			view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
+			view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).name;
+			view.getNewImage();
+		} else if(command.equals("changeMassRange")) {
+			System.out.println("Changing mass range");
+			view.minMass = ((Number) minMassText.getValue()).doubleValue();
+			view.maxMass = ((Number) maxMassText.getValue()).doubleValue();
+			System.out.println("Min mass: " + view.minMass);
+			System.out.println("Max mass: " + view.maxMass);
+			view.doSplatter = (splatterCheck.isSelected() ? 1 : 0);
+			System.out.println("Splatter? " + view.doSplatter);
 			view.getNewImage();
 		}
     }
