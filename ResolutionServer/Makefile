@@ -1,9 +1,8 @@
 STRUCTURES_PATH = ../structures
 BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I/usr/include/python2.2 -I/users/gwl/Projects/boost
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS)
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I.
 LDFLAGS += -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib -memory paranoid #-static
-BOOST_LDLIBS = -lpython2.2 -ldl -lutil -lpthread  -Wl,-rpath-link,.
-LDLIBS += -lTipsy -lpopt -module liveViz -module PythonCCS -lxerces-c $(BOOST_LDLIBS)
+LDLIBS += -lTipsy -lpopt -module liveViz -module PythonCCS -lxerces-c /usr/lib/python2.2/config/libpython2.2.a -lutil -lpthread
 
 CHARMC = $(HOME)/peak/src/charm/bin/charmc
 CXX = $(CHARMC)

@@ -65,7 +65,7 @@ Main::Main(CkArgMsg* m) {
 		return;
 	}
 
-	poptFreeContext(context);*/
+	poptFreeContext(context);
 	delete m;
 #else /*MACOSX*/
 	const char *optstring = "v";
