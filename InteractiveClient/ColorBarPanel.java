@@ -129,6 +129,10 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
             item.setActionCommand("rainbow");
             item.addActionListener(this);
             add(item);
+            item = new JMenuItem("Swap Background Black/White");
+            item.setActionCommand("swapBackground");
+            item.addActionListener(this);
+            add(item);
         }
         
         public void actionPerformed(ActionEvent e) {
@@ -139,6 +143,8 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
                 invertCM();
             else if(command.equals("rainbow"))
                 setColorModelRainbow();
+            else if(command.equals("swapBackground"))
+                swapBackground();
             cbsource.newPixels(pixels, colorModel, 0, width);
             view.redisplay(colorModel);
         }
@@ -286,6 +292,21 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
             cm_blue[i] = puke_blue[i];
         }
 
+		colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+    }
+	
+	/** Switch the background color between black and white.
+	 A white background is useful for screenshots that will be printed.
+	 */
+    private void swapBackground() {
+		if(cm_red[0] == 0) { //background is black
+			cm_red[0] = cm_green[0] = cm_blue[0] = (byte) 255;
+			puke_red[0] = puke_green[0] = puke_blue[0] = (byte) 255;
+		} else {//background is white
+			cm_red[0] = cm_green[0] = cm_blue[0] = 0;
+			puke_red[0] = puke_green[0] = puke_blue[0] = 0;
+		}
+		
 		colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
     }
 	
