@@ -77,6 +77,8 @@ class Worker : public ArrayElement1D {
 	OrientedBox<float> boundingBox;
 	vector<Box<float> > boxes;
 	vector<Sphere<double> > spheres;
+	const static byte boxColor = 255;
+	const static byte sphereColor = 255;
 public:
 	
 	Worker() : imageSize(0) { }

@@ -125,7 +125,7 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 		if(verbosity > 2)
 			cout << "Worker " << thisIndex << ": All particles have the same color" << endl;
 		for(u_int64_t i = 0; i < numParticles; ++i)
-			myParticles[i].color = numColors - 1;
+			myParticles[i].color = numColors;
 	} else {
 		if(!seekField(valfh, &xdrs, startParticle)) {
 			cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
@@ -152,11 +152,11 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 				value *= -1;
 			if(beLogarithmic) {
 				if(minValue <= 0)
-					myParticles[i].color = static_cast<byte>((numColors - 1) * log10(value - minValue + 1.0) / delta);
+					myParticles[i].color = 1 + static_cast<byte>((numColors - 1) * log10(value - minValue + 1.0) / delta);
 				else
-					myParticles[i].color = static_cast<byte>((numColors - 1) * (log10(value) - lower) / delta);
+					myParticles[i].color = 1 + static_cast<byte>((numColors - 1) * (log10(value) - lower) / delta);
 			} else
-				myParticles[i].color = static_cast<byte>((numColors - 1) * (value - minValue) / delta);
+				myParticles[i].color = 1 + static_cast<byte>((numColors - 1) * (value - minValue) / delta);
 		}
 	}
 	xdr_destroy(&xdrs);
@@ -322,7 +322,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 							for(int k = 0; k < 3; ++k) {
 								pixel = pix_x - 1 + j + req.width * (pix_y - 1 + k);
 								if(pixel < imageSize)
-									image[pixel] = 255;
+									image[pixel] = boxColor;
 								else
 									cerr << "Pixel is bad" << endl;
 							}
@@ -347,7 +347,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 						for(int k = 0; k < 3; ++k) {
 							pixel = pix_x - 1 + j + req.width * (pix_y - 1 + k);
 							if(pixel < imageSize)
-								image[pixel] = 255;
+								image[pixel] = sphereColor;
 							else
 								cerr << "Pixel is bad" << endl;
 						}
