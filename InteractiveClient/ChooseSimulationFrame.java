@@ -20,6 +20,8 @@ public class ChooseSimulationFrame extends JFrame {
 	public ChooseSimulationFrame(Vector simulationList) {
 		super("Salsa: Choose simulation");
 		
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		
 		JPanel p = new JPanel();
 		p.setBorder(BorderFactory.createTitledBorder("Available simulations"));
 		
