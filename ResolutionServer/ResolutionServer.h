@@ -186,6 +186,7 @@ public:
 	void createGroup_Family(int handle);
 	void createGroup_AttributeRange(int handle);
 	void createGroupAttributeSphere(int handle);
+	void createGroupAttributeBox(int handle);
 	void runLocalParticleCode(int handle);
 };
 
@@ -287,6 +288,14 @@ public:
 					 std::string const& attributeName,
 					 Vector3D<double> center, double size,
 					 CkCallback const& cb);
+	void createGroup_AttributeBox(std::string const& groupName,
+				      std::string const& parentGroupName,
+				      std::string const& attributeName,
+				      Vector3D<double> corner,
+				      Vector3D<double> edge1,
+				      Vector3D<double> edge2,
+				      Vector3D<double> edge3,
+				      CkCallback const& cb);
 	
 	void localParticleCode(std::string s, const CkCallback &cb);
 	int buildIterator(PyObject*, void*); // for localParticle

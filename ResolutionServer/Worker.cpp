@@ -553,7 +553,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			Vector3D<float> point;
 			float x_end, y_end, t;
 			int x0, y0, x1, y1, b;
-			for(; iter != end; ++iter) {
+			for(; *iter != *end; ++iter) {
 				point = positions[*iter] - req.o;
 				x = dot(req.x, point);
 				if(x > -1 && x < 1) {
@@ -617,7 +617,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				cout << "Mass range is from " << minMass << " to " << maxMass << endl;
 				cout << "Splatter range is from " << req.minMass << " to " << req.maxMass << endl;
 			}
-			for(; iter != end; ++iter) {
+			for(; *iter != *end; ++iter) {
 				x = dot(req.x, positions[*iter] - req.o);
 				float hpix = smoothingLengths[*iter] / delta;
 				float xbound = 1 + 2 * 2 * hpix / req.width;
@@ -635,7 +635,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				}
 			}
 		} else { //draw points only
-			for(; iter != end; ++iter) {
+			for(; *iter != *end; ++iter) {
 				x = dot(req.x, positions[*iter] - req.o);
 				if(x > -1 && x < 1) {
 					y = dot(req.y, positions[*iter] - req.o);
@@ -1361,7 +1361,7 @@ void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
 				cerr << "Masses pointer null!" << endl;
 			GroupIterator iter = g->make_begin_iterator(*famIter);
 			GroupIterator end = g->make_end_iterator(*famIter);
-			for(; iter != end; ++iter) {
+			for(; *iter != *end; ++iter) {
 				compair.first += masses[*iter];
 				compair.second += masses[*iter ] * positions[*iter];
 			}
@@ -1402,6 +1402,24 @@ void Worker::createGroup_AttributeSphere(std::string const& groupName,
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
 	boost::shared_ptr<SimulationHandling::Group> g = make_SphericalGroup(*sim, parentGroup, attributeName, center, size);
+	if(g) {
+		groups[groupName] = g;
+		result = 1;
+	}
+	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
+void Worker::createGroup_AttributeBox(std::string const& groupName,
+				      std::string const& parentGroupName,
+				      std::string const& attributeName,
+				      Vector3D<double> corner,
+				      Vector3D<double> edge1,
+				      Vector3D<double> edge2,
+				      Vector3D<double> edge3,
+				      CkCallback const& cb) {
+	int result = 0;
+	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	boost::shared_ptr<SimulationHandling::Group> g = make_BoxGroup(*sim, parentGroup, attributeName, corner, edge1, edge2, edge3);
 	if(g) {
 		groups[groupName] = g;
 		result = 1;

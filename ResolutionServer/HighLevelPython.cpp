@@ -204,6 +204,34 @@ void Main::createGroupAttributeSphere(int handle) {
 					CkCallbackResumeThread());
 }
 
+void Main::createGroupAttributeBox(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *achGroupName, *parentName, *attributeName;
+    double xCorner, yCorner, zCorner;
+    double xEdge1, yEdge1, zEdge1;
+    double xEdge2, yEdge2, zEdge2;
+    double xEdge3, yEdge3, zEdge3;
+    
+    PyArg_ParseTuple(arg, "sssdddddddddddd", &achGroupName, &parentName,
+		     &attributeName,
+		     &xCorner, &yCorner, &zCorner,
+		     &xEdge1, &yEdge1, &zEdge1,
+		     &xEdge2, &yEdge2, &zEdge2,
+		     &xEdge3, &yEdge3, &zEdge3);
+    Vector3D<double> v3dCorner(xCorner, yCorner, zCorner);
+    Vector3D<double> v3dEdge1(xEdge1, yEdge1, zEdge1);
+    Vector3D<double> v3dEdge2(xEdge2, yEdge2, zEdge2);
+    Vector3D<double> v3dEdge3(xEdge3, yEdge3, zEdge3);
+    string sGroupName(achGroupName);
+    string sParentName(parentName);
+    string sAttributeName(attributeName);
+    
+    workers.createGroup_AttributeBox(sGroupName, sParentName,
+					sAttributeName, v3dCorner,
+					v3dEdge1, v3dEdge2,v3dEdge3,
+					CkCallbackResumeThread());
+}
+
 void Main::runLocalParticleCode(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *achCode;
