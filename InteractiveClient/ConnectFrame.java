@@ -23,6 +23,7 @@ public class ConnectFrame extends JFrame
     public ConnectFrame( Connection con ){
         c = con;
         setTitle("Connect to NChilada Server");
+        setLocationRelativeTo(null);
         Container contentPane = getContentPane();
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
@@ -41,6 +42,7 @@ public class ConnectFrame extends JFrame
 
         JButton connectButton = new JButton("Connect");
         connectButton.addActionListener(this);
+        connectButton.setAlignmentX(CENTER_ALIGNMENT);
 
         contentPane.add(connectButton);
         

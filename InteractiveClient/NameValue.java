@@ -14,18 +14,19 @@ public class NameValue extends JPanel{
     JTextField valueField;
     
     public NameValue(String name, String value){
-//        setLayout( new BoxLayout(this, BoxLayout.X_AXIS) );
+        setLayout( new GridLayout(0,2) );
         setBorder(BorderFactory.createEmptyBorder(2,10,2,10));
 
-        JLabel nameLabel = new JLabel(name);
         valueField = new JTextField(value);
+        JLabel nameLabel = new JLabel(name,JLabel.LEFT);
+        nameLabel.setLabelFor(valueField);
         
         add(nameLabel,BorderLayout.WEST);
         add(valueField,BorderLayout.EAST);
     }
     
     public NameValue(String name){
-//        setLayout( new BoxLayout(this, BoxLayout.X_AXIS) );
+        setLayout( new GridLayout(0,2) );
         setBorder(BorderFactory.createEmptyBorder(2,10,2,10));
 
         JLabel nameLabel = new JLabel(name);

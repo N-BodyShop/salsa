@@ -23,7 +23,10 @@ public class ChooseSimulationFrame extends JFrame
         s = new Simulation();
     
         setTitle("Choose Simulation");
+        setLocationRelativeTo(null);
         Container contentPane = getContentPane();
+        contentPane.setLayout(new BoxLayout(contentPane, 
+                                BoxLayout.Y_AXIS));
         
         simJList = new JList( con.simlist );
         simJList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -33,9 +36,10 @@ public class ChooseSimulationFrame extends JFrame
         
         JButton chooseButton = new JButton("Choose");
         chooseButton.addActionListener(this);
+        chooseButton.setAlignmentX(CENTER_ALIGNMENT);
 
-        contentPane.add(simScrollPane, BorderLayout.NORTH);
-        contentPane.add(chooseButton,BorderLayout.SOUTH);
+        contentPane.add(simScrollPane);
+        contentPane.add(chooseButton);
         
         pack();
         setVisible(true);
