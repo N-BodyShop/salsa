@@ -118,9 +118,9 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
 
     public void mouseReleased(MouseEvent e) {
         maybeShowPopup(e);
-        if (s.groupSelecting && 
+/*        if (s.groupSelecting && 
             (e.getModifiers() == (MouseEvent.BUTTON1_MASK | InputEvent.SHIFT_MASK) ) ) {
-            repaint();
+       //     repaint();
             Graphics graph = this.getGraphics();
             graph.setColor(Color.green);
             double x = e.getX()-rect.getX();
@@ -128,7 +128,7 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
             rect.setSize((int)x, (int)y);
             graph.drawRect(rect.x,rect.y,rect.width,rect.height);
             System.out.println("Draw rectangle: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
-        }
+        }*/
     }
 
     public void mouseClicked(MouseEvent e) {
@@ -158,13 +158,13 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
     public void mouseDragged(MouseEvent e) {
         if (s.groupSelecting && 
             (e.getModifiers() == (MouseEvent.BUTTON1_MASK | InputEvent.SHIFT_MASK) ) ) {
-            repaint();
             Graphics graph = this.getGraphics();
             graph.setColor(Color.green);
             double x = e.getX()-rect.getX();
             double y = e.getY()-rect.getY();
             rect.setSize((int)x, (int)y);
             graph.drawRect(rect.x,rect.y,rect.width,rect.height);
+            repaint();
             System.out.println("Draw rectangle: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
         }
     }

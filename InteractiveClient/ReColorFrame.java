@@ -127,6 +127,7 @@ public class ReColorFrame extends JFrame
                 family = (Family)s.Families.get(key);
                 if ( family.on ){ message = message +","+ key; }
             }
+            System.out.println(message);
             s.ccs.addRequest( new ChooseColorValue( message ) );
 /*            String ll = (String)linLog.getSelectedItem();
             int type = 0;
@@ -145,6 +146,7 @@ public class ReColorFrame extends JFrame
             s.selectedClippingIndex = clipList.getSelectedIndex();            
         } else {
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
+            attrib = (String)attributeList.getSelectedItem();
             // attribute selected, so we need to find out its possible values
             s.ccs.addRequest( new ValueRange(attrib) );
         }
