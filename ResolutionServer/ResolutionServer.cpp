@@ -6,7 +6,9 @@
 #include <set>
 #include <iterator>
 
+#ifndef MACOSX
 #include <popt.h>
+#endif /*MACOSX*/
 
 #include "pup_network.h"
 
@@ -25,6 +27,7 @@ int verbosity;
 Main::Main(CkArgMsg* m) {
 	verbosity = 0;
 	
+#ifndef MACOSX
 	poptOption optionsTable[] = {
 		{"verbose", 'v', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, 0, 1, "be verbose about what's going on", "verbosity"},
 		POPT_AUTOHELP
@@ -62,8 +65,29 @@ Main::Main(CkArgMsg* m) {
 		return;
 	}
 
-	poptFreeContext(context);
+	poptFreeContext(context);*/
 	delete m;
+#else /*MACOSX*/
+	const char *optstring = "v";
+	int c;
+	while((c=getopt(m->argc,m->argv,optstring))>0){
+		if(c == -1){
+			break;
+		}
+		switch(c){
+			case 'v':
+				verbosity++;
+				break;
+		};
+	}
+	const char *fname;
+	if(optind  < m->argc){
+		fname = m->argv[optind];
+	}else{
+		cerr << "You must provide a simulation list file" << endl;
+		CkExit();
+	}
+#endif /*MACOSX*/
 	
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;

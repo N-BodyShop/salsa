@@ -10,7 +10,11 @@
 #ifndef PUP_NETWORK_H__kijldsxkjidf49807364208regu89
 #define PUP_NETWORK_H__kijldsxkjidf49807364208regu89
 
+#ifdef MACOSX
+#include <ppc/endian.h>
+#else
 #include <endian.h>
+#endif /*MACOSX*/
 #include <sys/types.h>
 
 //Network byte order is big endian, so we only have to swap on little endian machines
