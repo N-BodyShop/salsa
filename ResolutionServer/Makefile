@@ -1,6 +1,6 @@
 STRUCTURES_PATH = ../structures
 BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -DBOOST_PYTHON_DYNAMIC_LIB -finline-functions -Wno-inline -I/usr/include/python2.2 -I/users/gwl/Projects/boost
-CXXFLAGS += -g -O3 -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS)
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS)
 BOOST_LDFLAGS = -L/usr/lib/python2.2/config -L/users/gwl/Projects/boost_install/lib
 LDFLAGS += -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib $(BOOST_LDFLAGS) #-static
 BOOST_LDLIBS = -lboost_python-gcc -lpython2.2 -ldl -lutil -lpthread  -Wl,-rpath-link,.
@@ -23,7 +23,7 @@ $(TARGET): Worker.o MetaInformationHandler.o Reductions.o ResolutionServerPython
 ResolutionServer.o: PythonInstance.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
 ResolutionServerPython.o: ResolutionServer.h PythonInstance.h export_Vector3D.h
-Worker.o: PixelDrawing.cpp
+Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h
 
 %.decl.h %.def.h : %.ci
 	$(CHARMC) $<

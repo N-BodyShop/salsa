@@ -233,7 +233,7 @@ void Main::calculateDepth(CkCcsRequestMsg* m) {
 	//PUP::fromNetwork p;
 	//p | *preq;
 	//cout << "Centering request got MyVizRequest: " << *preq << endl;
-	cout << "Centering request got MyVizRequest: " << req << endl;
+	//cout << "Centering request got MyVizRequest: " << req << endl;
 	workers.calculateDepth(req, CkCallback(CkIndex_Main::depthCalculated(0), thishandle));
 	delete m;
 }

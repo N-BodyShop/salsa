@@ -119,11 +119,13 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		memset(colors, familyColor, iter->second.count.numParticles);
 		iter->second.addAttribute(coloringPrefix + c.name, colors);
 	}
+	colorings.clear();
 	colorings.push_back(c);
 	startColor = familyColor;
 	
 	//groupNames.push_back("All");
 	//activeGroupName = "All";
+	groups.clear();
 	groups["All"] = boost::shared_ptr<SimulationHandling::Group>(new AllGroup(*sim));
 	
 	drawVectors = false;
@@ -500,6 +502,11 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	float x, y;
 	unsigned int pixel;
 	
+	if(thisIndex == 0) {
+		cout << "Worker " << thisIndex << ": Number of colorings: " << colorings.size() << endl;
+		for(vector<Coloring>::iterator colorIter = colorings.begin(); colorIter != colorings.end(); ++colorIter)
+			cout << "Coloring " << (colorIter - colorings.begin()) << " is called " << colorIter->name << endl;
+	}
 	Coloring& c = colorings[req.coloring];
 	boost::shared_ptr<SimulationHandling::Group> g(groups[req.activeGroup]);
 	
@@ -573,6 +580,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			if(attrIter->second.length == 0)
 				sim->loadAttribute(*famIter, "mass", family.count.numParticles, family.count.startParticle);
 			float* masses = family.getAttribute("mass", Type2Type<float>());
+			//CoerciveExtractor<float> masses(attrIter->second);
 			if(masses == 0)
 				cerr << "Masses pointer null!" << endl;
 			string smoothingAttributeName = "softening";
@@ -589,6 +597,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			float* smoothingLengths = family.getAttribute(smoothingAttributeName, Type2Type<float>());
 			if(smoothingLengths == 0)
 				cerr << "D'oh!  smoothingLengths null!" << endl;
+			//CoerciveExtractor<float> smoothingLengths(attrIter->second);
 			
 			if(!projectedKernel.isReady())
 				initializeProjectedKernel(100);

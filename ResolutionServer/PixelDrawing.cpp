@@ -149,7 +149,7 @@ inline void splatParticle(byte* image, const int width, const int height, const 
 	int partypix = static_cast<int>(height * (1 - y) / 2);
 	int pixel = partxpix + partypix * width;
 	//is the particle contained in one pixel?
-	if(h <= delta) {
+	if(2 * h <= delta) {
 		if(pixel >= 0 && pixel < width * height)
 			image[pixel] = static_cast<byte>(min(255.0, image[pixel] + (256 - startColor) * clamp((m - minAmount) / (maxAmount - minAmount))));
 	} else {
