@@ -41,7 +41,7 @@ public class ColoringManager extends Manager
 		
 		JPanel lhs = new JPanel();
 		lhs.setBorder(BorderFactory.createTitledBorder("Colorings"));
-		lhs.add(coloringList);
+		lhs.add(new JScrollPane(coloringList));
 		
 		displayPanel = new JPanel();
 		displayPanel.setBorder(BorderFactory.createTitledBorder("Coloring information"));
@@ -130,7 +130,7 @@ public class ColoringManager extends Manager
 	}
 	
 	public void valueChanged(ListSelectionEvent e) {
-		if(e.getValueIsAdjusting() == false) {
+		if(e.getValueIsAdjusting() == false && coloringList.getSelectedValue() != null) {
 			Simulation.Coloring c = (Simulation.Coloring) sim.colorings.get(coloringList.getSelectedValue());
 			coloringNameField.setText(c.name);
 			if(c.infoKnown) {
@@ -202,8 +202,9 @@ public class ColoringManager extends Manager
 			if(c.name != oldName) {
 				sim.colorings.remove(oldName);
 				sim.colorings.put(c.name, c);
-				//sim.coloringModel.update();
 			}
+			coloringList.clearSelection();
+			coloringList.setSelectedValue(c.name, true);
 		} else if(command.equals("new")) {
 			++coloringCount;
 			Simulation.Coloring c = new Simulation.Coloring("New Coloring " + coloringCount);
@@ -212,7 +213,8 @@ public class ColoringManager extends Manager
 				c.activeFamilies += ((String) en.nextElement()) + ",";
 			c.attributeName = (String) attributeNameBox.getSelectedItem();
 			sim.colorings.put(c.name, c);
-			//sim.coloringModel.update();
+			coloringList.clearSelection();
+			coloringList.setSelectedValue(c.name, true);
 		} else if(command.equals("chooseAttribute")) {
 			String attribute = (String) attributeNameBox.getSelectedItem();
 			double minVal = 1E200;
