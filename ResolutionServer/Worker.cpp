@@ -511,7 +511,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	float x, y;
 	unsigned int pixel;
 	
-	if(thisIndex == 0) {
+	if(verbosity > 2 && thisIndex == 0) {
 		cout << "Worker " << thisIndex << ": Number of colorings: " << colorings.size() << endl;
 		for(vector<Coloring>::iterator colorIter = colorings.begin(); colorIter != colorings.end(); ++colorIter)
 			cout << "Coloring " << (colorIter - colorings.begin()) << " is called " << colorIter->name << endl;
