@@ -26,7 +26,7 @@ public class PreferencesFrame extends JFrame
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
                 
-        String[] centerChoiceStrings = {"average z","largest value"};
+        String[] centerChoiceStrings = {"average z","largest value","lowest potential"};
         centerChoice = new JComboBox(centerChoiceStrings);
         centerChoice.setSelectedIndex(s.centerMethod);
         centerChoice.addActionListener(this);
@@ -49,9 +49,9 @@ public class PreferencesFrame extends JFrame
 
     public void actionPerformed(ActionEvent e){
         if ( "choose".equals(e.getActionCommand()) ){
-            String ll = (String)centerChoice.getSelectedItem();
-            int type = 0;
-            if (ll.equals("average z") ){s.centerMethod = 0;} else { s.centerMethod = 1;};
+            s.centerMethod = centerChoice.getSelectedIndex();
+//            int type = 0;
+//            if (ll.equals("average z") ){s.centerMethod = 0;} else { s.centerMethod = 1;};
             setVisible(false);
         } 
     }

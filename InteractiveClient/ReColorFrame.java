@@ -10,15 +10,16 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.io.*;
+import java.util.*;
 import java.net.UnknownHostException;
 import java.lang.Math;
 
 public class ReColorFrame extends JFrame
-                        implements ActionListener {
+                        implements ActionListener, ItemListener {
     Simulation s;
     ViewPanel vp;
-    NameValue minPanel;
-    NameValue maxPanel;
+    NameValue minPanel, maxPanel;
+    Vector attributes;
     String attrib;
     JComboBox linLog;
     JComboBox attributeList;
@@ -26,13 +27,28 @@ public class ReColorFrame extends JFrame
     public ReColorFrame( Simulation sim, ViewPanel viewP ){
         s = sim;
         vp = viewP;
+        attributes = new Vector();
     
-        setTitle("Choose Attribute");
+        setTitle("Choose Attribute Color");
         Container contentPane = getContentPane();
         contentPane.setLayout(new BoxLayout(contentPane, 
                                 BoxLayout.Y_AXIS));
+                                
+        JPanel particlePanel = new JPanel();
+        particlePanel.setLayout(new BoxLayout(particlePanel, 
+                                BoxLayout.X_AXIS));
         
-        attributeList = new JComboBox(s.attributes);
+        for ( int i=0; i < s.numberOfFamilies; i++ ){
+            ((Family)s.Families.get(i)).checkBox.addItemListener(this);
+            particlePanel.add(((Family)s.Families.get(i)).checkBox);
+            for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
+                if ( !attributes.contains(((Family)s.Families.get(i)).attributes.get(j)) ){
+                    attributes.addElement(((Family)s.Families.get(i)).attributes.get(j));
+                }
+            }
+        }
+        
+        attributeList = new JComboBox(attributes);
         attributeList.setSelectedIndex(s.selectedAttributeIndex);
         attributeList.addActionListener(this);
         
@@ -54,6 +70,7 @@ public class ReColorFrame extends JFrame
         chooseButton.setActionCommand("choose");
         chooseButton.addActionListener(this);
 
+        contentPane.add(particlePanel);
         contentPane.add(attributeList);
         contentPane.add(linLog);
         contentPane.add(minPanel);
@@ -91,6 +108,31 @@ public class ReColorFrame extends JFrame
         }
     }
 
+    public void itemStateChanged(ItemEvent e) {
+        Object source = e.getItemSelectable();
+        
+        for ( int i=0; i < s.numberOfFamilies; i++ ){
+            if ( source == ((Family)s.Families.get(i)).checkBox ) {
+                if ( e.getStateChange() == ItemEvent.DESELECTED ) {
+                    ((Family)s.Families.get(i)).on = false;
+                } else { ((Family)s.Families.get(i)).on = true; }
+            }
+        }
+        
+        attributes = new Vector();
+        attributeList.removeAllItems();
+        for ( int i=0; i < s.numberOfFamilies; i++ ){
+            for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
+                if ( !attributes.contains(((Family)s.Families.get(i)).attributes.get(j)) && 
+                            ((Family)s.Families.get(i)).on ){
+                    attributeList.addItem(((Family)s.Families.get(i)).attributes.get(j));
+                    attributes.addElement(((Family)s.Families.get(i)).attributes.get(j));
+                }
+            }
+        }
+        
+    }
+    
     private class ValueRange extends CcsThread.request{
         public ValueRange(String attrib){
             super("ValueRange", attrib.getBytes());

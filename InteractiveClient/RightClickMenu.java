@@ -37,6 +37,10 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("Choose centering...");
+        item.setActionCommand("chooseCenter");
+        item.addActionListener(this);
+        add(item);
+        item = new JMenuItem("Update z");
         item.setActionCommand("center");
         item.addActionListener(this);
         add(item);
@@ -71,7 +75,9 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         if ( command.equals("xall") ) { xall();}
         else if (command.equals("yall"))  { yall();}
         else if (command.equals("zall"))  { zall();}
-        else if (command.equals("center"))  { PreferencesFrame pf = new PreferencesFrame(s);}
+        else if (command.equals("chooseCenter"))  { PreferencesFrame pf = new PreferencesFrame(s);}
+        else if (command.equals("center"))  { vp.center();}
+        else if (command.equals("fixo"))  { System.out.println("Origin fixed");}
         else if (command.equals("recolor"))  { 
             ReColorFrame rcf = new ReColorFrame(s, vp);
         }

@@ -58,6 +58,10 @@ public class ViewPanel extends JPanel implements MouseListener {
         s.ccs.addRequest( new Center() );
     }
     
+    public void center(){
+        s.ccs.addRequest( new Center() );
+    }
+    
     public void rotateLeft( double theta ){
         x.rotate(theta,y.unitVector());
         z = x.cross(y);

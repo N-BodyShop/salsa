@@ -1,4 +1,4 @@
-CLASSES = CcsServer.class CcsThread.class Vector3D.class Config.class PngEncoder.class Simulation.class ConnectFrame.class ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class Simulation.class NameValue.class ColorBarPanel.class ToolBarPanel.class ViewPanel.class RightClickMenu.class RotateSlider.class RotatedViewFrame.class MovieMakerFrame.class SelectGroupFrame.class
+CLASSES = CcsServer.class CcsThread.class Vector3D.class Config.class PngEncoder.class Simulation.class ConnectFrame.class ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class Simulation.class NameValue.class ColorBarPanel.class ToolBarPanel.class ViewPanel.class RightClickMenu.class RotateSlider.class RotatedViewFrame.class MovieMakerFrame.class SelectGroupFrame.class PreferencesFrame.class SelectGroupPanel.class Family.class
 
 TARGET = InteractiveClient
 VERSION = 0.1

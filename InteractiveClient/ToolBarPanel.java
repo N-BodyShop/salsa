@@ -49,14 +49,14 @@ public class ToolBarPanel extends JPanel
         JButton reColor = new JButton("ReColor");
         reColor.setActionCommand("recolor");
         reColor.addActionListener(this);
-        JButton newMap = new JButton("Switch Color Map");
-        newMap.setActionCommand("switchmap");
-        newMap.addActionListener(this);
+        JCheckBox fixO = new JCheckBox("Fix origin for rotation");
+        fixO.setActionCommand("fixo");
+        fixO.addActionListener(this);
         JButton clear = new JButton("Clear Boxes");
         clear.setActionCommand("clear");
         clear.addActionListener(this);
         middleBar.add(reColor);
-//        middleBar.add(newMap);
+        middleBar.add(fixO);
 //        middleBar.add(clear);
         
         JToolBar sliderBar = new JToolBar();

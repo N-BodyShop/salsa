@@ -13,14 +13,14 @@ import java.awt.image.*;
 public class Simulation {
     String Name;
     CcsThread ccs;
-    DefaultComboBoxModel attributes;
-    int selectedAttributeIndex;
     int numberOfFamilies;
     int numberOfColors;
     ColorModel cm;
     Vector Families;
+    int selectedAttributeIndex;
     Vector Groups;
     int centerMethod;
+    Vector3D rotationOrigin;
     
     public Simulation(CcsThread ccsThread){
         ccs = ccsThread;
@@ -29,10 +29,9 @@ public class Simulation {
 	
     public void reset() {
         Name = new String();
-        attributes = new DefaultComboBoxModel();
-        selectedAttributeIndex = 0;
         Families = new Vector();
         Groups = new Vector();
         centerMethod = 0;
+        selectedAttributeIndex = 0;
     }
 }

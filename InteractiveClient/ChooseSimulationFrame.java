@@ -88,12 +88,16 @@ public class ChooseSimulationFrame extends JFrame
             for ( int i=0; i < s.numberOfFamilies; i++ ){
                 lastindex = index + 1;
                 index = reply.indexOf(",",lastindex);
-                s.Families.addElement(reply.substring(lastindex,index));
-            }
-            while( index < reply.length()-1 ){
+                s.Families.addElement(new Family(reply.substring(lastindex,index)));
                 lastindex = index + 1;
                 index = reply.indexOf(",",lastindex);
-                s.attributes.addElement(reply.substring(lastindex,index));
+                ((Family)s.Families.get(i)).numberOfAttributes = 
+                            Integer.parseInt(reply.substring(lastindex,index));
+                for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
+                    lastindex = index + 1;
+                    index = reply.indexOf(",",lastindex);
+                    ((Family)s.Families.get(i)).attributes.addElement(reply.substring(lastindex,index));
+                }
             }
         s.ccs.addRequest( new lvConfig() );
 
