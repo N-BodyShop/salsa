@@ -171,8 +171,8 @@ public class ReColorFrame extends JFrame
     }
     
     private class ChooseColorValue extends CcsThread.request{
-        public ChooseColorValue(byte[] data){
-            super("ChooseColorValue", data);
+        public ChooseColorValue(String message){
+            super("ChooseColorValue", message.getBytes());
         }
         public void handleReply(byte[] data) {
             setVisible(false);
