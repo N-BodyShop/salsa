@@ -61,9 +61,9 @@ mainmodule ResolutionServer {
 		entry void getColoringInformation(CkCcsRequestMsg* m);
 	
 		entry void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
-		entry void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
-		entry void createGroup_Family(const std::string& familyName, const CkCallback& cb);
-		entry void createGroup_AttributeRange(const std::string& groupName, const std::string& attributeName, double minValue, double maxValue, const CkCallback& cb);
+		entry void getCenterOfMass(std::string const& groupName, CkCallback const& cb);
+		entry void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
+		entry void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 		entry void createGroup_AttributeSphere(const std::string& groupName, const std::string& attributeName, Vector3D<double> center, double size, const CkCallback& cb);
 		entry void localParticleCode(std::string s, const CkCallback &cb);
 	};

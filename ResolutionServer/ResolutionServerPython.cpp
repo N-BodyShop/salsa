@@ -110,7 +110,7 @@ public:
 		return sum;
 	}
 	*/
-	Vector3D<double> getCenterOfMass(const string& groupName) {
+	Vector3D<double> getCenterOfMass(string const& groupName) {
 		CkReductionMsg* mesg;
 		pair<double, Vector3D<double> > compair;
 		m->workers.getCenterOfMass(groupName, createCallbackResumeThread(mesg, compair));
@@ -119,18 +119,18 @@ public:
 		return compair.second / compair.first;
 	}
 	
-	bool createGroup_Family(string const& familyName) {
+	bool createGroup_Family(string const& groupName, string const& parentGroupName, string const& familyName) {
 		CkReductionMsg* mesg;
 		int result;
-		m->workers.createGroup_Family(familyName, createCallbackResumeThread(mesg, result));
+		m->workers.createGroup_Family(groupName, parentGroupName, familyName, createCallbackResumeThread(mesg, result));
 		delete mesg;
 		return result;
 	}
 	
-	bool createGroup_AttributeRange(string const& groupName, string const& attributeName, double minValue, double maxValue) {
+	bool createGroup_AttributeRange(string const& groupName, string const& parentGroupName, string const& attributeName, double minValue, double maxValue) {
 		CkReductionMsg* mesg;
 		int result;
-		m->workers.createGroup_AttributeRange(groupName, attributeName, minValue, maxValue, createCallbackResumeThread(mesg, result));
+		m->workers.createGroup_AttributeRange(groupName, parentGroupName, attributeName, minValue, maxValue, createCallbackResumeThread(mesg, result));
 		delete mesg;
 		return result;
 	}

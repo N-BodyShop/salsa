@@ -1085,7 +1085,7 @@ void Worker::makeGroup(const string& s, const CkCallback& cb) {
 				if(attrIter != simIter->second.attributes.end() && attrIter->second.data == 0)
 					sim->loadAttribute(simIter->first, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
 			}
-			groups[groupName] = make_AttributeRangeGroup(*sim, attributeName, minValue, maxValue);
+			groups[groupName] = make_AttributeRangeGroup(*sim, groups["All"], attributeName, minValue, maxValue);
 			/*
 			vector<string>::iterator groupIter = find(groupNames.begin(), groupNames.end(), groupName);
 			if(groupIter != groupNames.end())
@@ -1298,7 +1298,7 @@ void Worker::getAttributeSum(const string& groupName, const string& attributeNam
 	double sum = 0;
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group> g = gIter->second;
+		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 			Simulation::iterator simIter = sim->find(*famIter);
 			TypedArray& arr = simIter->second.attributes[attributeName];
@@ -1339,10 +1339,12 @@ void Worker::getAttributeSum(const string& groupName, const string& attributeNam
 }
 
 void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
+	cerr << "Worker " << thisIndex << ": Trying to get com" << endl;
 	pair<double, Vector3D<double> > compair;
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group> g = gIter->second;
+		cerr << "Worker " << thisIndex << ": Found group" << endl;
+		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 			ParticleFamily& family = (*sim)[*famIter];
 			Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
@@ -1370,18 +1372,22 @@ void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
 	contribute(sizeof(compair), &compair, pairDoubleVector3DSum, cb);
 }
 
-void Worker::createGroup_Family(std::string const& familyName, CkCallback const& cb) {
+void Worker::createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb) {
 	int result = 0;
+	//parent group idiom: look up parent group by name
+	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
 	if(sim->find(familyName) != sim->end()) {
-		groups[familyName] = boost::shared_ptr<SimulationHandling::Group>(new FamilyGroup(*sim, familyName));
+		groups[groupName] = boost::shared_ptr<SimulationHandling::Group>(new FamilyGroup(*sim, parentGroup, familyName));
 		result = 1;
 	}
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
-void Worker::createGroup_AttributeRange(std::string const& groupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb) {
+void Worker::createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb) {
 	int result = 0;
-	boost::shared_ptr<SimulationHandling::Group> g = make_AttributeRangeGroup(*sim, attributeName, minValue, maxValue);
+	//parent group idiom: look up parent group by name
+	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	boost::shared_ptr<SimulationHandling::Group> g = make_AttributeRangeGroup(*sim, parentGroup, attributeName, minValue, maxValue);
 	if(g) {
 		groups[groupName] = g;
 		result = 1;

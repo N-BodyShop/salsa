@@ -113,6 +113,8 @@ Main::Main(CkArgMsg* m) {
 					simulationList[description] = directoryname;
 				}
 			}
+			if(verbosity > 2)
+				cerr << "Read list of " << simulationList.size() << " simulations from " << fname << endl;
 		} else
 			simulationList[fname] = fname;
 	} else
@@ -149,6 +151,14 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("LocalParticleCode",
 			   CkCallback(CkIndex_Main::localParticleCode(0), thishandle));
 	cerr << "Waiting for ccs authentication" << endl;
+	/*
+	workers.loadSimulation("/home/gwl/Projects/data/lambs.00200_subsamp_10000.data", CkCallbackResumeThread());
+	cerr << "Made it past the load" << endl;
+	string s = "print system.getCenterOfMass('All')\n";
+	PyRun_String(const_cast<char *>(s.c_str()), Py_file_input, pythonInterpreter->main_namespace.ptr(), pythonInterpreter->main_namespace.ptr());
+	string result = pythonInterpreter->my_stdout.getOutput();
+	cerr << result << endl;
+	*/
 }
 
 void Main::listSimulations(CkCcsRequestMsg* m) {
