@@ -17,6 +17,7 @@ public class Simulation {
     ColorModel cm;
     Hashtable Families;
     int selectedAttributeIndex;
+    int selectedClippingIndex;
     Hashtable Groups;
     String selectedGroup;
     boolean groupSelecting;
@@ -36,5 +37,6 @@ public class Simulation {
         selectedGroup = "All";
         centerMethod = 0;
         selectedAttributeIndex = 0;
+        selectedClippingIndex = 0;
     }
 }

@@ -23,6 +23,8 @@ public class ReColorFrame extends JFrame
     String attrib;
     JComboBox linLog;
     JComboBox attributeList;
+    Hashtable clipHash;
+    JComboBox clipList;
 
     public ReColorFrame( Simulation sim, ViewPanel viewP ){
         s = sim;
@@ -59,6 +61,25 @@ public class ReColorFrame extends JFrame
         linLog = new JComboBox(linLogStrings);
         linLog.setSelectedIndex(0);
         linLog.addActionListener(this);
+        
+        JPanel clipPanel = new JPanel();
+        clipPanel.setLayout( new BoxLayout(clipPanel,BoxLayout.X_AXIS) );
+        JLabel clipLabel = new JLabel("Display values");
+        clipHash = new Hashtable();
+        clipHash.put("on both sides of","clipno");
+        clipHash.put("lower than","cliphigh");
+        clipHash.put("higher than","cliplow");
+        clipHash.put("only inside","clipboth");
+        Enumeration en = clipHash.keys();
+        String[] clipArr = {(String)en.nextElement(),(String)en.nextElement(),(String)en.nextElement(),(String)en.nextElement()};
+        clipList = new JComboBox(clipArr);
+        clipList.setSelectedIndex(s.selectedClippingIndex);
+        clipList.addActionListener(this);
+        clipList.setActionCommand("clip set");
+        JLabel clipLabel2 = new JLabel("range");
+        clipPanel.add(clipLabel);
+        clipPanel.add(clipList);
+        clipPanel.add(clipLabel2);
 
         minPanel = new NameValue("min. value:");
         minPanel.setActionCommand("choose");
@@ -77,6 +98,7 @@ public class ReColorFrame extends JFrame
         contentPane.add(particlePanel);
         contentPane.add(attributeList);
         contentPane.add(linLog);
+        contentPane.add(clipPanel);
         contentPane.add(minPanel);
         contentPane.add(maxPanel);
         contentPane.add(chooseButton);
@@ -93,7 +115,8 @@ public class ReColorFrame extends JFrame
     public void actionPerformed(ActionEvent e){
         if ( "choose".equals(e.getActionCommand()) ){
             String message = (String)linLog.getSelectedItem()+","+attrib+","+
-                minPanel.getValue()+","+maxPanel.getValue();
+                minPanel.getValue()+","+maxPanel.getValue()+","+
+                clipHash.get((String)clipList.getSelectedItem());
             Family family;
             String key;
             for ( Enumeration en = s.Families.keys(); en.hasMoreElements(); ){
@@ -114,6 +137,8 @@ public class ReColorFrame extends JFrame
             } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}*/
             s.ccs.addRequest( new ChooseColorValue( message ) );
 
+        } else if ( "clip set".equals(e.getActionCommand()) ){
+            s.selectedClippingIndex = clipList.getSelectedIndex();            
         } else {
             attrib = (String)attributeList.getSelectedItem();
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
