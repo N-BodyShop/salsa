@@ -18,8 +18,8 @@ public class SimulationView extends JLabel
 	double boxSize;
 	double zoomFactor;
 	int activeColoring = 0;
-	double activeGroup = 0; //double so that we can write it to network stream in binary
-	double centeringMethod = 2;
+	int activeGroup = 0;
+	int centeringMethod = 2;
 	int radius = 0;
 	
 	int height, width;
@@ -225,12 +225,19 @@ public class SimulationView extends JLabel
 	}
 	
     private byte[] encodeRequest() {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
         try {
 			DataOutputStream dos = new DataOutputStream(baos);
-			dos.writeInt(1); /*Client version*/
-			dos.writeInt(activeColoring | (radius << 16));
+			// These fields go into the liveVizRequest
+			dos.writeInt(1); /* version */
+			dos.writeInt(1); /* code */
 			dos.writeInt(width);
+			dos.writeInt(height);
+			
+			// These fields go into the MyVizRequest
+			dos.writeInt(activeColoring);
+			dos.writeInt(radius);
+			dos.writeInt(width); //encoded twice, for convenience
 			dos.writeInt(height);
 			dos.writeDouble(x.x);
 			dos.writeDouble(x.y);
@@ -244,8 +251,8 @@ public class SimulationView extends JLabel
 			dos.writeDouble(origin.x);
 			dos.writeDouble(origin.y);
 			dos.writeDouble(origin.z);
-			dos.writeDouble(centeringMethod);
-			dos.writeDouble(activeGroup);
+			dos.writeInt(centeringMethod);
+			dos.writeInt(activeGroup);
 			//System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
         } catch(IOException e) {
             System.err.println("Couldn't encode request!");
