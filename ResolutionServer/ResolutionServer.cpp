@@ -88,9 +88,9 @@ Main::Main(CkArgMsg* m) {
 				}
 			}
 		} else
-			workers.loadSimulation(fname, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+			simulationList[fname] = fname;
 	} else
-		workers.loadSimulation(fname, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+		simulationList[fname] = fname;
 	sim->release();
 	delete sim;
 

@@ -10,6 +10,8 @@
 "Graeme's Migration (400K)",/net/grads-1/gwl/Projects/TreeDataFormat/test/new/migration.00100.data
 "Graeme's Unstable Disk (tipsy format)",/users/gwl/projects/planets/formation/heavy_disk3/outputs/disk.00253
 "Rich's Galaxy Collision 64 (500K)",/net/grads-1/gwl/Projects/TreeDataFormat/test/new/500krun.00064.data
+"Rich's Galaxy Collision 64 (500K tipsy)",/net/mondo-2/nbody/plotkin/500krun.00064
 "Rich's Galaxy Collision 128 (500K)",/net/grads-1/gwl/Projects/TreeDataFormat/test/new/500krun.00128.data
 "Rich's Galaxy Collision 256 (500K)",/net/grads-1/gwl/Projects/TreeDataFormat/test/new/500krun.00256.data
 "Greg's Fabio Jr",/net/grads-1/gwl/Projects/TreeDataFormat/test/new/jrfabio.00110.data
+"Greg's Fabio Jr (tipsy)",/net/mondo-2/nbody/stinson/jrfabio/jrfabio.00170

@@ -48,6 +48,7 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	
 	//load appropriate positions
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+		//cout << "Family name: " << iter->first << endl;
 		u_int64_t totalNumParticles = iter->second.count.totalNumParticles;
 		u_int64_t numParticles = totalNumParticles / CkNumPes();
 		u_int64_t leftover = totalNumParticles % CkNumPes();
