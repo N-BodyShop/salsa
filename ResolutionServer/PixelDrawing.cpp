@@ -177,7 +177,7 @@ inline void splatParticle(byte* image, const int width, const int height, const 
 					}
 					//byte value = static_cast<byte>(m * projectedKernel(r / h) * dAOverhsq);
 					//amount > 0
-					double amount = m * projectedKernel(r / h) * dAOverhsq;
+					double amount = m * projectedKernel(r / h);// * dAOverhsq;
 					//amount \in [0,1]
 					amount = clamp((amount - minAmount) / (maxAmount - minAmount));
 					//value \in {0, 1, ... , 256 - startColor}
