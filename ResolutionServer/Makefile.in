@@ -1,6 +1,6 @@
 STRUCTURES_PATH = ../structures
 
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR)
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
 LDFLAGS +=  -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
 LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
 
@@ -30,7 +30,7 @@ $(TARGET): ResolutionServer.o Worker.o MetaInformationHandler.o Reductions.o Hig
 $(STRUCTURES_PATH)/libTipsy.a:
 	cd $(STRUCTURES_PATH); make
 
-ResolutionServer.o: PythonInstance.h
+ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
 Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h
 

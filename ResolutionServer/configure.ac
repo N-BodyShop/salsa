@@ -81,7 +81,7 @@ AC_SUBST(BOOST_PATH)
 
 # find xerces-c
 ax_xercesc=no
-for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_6_0 ; do
+for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_5_0 $PWD/../xerces-c-src_2_6_0 ; do
    if test -f $xercesc/include/xercesc/sax2/DefaultHandler.hpp ; then
        ax_xercesc_header=yes
        XERCESCROOT=$xercesc
