@@ -16,6 +16,7 @@
 #include "OrientedBox.h"
 #include "Sphere.h"
 #include "Box.h"
+#include "Simulation.h"
 
 #include "ParticleStatistics.h"
 #include "ResolutionServer.decl.h"
@@ -40,7 +41,8 @@ class Main : public Chare {
 	CProxy_MetaInformationHandler metaProxy;
 	CProxy_Worker workers;
 	std::string simulationListFilename;
-	typedef std::map<std::string, std::pair<std::string, std::string> > simListType;
+	typedef std::map<std::string, std::string> simListType;
+	//typedef std::map<std::string, std::pair<std::string, std::string> > simListType;
 	simListType simulationList;
 	bool authenticated;
 	CcsDelayedReply delayedReply;
@@ -52,6 +54,7 @@ public:
 	void authenticate(CkCcsRequestMsg* m);
 	void listSimulations(CkCcsRequestMsg* m);
 	void chooseSimulation(CkCcsRequestMsg* m);
+	void chooseColorValue(CkCcsRequestMsg* m);
 	void startVisualization(CkReductionMsg* m);
 	void shutdownServer(CkCcsRequestMsg* m);
 	void activate(CkCcsRequestMsg* m);
@@ -81,32 +84,40 @@ public:
 };
 
 class Worker : public ArrayElement1D {
+	friend class Main;
+	
 	CProxy_MetaInformationHandler metaProxy;
-	std::vector<colored_particle> myParticles;
-	u_int64_t numParticles;
+	SimulationHandling::Simulation* sim;
 	CkCallback callback;
-	float minValue, maxValue;
-	bool beLogarithmic;
 	byte* image;
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
-	const static byte numColors = 254;
+	byte startColor;
+	std::string currentAttribute;
+	
+	template <typename T>
+	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic);
+	
 public:
 	
-	Worker(const CkGroupID& metaID) : metaProxy(metaID), image(new byte[0]), imageSize(0) { }
+	Worker(const CkGroupID& metaID) : metaProxy(metaID), sim(0), image(new byte[0]), imageSize(0) { }
 	Worker(CkMigrateMessage* m) { }
 	~Worker() {
+		if(sim)
+			sim->release();
+		delete sim;
 		delete[] image;
 	}
 	
-	void readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb);
+	void loadSimulation(const std::string& simulationName, const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
 	
 	void valueRange(CkCcsRequestMsg* m);
-	void recolor(CkCcsRequestMsg* m);
 	
 	void collectStats(const std::string& id, const CkCallback& cb);
+	
+	void chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb);
 };
 
 template <typename T1>

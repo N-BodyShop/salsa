@@ -3,6 +3,7 @@
  
 #include <iostream>
 #include <fstream>
+#include <set>
 #include <popt.h>
 
 #include "ResolutionServer.h"
@@ -12,7 +13,7 @@ using namespace std;
 int verbosity;
 
 Main::Main(CkArgMsg* m) {
-	
+	cout << "Started main!" << endl;
 	verbosity = 0;
 	
 	poptOption optionsTable[] = {
@@ -67,13 +68,13 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("AuthenticateNChilada", CkCallback(CkIndex_Main::authenticate(0), thishandle));
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
+	CcsRegisterHandler("ChooseColorValue", CkCallback(CkIndex_Main::chooseColorValue(0), thishandle));
 	CcsRegisterHandler("ShutdownServer", CkCallback(CkIndex_Main::shutdownServer(0), thishandle));
 	CcsRegisterHandler("SpecifyBox", CkCallback(CkIndex_MetaInformationHandler::specifyBox(0), metaProxy));
 	CcsRegisterHandler("ClearBoxes", CkCallback(CkIndex_MetaInformationHandler::clearBoxes(0), metaProxy));
 	CcsRegisterHandler("SpecifySphere", CkCallback(CkIndex_MetaInformationHandler::specifySphere(0), metaProxy));
 	CcsRegisterHandler("ClearSpheres", CkCallback(CkIndex_MetaInformationHandler::clearSpheres(0), metaProxy));
 	CcsRegisterHandler("ValueRange", CkCallback(CkIndex_Worker::valueRange(0), CkArrayIndex1D(0), workers));
-	CcsRegisterHandler("Recolor", CkCallback(CkIndex_Worker::recolor(0), workers));
 	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), thishandle));
 	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
 	
@@ -92,21 +93,15 @@ void Main::authenticate(CkCcsRequestMsg* m) {
 			reply = 1;
 			simulationList.clear();
 			ifstream infile(simulationListFilename.c_str());
-			string line, description, posfilename, colorfilename;
-			string::size_type index, nextindex;
+			string line, description, directoryname;
 			while(infile) {
 				getline(infile, line);
 				//split line, make entry into map
-				index = line.find(',');
+				string::size_type index = line.find(',');
 				if(index != string::npos) {
 					description = line.substr(0, index);
-					nextindex = line.find(',', index + 1);
-					if(nextindex != string::npos) {
-						posfilename = line.substr(index + 1, nextindex - index - 1);
-						colorfilename = line.substr(nextindex + 1);
-						cout << "Parsed line completely: \"" << description << "\"\n\"" << posfilename << "\"\n\"" << colorfilename << "\"" << endl;
-						simulationList[description] = make_pair(posfilename, colorfilename);
-					}
+					directoryname = line.substr(index + 1);
+					simulationList[description] = directoryname;
 				}
 			}
 			authenticated = true;
@@ -128,11 +123,12 @@ void Main::listSimulations(CkCcsRequestMsg* m) {
 }
 
 void Main::chooseSimulation(CkCcsRequestMsg* m) {
-	cout << "You chose: \"" << string(m->data, m->data + m->length) << "\"" << endl;
-	simListType::iterator chosen = simulationList.find(string(m->data, m->data + m->length));
+	cout << "You chose: \"" << string(m->data, m->length) << "\"" << endl;
+	simListType::iterator chosen = simulationList.find(string(m->data, m->length));
 	if(authenticated && chosen != simulationList.end()) {
-		workers.readParticles(chosen->second.first, chosen->second.second, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+		workers.loadSimulation(chosen->second, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
 		delayedReply = m->reply;
+		//return a list of available attributes
 	} else {
 		unsigned char fail = 0;
 		CcsSendDelayedReply(m->reply, 1, &fail);
@@ -151,10 +147,40 @@ void Main::startVisualization(CkReductionMsg* m) {
 	//cfg.moreVerbose();
     liveVizInit(cfg, workers, CkCallback(CkIndex_Worker::generateImage(0), workers));
 	
-	unsigned char success = 1;
-	CcsSendDelayedReply(delayedReply, 1, &success);
-	
-	cerr << "Ready for visualization" << endl;
+	Worker* w = workers[0].ckLocal();
+	if(w) {
+		ostringstream oss;
+		oss << static_cast<int>(w->startColor) << "," << w->sim->size() << ",";
+		set<string> attributeNames;
+		for(SimulationHandling::Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter) {
+			oss << iter->first << ",";
+			for(SimulationHandling::AttributeMap::iterator attrIter = iter->second.attributes.begin(); attrIter != iter->second.attributes.end(); ++attrIter)
+				attributeNames.insert(attrIter->first);
+		}
+		attributeNames.erase("color");
+		attributeNames.insert("family");
+		copy(attributeNames.begin(), attributeNames.end(), ostream_iterator<string>(oss, ","));
+		const string& reply = oss.str();
+		CcsSendDelayedReply(delayedReply, reply.length(), reply.c_str());
+
+		cerr << "Ready for visualization" << endl;
+	} else
+		cerr << "How the hell did this happen?!" << endl;
+}
+
+void Main::chooseColorValue(CkCcsRequestMsg* m) {
+	int beLogarithmic = swapEndianness(*reinterpret_cast<int *>(m->data));
+	double minVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int)));
+	double maxVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double)));
+	string attributeName(m->data + sizeof(int) + 2 * sizeof(double), m->data + m->length);
+	cout << "You're choosing attribute \"" << attributeName << "\" to represent the color of particles" << endl;
+	unsigned char value = 0;
+	if(authenticated) {
+		workers.chooseColorValue(attributeName, beLogarithmic, minVal, maxVal, CkCallbackResumeThread());
+		value = 1;
+	}
+	CcsSendDelayedReply(m->reply, 1, &value);
+	delete m;
 }
 
 void Main::shutdownServer(CkCcsRequestMsg* m) {
@@ -174,7 +200,7 @@ void Main::activate(CkCcsRequestMsg* m) {
 
 void Main::collectStats(CkCcsRequestMsg* m) {
 	//regionString.assign(m->data, m->length);
-	regionString = string(m->data, m->data + m->length);
+	regionString = string(m->data,m->length);
 	delayedReply = m->reply;
 	workers.collectStats(regionString, CkCallback(CkIndex_Main::statsCollected(0), thishandle));
 	//delete m;

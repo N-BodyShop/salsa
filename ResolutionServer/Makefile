@@ -1,7 +1,7 @@
 STRUCTURES_PATH = $(HOME)/projects/structures
-CXXFLAGS += -O3 -Wall -I$(STRUCTURES_PATH)
-LDFLAGS += -L$(STRUCTURES_PATH) -language charm++
-LDLIBS += -lTipsy -lpopt -module liveViz -memory paranoid
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler
+LDFLAGS += -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib
+LDLIBS += -lTipsy -lpopt -module liveViz -lxerces-c
 
 CHARMC = $(HOME)/projects/charm/bin/charmc
 CXX = $(CHARMC)
@@ -15,7 +15,7 @@ $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
 
 Reductions.o: Reductions.decl.h ParticleStatistics.h
 
-$(TARGET): Worker.o MetaInformationHandler.o Reductions.o
+$(TARGET): Worker.o MetaInformationHandler.o Reductions.o ../SimulationHandler/SiXFormat.o
 
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h
 

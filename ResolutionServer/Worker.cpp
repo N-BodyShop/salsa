@@ -5,12 +5,15 @@
 #include <cstdlib>
 
 #include "tree_xdr.h"
+#include "SiXFormat.h"
 
 #include "ResolutionServer.h"
 #include "Reductions.h"
 #include "Space.h"
 
-void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb) {		
+using namespace SimulationHandling;
+
+void Worker::loadSimulation(const std::string& simulationName, const CkCallback& cb) {
 	if(MetaInformationHandler* meta = metaProxy.ckLocalBranch()) {
 		for(vector<Box<double> *>::iterator iter = meta->boxes.begin(); iter != meta->boxes.end(); ++iter)
 			delete *iter;
@@ -22,186 +25,45 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 		meta->regionMap.clear();
 	}
 	
-	FILE* infile = fopen(posfilename.c_str(), "rb");
-	if(!infile) {
-		cerr << "Worker " << thisIndex << ": Couldn't open position file \"" << posfilename << "\"" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
+	if(sim)
+		sim->release();
+	delete sim;
 	
-	XDR xdrs;
-	xdrstdio_create(&xdrs, infile, XDR_DECODE);
-	FieldHeader fh;
-	if(!xdr_template(&xdrs, &fh)) {
-		cerr << "Worker " << thisIndex << ": Couldn't read position header" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	if(fh.magic != FieldHeader::MagicNumber) {
-		cerr << "Worker " << thisIndex << ": Position file appears corrupt (magic number isn't right)" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	if(fh.dimensions != 3 || fh.code != float32) {
-		cerr << "Worker " << thisIndex << ": Position file contains wrong type" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
+	sim = new SiXFormatReader(simulationName);
+	//cout << "Simulation " << sim->name << " contains " << sim->size() << " families" << endl;
 	
-	if(!xdr_template(&xdrs, &boundingBox.lesser_corner) || !xdr_template(&xdrs, &boundingBox.greater_corner)) {
-		cerr << "Worker " << thisIndex << ": Had problems reading bounding box values" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	if(boundingBox.lesser_corner == boundingBox.greater_corner) {
-		cerr << "Worker " << thisIndex << ": Can't handle all the same position" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
+	boundingBox = OrientedBox<float>();
 	
-	u_int64_t totalNumParticles = fh.numParticles;
-	numParticles = totalNumParticles / CkNumPes();
-	u_int64_t leftover = totalNumParticles % CkNumPes();
-	u_int64_t startParticle = CkMyPe() * numParticles;
-	if(CkMyPe() < leftover) {
-		numParticles++;
-		startParticle += CkMyPe();
-	} else
-		startParticle += leftover;
-	
-	if(verbosity > 2)
-		cout << "Worker " << thisIndex << ": Starting at particle " << startParticle << ", loading " << numParticles << " particles." << endl;
-	
-	if(!seekField(fh, &xdrs, startParticle)) {
-		cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the positions file" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	
-	myParticles.resize(numParticles);
-	for(u_int64_t i = 0; i < numParticles; ++i) {
-		if(!xdr_template(&xdrs, &myParticles[i].position)) {
-			cerr << "Worker " << thisIndex << ": Couldn't read in all of my positions" << endl;
-			contribute(0, 0, CkReduction::concat, cb);
-			return;
-		}
-	}
-	xdr_destroy(&xdrs);
-	fclose(infile);
-	
-	infile = fopen(valuefilename.c_str(), "rb");
-	if(!infile) {
-		cerr << "Worker " << thisIndex << ": Couldn't open color value file \"" << valuefilename << "\"" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	
-	xdrstdio_create(&xdrs, infile, XDR_DECODE);
-	FieldHeader valfh;
-	if(!xdr_template(&xdrs, &valfh)) {
-		cerr << "Worker " << thisIndex << ": Couldn't read color value header" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	if(valfh.magic != FieldHeader::MagicNumber) {
-		cerr << "Worker " << thisIndex << ": Color value file appears corrupt (magic number isn't right)" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	if(valfh.dimensions != 1 || valfh.code != float32) {
-		cerr << "Worker " << thisIndex << ": Color value file contains wrong type" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	if(valfh.numParticles != fh.numParticles) {
-		cerr << "Worker " << thisIndex << ": Color value file and positions file have different numbers of particles" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	
-	if(!xdr_template(&xdrs, &minValue) || !xdr_template(&xdrs, &maxValue)) {
-		cerr << "Worker " << thisIndex << ": Had problems reading min/max color values" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
-	}
-	
-	if(minValue == maxValue) {
-		if(verbosity > 2)
-			cout << "Worker " << thisIndex << ": All particles have the same color" << endl;
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			myParticles[i].value = minValue;
-			myParticles[i].color = 255;
-		}
-	} else {
-		if(!seekField(valfh, &xdrs, startParticle)) {
-			cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
-			contribute(0, 0, CkReduction::concat, cb);
-			return;
-		}
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			if(!xdr_template(&xdrs, &myParticles[i].value)) {
-				cerr << "Worker " << thisIndex << ": Couldn't read in all of my positions" << endl;
-				contribute(0, 0, CkReduction::concat, cb);
-				return;
-			}
-			myParticles[i].color = 255;
-		}
-	}
-	
-	if(verbosity > 3)
-		cout << "Worker " << thisIndex << ": Values read." << endl;
-	
-	/*
-	if(reverseColors) {
-		float temp = -minValue;
-		minValue = -maxValue;
-		maxValue = temp;
-	}
-	
-	if(minValue == maxValue) {
-		if(verbosity > 2)
-			cout << "Worker " << thisIndex << ": All particles have the same color" << endl;
-		for(u_int64_t i = 0; i < numParticles; ++i)
-			myParticles[i].color = numColors;
-	} else {
-		if(!seekField(valfh, &xdrs, startParticle)) {
-			cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
-			contribute(0, 0, CkReduction::concat, cb);
-			return;
-		}
-		float value, delta, lower;
-		if(beLogarithmic) {			
-			if(minValue <= 0)
-				delta = log10(maxValue - minValue + 1.0);
-			else {
-				lower = log10(minValue);
-				delta = log10(maxValue) - lower;
-			}
+	//load appropriate positions
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+		u_int64_t totalNumParticles = iter->second.count.totalNumParticles;
+		u_int64_t numParticles = totalNumParticles / CkNumPes();
+		u_int64_t leftover = totalNumParticles % CkNumPes();
+		u_int64_t startParticle = CkMyPe() * numParticles;
+		if(CkMyPe() < leftover) {
+			numParticles++;
+			startParticle += CkMyPe();
 		} else
-			delta = maxValue - minValue;
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			if(!xdr_template(&xdrs, &value)) {
-				cerr << "Worker " << thisIndex << ": Couldn't read in all of my positions" << endl;
-				contribute(0, 0, CkReduction::concat, cb);
-				return;
-			}
-			if(reverseColors)
-				value *= -1;
-			if(beLogarithmic) {
-				if(minValue <= 0)
-					myParticles[i].color = 1 + static_cast<byte>((numColors - 1) * log10(value - minValue + 1.0) / delta);
-				else
-					myParticles[i].color = 1 + static_cast<byte>((numColors - 1) * (log10(value) - lower) / delta);
-			} else
-				myParticles[i].color = 1 + static_cast<byte>((numColors - 1) * (value - minValue) / delta);
-		}
+			startParticle += leftover;
+		
+		sim->loadAttribute(iter->first, "position", numParticles, startParticle);
+		TypedArray& arr = iter->second.attributes["position"];
+		//grow the bounding box with this family's bounding box
+		boundingBox.grow(arr.getMinValue(Type2Type<Vector3D<float> >()));
+		boundingBox.grow(arr.getMaxValue(Type2Type<Vector3D<float> >()));
 	}
-	xdr_destroy(&xdrs);
-	fclose(infile);
 	
-	if(verbosity > 3)
-		cout << "Worker " << thisIndex << ": Colors set." << endl;
-	*/
+	//create color attribute for all families
+	byte familyColor = 2;
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+		byte* colors = new byte[iter->second.count.numParticles];
+		for(u_int64_t i = 0; i < iter->second.count.numParticles; ++i)
+			colors[i] = familyColor;
+		familyColor++;
+		iter->second.addAttribute("color", colors);
+	}
+	startColor = familyColor;
+	
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
@@ -241,61 +103,7 @@ public:
 	}
 };
 
-void Worker::valueRange(CkCcsRequestMsg* m) {
-	double minMaxPair[2];
-	minMaxPair[0] = minValue;
-	minMaxPair[0] = swapEndianness(minMaxPair[0]);
-	minMaxPair[1] = maxValue;
-	minMaxPair[1] = swapEndianness(minMaxPair[1]);
-	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
-	delete m;
-}
-
-void Worker::recolor(CkCcsRequestMsg* m) {
-	if(m->length != sizeof(int) + 2 * sizeof(double)) {
-		cerr << "Re-color message is wrong size!" << endl;
-		return;
-	}
-	beLogarithmic = swapEndianness(*reinterpret_cast<int *>(m->data));
-	double minVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int)));
-	double maxVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double)));
-	if(verbosity > 2) {
-		cout << "Re-coloring from " << minVal << " to " << maxVal;
-		if(beLogarithmic)
-			cout << ", logarithmically" << endl;
-		else
-			cout << ", linearly" << endl;
-	}
-	
-	double invdelta = 1.0 / (maxVal - minVal);
-	double value;
-	for(u_int64_t i = 0; i < numParticles; ++i) {
-		value = myParticles[i].value;
-		if(beLogarithmic) {
-			if(value > 0)
-				value = log10(value);
-			else
-				value = -HUGE_VAL;
-		}
-		
-		value = floor(numColors * (value - minVal) * invdelta);
-		
-		if(value < 0 || value >= numColors)
-			myParticles[i].color = 0;
-		else
-			myParticles[i].color = 1 + static_cast<byte>(value);
-	}
-	
-	if(thisIndex == 0) {
-		unsigned char success = 1;
-		CcsSendDelayedReply(m->reply, 1, &success);
-	}
-	delete m;
-	if(verbosity > 3)
-		cout << "Re-colored particles" << endl;
-}
-
-const byte lineColor = 255;
+const byte lineColor = 1;
 
 void drawLine(byte* image, const int width, const int height, int x0, int y0, int x1, int y1) {
 	int dx = 1;
@@ -413,53 +221,26 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	float x, y;
 	unsigned int pixel;
 	
-	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(meta->activeRegion)) {
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			if(Space::contains(*activeSphere, myParticles[i].position)) {
-				x = dot(req.x, myParticles[i].position - req.o);
-				if(x > -1 && x < 1) {
-					y = dot(req.y, myParticles[i].position - req.o);
-					if(y > -1 && y < 1) {
-						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-						if(pixel >= imageSize)
-							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-						if(image[pixel] < myParticles[i].color)
-							image[pixel] = myParticles[i].color;
-					}
-				}
-			}
-		}
-	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(meta->activeRegion)) {
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			if(Space::contains(*activeBox, myParticles[i].position)) {
-				x = dot(req.x, myParticles[i].position - req.o);
-				if(x > -1 && x < 1) {
-					y = dot(req.y, myParticles[i].position - req.o);
-					if(y > -1 && y < 1) {
-						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-						if(pixel >= imageSize)
-							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-						if(image[pixel] < myParticles[i].color)
-							image[pixel] = myParticles[i].color;
-					}
-				}
-			}
-		}
-	} else {
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			x = dot(req.x, myParticles[i].position - req.o);
+	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+		Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+		byte* colors = simIter->second.getAttribute<byte>("color");
+		for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+			x = dot(req.x, positions[i] - req.o);
 			if(x > -1 && x < 1) {
-				y = dot(req.y, myParticles[i].position - req.o);
+				y = dot(req.y, positions[i] - req.o);
 				if(y > -1 && y < 1) {
 					pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
 					if(pixel >= imageSize)
 						cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-					if(image[pixel] < myParticles[i].color)
-						image[pixel] = myParticles[i].color;
+					if(image[pixel] < colors[i])
+						image[pixel] = colors[i];
 				}
 			}
 		}
 	}
+	
+	//XXX removed active region drawing from here
+	
 	if(thisIndex == 0) {		
 		if(meta->boxes.size() > 0) {
 			//draw boxes onto canvas
@@ -504,8 +285,7 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 		cerr << "Well this sucks!  Couldn't get local pointer to meta handler" << endl;
 		return;
 	}
-	
-	
+		
 	cout << "Finding region pointer for \"" << id << "\"" << endl;
 	Shape<double>* activeRegion = 0;
 	MetaInformationHandler::RegionMap::iterator selectedRegion = meta->regionMap.find(id);
@@ -517,27 +297,162 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 	
 	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(activeRegion)) {
 		cout << "It's a sphere" << endl;
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			if(Space::contains(*activeSphere, myParticles[i].position)) {
-				stats.numParticles++;
-				stats.boundingBox.grow(myParticles[i].position);
+		for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+			Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+				if(Space::contains(*activeSphere, positions[i])) {
+					stats.numParticles++;
+					stats.boundingBox.grow(positions[i]);
+				}
 			}
 		}
 	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(activeRegion)) {
 		cout << "It's a box" << endl;
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			if(Space::contains(*activeBox, myParticles[i].position)) {
-				stats.numParticles++;
-				stats.boundingBox.grow(myParticles[i].position);
+		for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+			Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+				if(Space::contains(*activeBox, positions[i])) {
+					stats.numParticles++;
+					stats.boundingBox.grow(positions[i]);
+				}
 			}
 		}
 	} else {
 		cout << "It's everything" << endl;
-		for(u_int64_t i = 0; i < numParticles; ++i) {
-			stats.boundingBox.grow(myParticles[i].position);
+		for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+			Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i)
+				stats.boundingBox.grow(positions[i]);
+			stats.numParticles += simIter->second.count.numParticles;
 		}
-		stats.numParticles += numParticles;
 	}
 	cout << "contributing stats" << endl;
 	contribute(sizeof(GroupStatistics), &stats, mergeStatistics, cb);
+}
+
+void Worker::valueRange(CkCcsRequestMsg* m) {
+	string attributeName(m->data, m->length);
+	
+	double minValue = HUGE_VAL;
+	double maxValue = -HUGE_VAL;
+	double newMinVal, newMaxVal;
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+		AttributeMap::iterator attrIter = iter->second.attributes.find(attributeName);
+		if(attrIter != iter->second.attributes.end()) {
+			newMinVal = getScalarMin(attrIter->second);
+			newMaxVal = getScalarMax(attrIter->second);
+			if(newMinVal < minValue)
+				minValue = newMinVal;
+			if(newMaxVal > maxValue)
+				maxValue = newMaxVal;
+		} else if(attributeName == "family") {
+			minValue = 0;
+			maxValue = sim->size() - 1;
+		}
+	}
+	
+	double minMaxPair[2];
+	minMaxPair[0] = minValue;
+	minMaxPair[0] = swapEndianness(minMaxPair[0]);
+	minMaxPair[1] = maxValue;
+	minMaxPair[1] = swapEndianness(minMaxPair[1]);
+	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
+	delete m;
+}
+
+template <typename T>
+void Worker::assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic) {
+	double invdelta = 1.0 / (maxVal - minVal);
+	double value;
+	for(u_int64_t i = 0; i < N; ++i) {
+		if(dimensions == 3)
+			value = reinterpret_cast<Vector3D<T> *>(values)[i].length();
+		else
+			value = reinterpret_cast<T *>(values)[i];
+		if(beLogarithmic) {
+			if(value > 0)
+				value = log10(value);
+			else {
+				colors[i] = 0;
+				continue;
+			}
+		}
+		value = floor(startColor + (256 - startColor) * (value - minVal) * invdelta);
+		if(value < startColor || value > 255)
+			colors[i] = 0;
+		else
+			colors[i] = static_cast<byte>(value);
+	}
+}
+
+void Worker::chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb) {
+	currentAttribute = attributeName;
+	if(verbosity > 2) {
+		cout << "Re-coloring using " << currentAttribute << " from " << minVal << " to " << maxVal;
+		if(beLogarithmic)
+			cout << ", logarithmically" << endl;
+		else
+			cout << ", linearly" << endl;
+	}
+	
+	byte familyColor = startColor - sim->size();
+	
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
+		AttributeMap::iterator attrIter = iter->second.attributes.find(currentAttribute);
+		byte* colors = iter->second.getAttribute<byte>("color");
+		
+		if(attrIter != iter->second.attributes.end()) {	
+			if(attrIter->second.length == 0)
+				sim->loadAttribute(iter->first, currentAttribute, iter->second.count.numParticles, iter->second.count.startParticle);
+			void* values = iter->second.attributes[currentAttribute].data;
+			if(values != 0) {
+				switch(attrIter->second.code) {
+					case int8:
+						assignColors<char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case uint8:
+						assignColors<unsigned char>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case int16:
+						assignColors<short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case uint16:
+						assignColors<unsigned short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case int32:
+						assignColors<int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case uint32:
+						assignColors<unsigned int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case int64:
+						assignColors<int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case uint64:
+						assignColors<u_int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case float32:
+						assignColors<float>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					case float64:
+						assignColors<double>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, minVal, maxVal, beLogarithmic);
+						break;
+					default:
+						break;
+				}
+			}
+		} else if(currentAttribute == "family") {
+			//color particles by the family they're in
+			memset(colors, familyColor, iter->second.count.numParticles);
+			++familyColor;
+		} else {
+			//the attribute does not exist, black out these particles
+			memset(colors, 0, iter->second.count.numParticles);
+		}
+	}
+	
+	if(verbosity > 3)
+		cout << "Re-colored particles" << endl;
+	
+	contribute(0, 0, CkReduction::concat, cb);
 }
