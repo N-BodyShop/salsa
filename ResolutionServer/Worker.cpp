@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <vector>
 #include <set>
+#include <assert.h>
 #include <numeric>
 
 #include <boost/bind.hpp>
@@ -135,6 +136,10 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	maxMass = -HUGE_VAL;
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
 		TypedArray& massArr = iter->second.attributes["mass"];
+		
+		if(massArr.data == NULL)
+		    break;
+		
 		float val = massArr.getMinValue(Type2Type<float>());
 		if(val < minMass)
 			minMass = val;
@@ -143,7 +148,9 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 			maxMass = val;
 	}
 	//handle case where all particles have same mass
-	if(minMass == maxMass)
+	// or case with no masses  XXX do we need these? (should
+	// masses be special --trq
+	if(minMass >= maxMass)
 		minMass = 0;
 		
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
@@ -595,8 +602,10 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			if(attrIter->second.length == 0)
 				sim->loadAttribute(*famIter, smoothingAttributeName, family.count.numParticles,family.count.startParticle);
 			float* smoothingLengths = family.getAttribute(smoothingAttributeName, Type2Type<float>());
-			if(smoothingLengths == 0)
-				cerr << "D'oh!  smoothingLengths null!" << endl;
+			if(smoothingLengths == 0) {
+			    cerr << "D'oh!  smoothingLengths null!" << endl;
+			    continue; // To next family
+			    }
 			//CoerciveExtractor<float> smoothingLengths(attrIter->second);
 			
 			if(!projectedKernel.isReady())
@@ -1041,7 +1050,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 					if(x > -1 && x < 1) {
 						y = dot(req.y, positions[i] - req.o);
 						if(y > -1 && y < 1) {
-							if(potentials[i] < minPotential) {
+							if(potentials && potentials[i] < minPotential) {
 								minPotential = potentials[i];
 								z = dot(req.z, positions[i] - req.o);
 							}
