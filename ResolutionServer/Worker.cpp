@@ -275,6 +275,41 @@ void Worker::clearSpheres(CkCcsRequestMsg* m) {
 
 const byte lineColor = 255;
 
+void drawLine(byte* image, const int width, const int height, int x0, int y0, int x1, int y1) {
+	int dx = 1;
+	int a = x1 - x0;
+	if(a < 0) {
+		dx = -1;
+		a = -a;
+	}
+	
+	int dy = 1;
+	int b = y1 - y0;
+	if(b < 0) {
+		dy = -1;
+		b = -b;
+	}
+	
+	int two_a = 2 * a, two_b = 2 * b;
+	int xcrit = two_a - b;
+	int eps = 0;
+	
+	for(;;) {
+		if(x0 > 0 && x0 < width && y0 > 0 && y0 < height)
+			image[x0 + width * y0] = lineColor;
+		if(x0 == x1 && y0 == y1)
+			break;
+		if(eps <= xcrit) {
+			x0 += dx;
+			eps += two_b;
+		}
+		if(eps >= a || a <= b) {
+			y0 += dy;
+			eps -= two_a;
+		}
+	}
+}
+/*
 void drawLine(byte* image, const int width, const int height, const pair<double, double> p1, const pair<double, double> p2) {
 	int min_pixel, max_pixel, xpix, ypix;
 	double x, y;
@@ -307,43 +342,59 @@ void drawLine(byte* image, const int width, const int height, const pair<double,
 		}
 	}
 }
+*/
+		
+void drawCirclePoints(byte* image, const int width, const int height, const int xCenter, const int yCenter, const int x, const int y) {
+	int xpix, ypix;
+	
+	xpix = xCenter + x;
+	ypix = yCenter + y;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter - x;
+	ypix = yCenter + y;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter + x;
+	ypix = yCenter - y;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter - x;
+	ypix = yCenter - y;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter + y;
+	ypix = yCenter + x;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter - y;
+	ypix = yCenter + x;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter + y;
+	ypix = yCenter - x;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+	xpix = xCenter - y;
+	ypix = yCenter - x;
+	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+		image[xpix + ypix * width] = lineColor;
+}
 
-void drawCircle(byte* image, const int width, const int height, const pair<double, double> origin, const double radius) {
-	int min_pixel, max_pixel, xpix, ypix;
-	double x, y, rsq = radius * radius, temp;
+void drawCircle(byte* image, const int width, const int height, const int x0, const int y0, const int radius) {
+	int x = 0;
+	int y = radius;
+	int p = 1 - radius;
 	
-	min_pixel = static_cast<int>(floor(width * (origin.first - radius + 1) / 2));
-	max_pixel = static_cast<int>(floor(width * (origin.first + radius + 1) / 2));
-	if(max_pixel < min_pixel)
-		swap(min_pixel, max_pixel);
-	for(xpix = min_pixel; xpix <= max_pixel; ++xpix) {
-		x = 2 * (xpix + 0.5) / width - 1;
-		temp = sqrt((x - origin.first) * (x - origin.first) - rsq);
-		y = origin.second + temp;
-		ypix = static_cast<int>(floor(height * (1 - y) / 2));
-		if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
-			image[xpix + ypix * width] = lineColor;
-		y = origin.second - temp;
-		ypix = static_cast<int>(floor(height * (1 - y) / 2));
-		if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-			image[xpix + ypix * width] = lineColor;
-	}
-	
-	min_pixel = static_cast<int>(floor(height * (1 - origin.second + radius) / 2));
-	max_pixel = static_cast<int>(floor(height * (1 - origin.second - radius) / 2));
-	if(max_pixel < min_pixel)
-		swap(min_pixel, max_pixel);
-	for(ypix = min_pixel; ypix <= max_pixel; ++ypix) {
-		y = 1 - 2 * (ypix + 0.5) / height;
-		temp = sqrt((y - origin.second) * (y - origin.second) - rsq);
-		x = origin.first + temp;
-		xpix = static_cast<int>(floor(width * (x + 1) / 2));
-		if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
-			image[xpix + ypix * width] = lineColor;
-		x = origin.first - temp;
-		xpix = static_cast<int>(floor(width * (x + 1) / 2));
-		if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
-			image[xpix + ypix * width] = lineColor;
+	while(x < y) {
+		++x;
+		if(p < 0)
+			p += 2 * x + 1;
+		else {
+			--y;
+			p += 2 * (x - y) + 1;
+		}
+		drawCirclePoints(image, width, height, x0, y0, x, y);
 	}
 }
 
@@ -361,6 +412,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	memset(image, 0, imageSize);
 
+	float delta = 2 * req.x.length() / req.width;
+	cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
 	float x, y;
@@ -380,29 +433,29 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	if(boxes.size() > 0) {
 		//draw boxes onto canvas
-		pair<double, double> vertices[8];
+		pair<int, int> vertices[8];
 		for(vector<Box<float> >::iterator iter = boxes.begin(); iter != boxes.end(); ++iter) {
 			for(int i = 0; i < 8; ++i) {
-				vertices[i].first = dot(req.x, iter->vertices[i] - req.o);
-				vertices[i].second = dot(req.y, iter->vertices[i] - req.o);
+				vertices[i].first = static_cast<int>(floor(req.width * (dot(req.x, iter->vertices[i] - req.o) + 1) / 2));
+				vertices[i].second = static_cast<int>(floor(req.height * (1 - dot(req.y, iter->vertices[i] - req.o)) / 2));
 			}
 			
 			for(int i = 0; i < 4; ++i) {
-				drawLine(image, req.width, req.height, vertices[i], vertices[(i + 1) % 4]);
-				drawLine(image, req.width, req.height, vertices[i + 4], vertices[(i + 1) % 4 + 4]);
-				drawLine(image, req.width, req.height, vertices[i], vertices[i + 4]);
+				drawLine(image, req.width, req.height, vertices[i].first, vertices[i].second, vertices[(i + 1) % 4].first, vertices[(i + 1) % 4].second);
+				drawLine(image, req.width, req.height, vertices[i + 4].first, vertices[i + 4].second, vertices[(i + 1) % 4 + 4].first, vertices[(i + 1) % 4 + 4].second);
+				drawLine(image, req.width, req.height, vertices[i].first, vertices[i].second, vertices[i + 4].first, vertices[i + 4].second);
 			}
 		}
 	}
 	if(spheres.size() > 0) {
 		//draw spheres onto canvas
-		pair<double, double> origin;
-		double radius;
+		int x0, y0;
+		int radius;
 		for(vector<Sphere<double> >::iterator iter = spheres.begin(); iter != spheres.end(); ++iter) {
-			origin.first = dot(req.x, iter->origin - req.o);
-			origin.second = dot(req.y, iter->origin - req.o);
-			radius = 3.0 / req.width;
-			drawCircle(image, req.width, req.height, origin, radius);
+			x0 = static_cast<int>(floor(req.width * (dot(req.x, iter->origin - req.o) + 1) / 2));
+			y0 = static_cast<int>(floor(req.height * (1 - dot(req.y, iter->origin - req.o)) / 2));
+			radius = static_cast<int>(iter->radius / delta);
+			drawCircle(image, req.width, req.height, x0, y0, radius);
 		}
 	}
 
