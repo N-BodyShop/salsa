@@ -255,6 +255,8 @@ void Worker::specifySphere(CkCcsRequestMsg* m) {
 	s.origin = *reinterpret_cast<Vector3D<double> *>(m->data);
 	s.radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
 	s.origin.x = swapEndianness(s.origin.x);
+	s.origin.y = swapEndianness(s.origin.y);
+	s.origin.z = swapEndianness(s.origin.z);
 	s.radius = swapEndianness(s.radius);
 	cout << "Got a sphere definition: " << s << endl;
 	spheres.push_back(s);
