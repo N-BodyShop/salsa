@@ -1,6 +1,7 @@
 /** @file Worker.cpp
  */
- 
+
+#include <utility>
 #include <cstdlib>
 
 #include "tree_xdr.h"
@@ -272,6 +273,40 @@ void Worker::clearSpheres(CkCcsRequestMsg* m) {
 	delete m;
 }
 
+const byte lineColor = 255;
+
+void drawLine(byte* image, const int width, const int height, const pair<double, double> p1, const pair<double, double> p2) {
+	int min_pixel, max_pixel, xpix, ypix;
+	double x, y;
+	
+	min_pixel = static_cast<int>(width * (p1.first + 1) / 2);
+	max_pixel = static_cast<int>(width * (p2.first + 1) / 2);
+	if(max_pixel > min_pixel)
+		swap(min_pixel, max_pixel);
+	if(max_pixel >= 0 && min_pixel < width) {
+		for(xpix = min_pixel; xpix <= max_pixel; ++xpix) {
+			x = 2 * (xpix + 0.5) / width - 1;
+			y = static_cast<int>(p1.second + (p2.second - p1.second) * (x - p1.first) / (p2.first - p1.first));
+			ypix = static_cast<int>(height * (1 - y) / 2);
+			if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+				image[xpix + ypix * width] = lineColor;
+		}
+	}
+	
+	min_pixel = static_cast<int>(height * (1 - p1.second) / 2);
+	max_pixel = static_cast<int>(height * (1 - p2.second) / 2);
+	if(max_pixel > min_pixel)
+		swap(min_pixel, max_pixel);
+	if(max_pixel >= 0 && min_pixel < height) {
+		for(ypix = min_pixel; ypix <= max_pixel; ++ypix) {
+			y = 1 - 2 * (ypix + 0.5) / height;
+			x = static_cast<int>(p1.first + (p2.first - p1.first) * (y - p1.second) / (p2.second - p1.second));
+			if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+				image[xpix + ypix * width] = lineColor;
+		}
+	}
+}
+
 void Worker::generateImage(liveVizRequestMsg* m) {
 	double start = CkWallTimer();
 	
@@ -295,7 +330,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		if(x > -1 && x < 1) {
 			y = dot(req.y, myParticles[i].position - req.o);
 			if(y > -1 && y < 1) {
-				pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (y + 1) / 2);
+				pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
 				if(pixel >= imageSize)
 					cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
 				if(image[pixel] < myParticles[i].color)
@@ -310,27 +345,17 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	if(boxes.size() > 0) {
 		//draw boxes onto canvas
-		unsigned int pix_x, pix_y;
+		pair<double, double> vertices[8];
 		for(vector<Box<float> >::iterator iter = boxes.begin(); iter != boxes.end(); ++iter) {
 			for(int i = 0; i < 8; ++i) {
-				x = dot(req.x, iter->vertices[i] - req.o);
-				if(x > -1 && x < 1) {
-					y = dot(req.y, iter->vertices[i] - req.o);
-					if(y > -1 && y < 1) {
-						cerr << "Vertex is in the frame" << endl;
-						pix_x = static_cast<unsigned int>(req.width * (x + 1) / 2);
-						pix_y = static_cast<unsigned int>(req.height * (y + 1) / 2);
-						for(int j = 0; j < 3; ++j) {
-							for(int k = 0; k < 3; ++k) {
-								pixel = pix_x - 1 + j + req.width * (pix_y - 1 + k);
-								if(pixel < imageSize)
-									image[pixel] = boxColor;
-								else
-									cerr << "Pixel is bad" << endl;
-							}
-						}
-					}
-				}
+				vertices[i].first = dot(req.x, iter->vertices[i] - req.o);
+				vertices[i].second = dot(req.y, iter->vertices[i] - req.o);
+			}
+			
+			for(int i = 0; i < 4; ++i) {
+				drawLine(image, req.width, req.height, vertices[i], vertices[(i + 1) % 4]);
+				drawLine(image, req.width, req.height, vertices[i + 4], vertices[(i + 1) % 4 + 4]);
+				drawLine(image, req.width, req.height, vertices[i], vertices[i + 4]);
 			}
 		}
 	}
