@@ -145,15 +145,15 @@ public class ColorBarPanel extends JPanel
         puke_red[1] = 0;
         puke_green[1] = (byte) 255;
         puke_blue[1] = 0;
-        puke_red[2] = (byte) 64;
-        puke_green[2] = (byte) 64;
+        puke_red[2] = (byte) 190;
+        puke_green[2] = (byte) 200;
         puke_blue[2] = (byte) 255;
         puke_red[3] = (byte) 255;
-        puke_green[3] = 0;
-        puke_blue[3] = 0;
+        puke_green[3] = (byte) 63;
+        puke_blue[3] = (byte) 63;
         puke_red[4] = (byte) 255;
         puke_green[4] = (byte) 255;
-        puke_blue[4] = 0;
+        puke_blue[4] = (byte) 140;
     }
 
     /*
