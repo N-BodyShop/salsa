@@ -23,7 +23,7 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 	private boolean authenticated;
 	private boolean connected;
 	private String selectedSim;
-	private CcsThread ccs;
+	public CcsThread ccs;
 	private long firstClick;
 
 
@@ -131,7 +131,7 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 				refComPane.setHost(hostField.getText());
 				refComPane.setPort(portField.getText());
 				ccs = new CcsThread(new Label(), refComPane.getHost(), refComPane.getPort());
-				refComPane.setCCS(ccs);
+				refComPane.setCCS();
 				ccs.addRequest(new AuthenticationRequest(userField.getText(), passField.getText()));
 			}
 		}else if(command=="SELECT"){
@@ -176,39 +176,91 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 	public void mousePressed(MouseEvent e){}
 	public void mouseExited(MouseEvent e){}
 
-
 //*****************************************************************************************************************
-	private class AuthenticationRequest extends CcsThread.request {
 
-		public AuthenticationRequest(String username, String password) {
-			super("AuthenticateNChilada", (username + ":" + password).getBytes());
-		}
+	private void parseBytes(byte[] data){
+		String r = new String(data);
+		char[] word = new char[0];
+		int index = 0;
+		for(int x = 0; x<data.length; x++){
+			char temp = r.charAt(x);
+			//System.out.println("The char is: " + temp);
+			if(temp==','){
+				//make the char[] a string and toss it onto the list, then reset word
+				String listItem = new String(word);
+				//System.out.println("Got word: " + listItem);
+				model.addElement(listItem);
 
-		public void handleReply(byte[] data) {
-			if(data[0]==0){
-				// bad
-				//JOptionPane.showMessageDialog(new JFrame(), "The server does not like you");
+				word = new char[0];
+				index = 0;
 			}else{
-				// good
-				try{
-					refComPane.updateStatus("Authenticated successfully...connecting...");
-					String[] args = new String[2];
-					args[0] = hostField.getText();
-					args[1] = portField.getText();
-					connect(args);
-					ccs.addRequest(new ListSimulations());
-				}catch(NumberFormatException nf){
-					JOptionPane.showMessageDialog(new JFrame(), "Please input a valid port number");
-					portField.setText("");
-				}
+				word = expand(word);
+				word[index] = temp;
+				index++;
 			}
 		}
 	}
 	
 //*****************************************************************************************************************
 
-	private class ListSimulations extends CcsThread.request {
+	private char[] expand(char[] tooShort){
+		if(tooShort.length==0){
+			return new char[1];
+		}else{
+			char[] storage = new char[tooShort.length + 1];
+			for(int x=0; x<tooShort.length; x++){
+				storage[x] = tooShort[x];
+			}
+			//char[] returned = new char[tooShort.length + 1];
+			//for(int j = 0; j<storage.length; j++){
+			//	returned[j] = storage[j];
+			//}
+			return storage;
+		}
+	}
 	
+//*****************************************************************************************************************
+
+	public String getSimName(){
+		return selectedSim;
+	}
+	
+	//*******************************************************************************************************//
+	//*******************************************************************************************************//
+	//													 //
+	//                         SERVER REQUESTS APPEAR BELOW HERE		                                 //
+	//													 //
+	//*******************************************************************************************************//
+	//*******************************************************************************************************//
+
+//*****************************************************************************************************************
+
+	private class ChooseSimulation extends CcsThread.request{
+
+		public ChooseSimulation(String sim){
+			super("ChooseSimulation", sim.getBytes());
+			//System.out.println("constructor");
+		}
+
+		public void handleReply(byte[] data){
+			System.out.println("Handled");
+			if(data[0]==0){
+				System.out.println("Not good!");
+			}else{
+				//good
+				System.out.println("Launching " + selectedSim);
+				refComPane.enableOne();		//enable the tabs of the CommandPane
+				refComPane.updateStatus("Simulation loaded: " + selectedSim);
+				refComPane.clearGroups();
+				refComPane.updateGroupList("All Particles");
+			}
+		}
+	}
+
+//*****************************************************************************************************************
+
+	private class ListSimulations extends CcsThread.request {
+
 		public ListSimulations(){
 			super("ListSimulations", null);
 		}
@@ -235,77 +287,35 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 				refComPane.updateStatus("Connection active, please chose a simulation to load");
 			}
 		}
-		
 	}
-	
+
 //*****************************************************************************************************************
 
-	private class ChooseSimulation extends CcsThread.request{
+	private class AuthenticationRequest extends CcsThread.request {
 
-		public ChooseSimulation(String sim){
-			super("ChooseSimulation", sim.getBytes());
-			//System.out.println("constructor");
+		public AuthenticationRequest(String username, String password) {
+			super("AuthenticateNChilada", (username + ":" + password).getBytes());
 		}
 
-		public void handleReply(byte[] data){
-			System.out.println("Handled");
+		public void handleReply(byte[] data) {
 			if(data[0]==0){
-				System.out.println("Not good!");
+				// bad
+				//JOptionPane.showMessageDialog(new JFrame(), "The server does not like you");
 			}else{
-				//good
-				System.out.println("Launching " + selectedSim);
-				refComPane.enableOne();		//enable the tabs of the CommandPane
-				refComPane.updateStatus("Simulation loaded: " + selectedSim);
-				
+				// good
+				try{
+					refComPane.updateStatus("Authenticated successfully...connecting...");
+					String[] args = new String[2];
+					args[0] = hostField.getText();
+					args[1] = portField.getText();
+					connect(args);
+					ccs.addRequest(new ListSimulations());
+				}catch(NumberFormatException nf){
+					JOptionPane.showMessageDialog(new JFrame(), "Please input a valid port number");
+					portField.setText("");
+				}
 			}
 		}
 	}
-	
-//*****************************************************************************************************************
-	
-	private void parseBytes(byte[] data){
-		String r = new String(data);
-		char[] word = new char[0];
-		int index = 0;
-		for(int x = 0; x<data.length; x++){
-			char temp = r.charAt(x);
-			//System.out.println("The char is: " + temp);
-			if(temp==','){
-				//make the char[] a string and toss it onto the list, then reset word
-				String listItem = new String(word);
-				//System.out.println("Got word: " + listItem);
-				model.addElement(listItem);
-
-				word = new char[0];
-				index = 0;
-			}else{
-				word = expand(word);
-				word[index] = temp;
-				index++;
-			}
-		}
-	}
-	
-	private char[] expand(char[] tooShort){
-		if(tooShort.length==0){
-			return new char[1];
-		}else{
-			char[] storage = new char[tooShort.length + 1];
-			for(int x=0; x<tooShort.length; x++){
-				storage[x] = tooShort[x];
-			}
-			//char[] returned = new char[tooShort.length + 1];
-			//for(int j = 0; j<storage.length; j++){
-			//	returned[j] = storage[j];
-			//}
-			return storage;
-		}
-	}
-	
-	public String getSimName(){
-		return selectedSim;
-	}
-
-
 }
 

@@ -105,8 +105,9 @@ public class ConfigPanel extends JPanel implements ActionListener {
 				System.out.println("the view is: " + viewString);
 
 
-				theFrame = new JFrame("NChilada *Main* Visualization");
-				theParent = new ParentPanel(refComPane.getHost(), refComPane.getPort(), viewString);
+				theFrame = new JFrame("NChilada Visualization : " + refComPane.getSimName());
+				theParent = new ParentPanel(refComPane.getHost(), refComPane.getPort(), viewString, this, refComPane);
+				refComPane.callParseSetter(theParent);
 				theFrame.addWindowListener(new WindowAdapter() {
 					public void windowClosing(WindowEvent e) {
 						render.setEnabled(true);
@@ -121,7 +122,7 @@ public class ConfigPanel extends JPanel implements ActionListener {
 				render.setEnabled(false);
 				
 				refComPane.enableTwo();
-				refComPane.callParseSetter(theParent);
+
 				refComPane.updateStatus("Simulation Launched : " + refComPane.getSimName());
 			//}
 		}
@@ -131,6 +132,10 @@ public class ConfigPanel extends JPanel implements ActionListener {
 		theFrame.dispose();
 		theParent.isOpen = false;
 		render.setEnabled(true);
+	}
+	
+	public void packFrame(){
+		theFrame.pack();
 	}
 
 

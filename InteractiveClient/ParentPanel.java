@@ -23,7 +23,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	public JButton xButton, yButton, zButton;
 	public int start_x, start_y;
 	public String controller, typeOfSelection;
-	public JPanel leftPanel, rightPanel;
+	public JPanel leftPanel, rightPanel, splitPanel, southPanel;
 	public int currentZLoc;
 	private Rectangle drawRect = new Rectangle();
 	private boolean mainDrawn, auxDrawn;
@@ -38,8 +38,21 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	private long firstClick;
 	public boolean isOpen;
 	private String colorMapType;
+	public ConfigPanel refConfigPanel;
+	private CommandPane refComPane;
+	public boolean resizeCall;
+	private JPopupMenu rightClickMenu;
 
-	public ParentPanel(String hostname, int portNumber, String theView){
+	/*
+	 * constructor
+	 * @param hostname the hostname, used to initialize the ccs thread
+	 * @param portNumber the port number, used to initialize the ccs thread
+	 * @param theView xall, yall, or zall
+	 * @param cp the ConfigPanel object that instantiated this ParentPanel-->for accessor methods
+	 * @param c the COmmandPane object controlling everything
+	 */
+
+	public ParentPanel(String hostname, int portNumber, String theView, ConfigPanel cp, CommandPane c){
 		super(new BorderLayout());
 		host = hostname;
 		port = portNumber;
@@ -48,6 +61,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		mainDrawn = false;
 		auxDrawn = false;
 		isOpen = true;
+		refConfigPanel = cp;
+		refComPane = c;
+		resizeCall = false;
 
 		/*
 		 * setup color map for top of window
@@ -98,7 +114,7 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		/* 
 		 * add the MainView and AuxiliaryView to the parent
 		 */
-		JPanel split = new JPanel(new GridLayout(0,2));
+		splitPanel = new JPanel(new GridLayout(0,2));
 		mainView = new MainView(this, "mainView");
 		auxView = new MainView(this, "auxView");
 		leftPanel = new JPanel();
@@ -113,15 +129,15 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		//rightPanel.setBorder(BorderFactory.createRaisedBevelBorder());
 		leftPanel.add(mainView);
 		rightPanel.add(auxView);
-		split.add(leftPanel);
-		split.add(rightPanel);
-		add(split, BorderLayout.CENTER);
+		splitPanel.add(leftPanel);
+		splitPanel.add(rightPanel);
+		add(splitPanel, BorderLayout.CENTER);
 		controller = "mainView";
 
 		/*
 		 * set up the bottom portion of the UI...buttons and sliders etc 
 		 */
-		JPanel southPanel = new JPanel();
+		southPanel = new JPanel();
 
 		JPanel aux = new JPanel(new GridLayout(3,1));
 		xButton = new JButton("xall");
@@ -247,10 +263,51 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		groupOfButtons.add(rb);
 		aux.add(rb);
 		southPanel.add(aux);
-
+		/*
+		aux = new JPanel(new GridLayout(3,1));
+		JButton png = new JButton("PNG capture");
+		png.setActionCommand("png");
+		png.addActionListener(this);
+		aux.add(png);
+		southPanel.add(aux);
+		*/
 		add(southPanel, BorderLayout.SOUTH);
 		firstClick = 0;
 		//end UI setup
+		
+		/* set up right click menu */
+		rightClickMenu = new JPopupMenu();
+		JMenuItem item;
+
+		item = new JMenuItem("xall view");
+		item.setActionCommand("xall");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		item = new JMenuItem("yall view");
+		item.setActionCommand("yall");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		item = new JMenuItem("zall view");
+		item.setActionCommand("zall");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		item = new JMenuItem("recolor image");
+		item.setActionCommand("recolor");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		item = new JMenuItem("Save image as png...");
+		item.setActionCommand("png");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		item = new JMenuItem("switch color map");
+		item.setActionCommand("switchmap");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		item = new JMenuItem("clear boxes/spheres");
+		item.setActionCommand("clear");
+		item.addActionListener(this);
+		rightClickMenu.add(item);
+		//end right click menu setup
 
 		mainView.messageHub("lvConfig", false);
 		auxView.messageHub("lvConfig", true);
@@ -325,10 +382,84 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 				mainView.messageHub("newColor", true);
 				auxView.messageHub("newColor", true);
 			}
+		}else if(command.equals("png")){
+			encodePNG(true, null, null);
 		}
 	}
 	
 	//*******************************************************************************************************//
+	/*
+	 * void encodePNG
+	 * encode the appropriate view to png file
+	 * @param arg true: this function was called from a popup menu on the screen, false: this function was called from
+	 *	CommandParser, via manual input
+	 * @param view the view to save to png, either 'main' or 'aux'
+	 * @param name the name of the png file
+	 */
+	public void encodePNG(boolean arg, String view, String name){
+		System.out.println("FIRING UP THE PNG ENCODER!");
+		if(arg){
+			//called from actionPerformed
+			String fileName = JOptionPane.showInputDialog("Enter file name");
+			if(fileName==null){
+				//do nothing...the cancel button was pressed
+			}else if(fileName.equals("")){
+				JOptionPane.showMessageDialog(this, "No filename Entered, terminating png encoder");
+			}else{
+				Image img;
+				if(controller.equals("mainView")){
+					img = createImage(mainView.source);
+				}else{
+					img = createImage(auxView.source);
+				}
+				byte[] pngBytes;
+				PngEncoder png = new PngEncoder(img, false);
+				pngBytes = png.pngEncode();
+				try{
+					FileOutputStream outfile = new FileOutputStream(fileName);
+					outfile.write(pngBytes);
+					outfile.flush();
+					outfile.close();
+				}catch(FileNotFoundException ex){
+					System.out.println("File not found exception!");
+				}catch(IOException ex){
+					System.out.println("IO exception!");
+				}
+			}
+		}else{
+			//called from commandParser
+			Image img;
+			if(view.equals("main")){
+				img = createImage(mainView.source);
+			}else{
+				img = createImage(auxView.source);
+			}
+			byte[] pngBytes;
+			PngEncoder png = new PngEncoder(img, false);
+			pngBytes = png.pngEncode();
+			try{
+				FileOutputStream outfile = new FileOutputStream(name);
+				outfile.write(pngBytes);
+				outfile.flush();
+				outfile.close();
+			}catch(FileNotFoundException ex){
+				System.out.println("File not found exception!");
+			}catch(IOException ex){
+				System.out.println("IO exception!");
+			}
+		}
+	}
+
+	//*******************************************************************************************************//
+	/*
+	 * this function sends a request to the server to re-interpret the way the particle colors are defined/recognized
+	 * @param argOne null: this function was called from actionPerformed, 'lin': linear coloring definition, 'log':
+	 *	logarithmic color definition
+	 * @param argTwo only valid when this function is called from CommandParser...the first double value that defines
+	 *	redefining bounds to the particles
+	 * @param argThree only valid when this function is called from CommandParser...the second double value that defines
+	 *	redefining bounds to the particles
+	 */
 
 	public void reColor(String argOne, double argTwo, double argThree){
 		if(argOne==null){
@@ -373,15 +504,64 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			}
 			byte[] data = encodeNumbers(type, argTwo, argThree);
 			ccs.addRequest(new ReColor(data));
+			reView();
 		}
 	}
 	
+	//*******************************************************************************************************//
+	/*
+	 * invokes the ImageRequest server request in MainView, in order to update the image
+	 */
+
 	public void reView(){
 		mainView.messageHub("review", true);
 		auxView.messageHub("review", true);
 	}
 
 	//*******************************************************************************************************//
+	/*
+	 * this function is called indirectly from CommandParser to resize the window in response to the manual input
+	 * command 'resize'...see CommandPrompt method instructions() for usage of 'resize'
+	 */
+
+	public void resizeMainView(int wid, int hei){
+
+		mainView.resizedImage = true;
+		mainView.width = wid;
+		mainView.height = hei;
+		double xRatio = mainView.x.length() / mainView.width;
+		double yRatio = mainView.y.length() / mainView.height;
+		if(xRatio != yRatio) {
+			double factor = yRatio / xRatio;
+			mainView.x = mainView.x.scalarMultiply(factor);
+		}
+		mainView.messageHub("review", true);
+		
+		auxView.resizedImage = true;
+		auxView.width = wid;
+		auxView.height = hei;
+		xRatio = auxView.x.length() / auxView.width;
+		yRatio = auxView.y.length() / auxView.height;
+		if(xRatio != yRatio) {
+			double factor = yRatio / xRatio;
+			auxView.x = auxView.x.scalarMultiply(factor);
+		}
+		resizeCall = true;
+		auxView.messageHub("review", true);
+		cmdisplay.reset(wid*2, 10);
+		cmdisplay.redisplay(wrbb);
+		//leftPanel.resize(wid, hei);
+		//rightPanel.resize(wid, hei);
+		//splitPanel.resize(wid*2, hei);
+		//resize(wid*2, getHeight());
+		//southPanel.resize(wid*2, southPanel.getHeight());
+		//refConfigPanel.packFrame();
+	}
+
+	//*******************************************************************************************************//
+	/*
+	 * this function is used by the reColor function to encode the arguments of the server call to binary
+	 */
 
 	private byte[] encodeNumbers(int type, double first, double second) {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
@@ -594,6 +774,12 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			case MouseEvent.BUTTON2_MASK:
 				break;
 			case MouseEvent.BUTTON3_MASK:
+				//popup menu
+				if(controller.equals("mainView")){
+					rightClickMenu.show(leftPanel, e.getX(), e.getY());
+				}else{
+					rightClickMenu.show(rightPanel, e.getX(), e.getY());
+				}
 				break;
 			case MouseEvent.BUTTON3_MASK | InputEvent.SHIFT_MASK:
 				break;
@@ -673,6 +859,24 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 
 	/**************************************************************************************************/
+	/*
+	 * This function converts pixel values on screen, specified by mouse actions, into simulation space units
+	 * The arrays xSimnNumbers, ySimNumbers, and zSimNumbers store the x, y, and z values of all points corresponding
+	 * to the box or sphere being drawn.  The box points follow the illustration below
+	 *
+	 *			4---------5
+	 *		       /|        /|
+	 *		      / |       / |
+	 *		     /  |      /  |
+	 *		    0---------1   |
+	 *		    |   7-----|---6
+	 *		    |  /      |  /
+	 *		    | /       | /
+	 *		    |/        |/
+	 *		    3---------2
+	 *
+	 * so xSimNumbers[0], ySimNumbers[0], and zSimNumbers[0] correspond to the x,y, and z sim points of point zero
+	 */
 
 	private void setSimPoints(int currentX, int currentY){
 		if(typeOfSelection.equals("boxes")){
@@ -800,19 +1004,25 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 	}
 
 	/**************************************************************************************************/
-
+	/*
+	 * used to convert pixel values to simulation space along the x-axis
+	 */
 	public double xSimMultiply(double mult, Vector3D respect){
 		return ((2*(mult/mainView.width))-1)*respect.length();
 	}
 
 	/**************************************************************************************************/
-
+	/*
+	 * used to convert pixel values to simulation space along the y-axis
+	 */
 	public double ySimMultiply(double mult, Vector3D respect){
 		return (1-(2*(mult/mainView.height)))*respect.length();
 	}
 
 	/**************************************************************************************************/
-
+	/*
+	 * used to convert pixel values to simulatino space along the z-axis
+	 */
 	public double zSimMultiply(double mult, Vector3D respect){
 		return (1-(2*(mult/mainView.height)))*respect.length();
 	}
@@ -1140,7 +1350,9 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 		}
 
 		public void handleReply(byte[] data){
-			//do something
+			String reply = new String(data);
+			System.out.println("The box is: " + reply);
+			refComPane.updateGroupList(reply);
 		}
 	}
 
@@ -1152,7 +1364,11 @@ public class ParentPanel extends JPanel implements ActionListener, MouseListener
 			super("SpecifySphere", data);
 		}
 
-		public void handleReply(byte[] data){}
+		public void handleReply(byte[] data){
+			String reply = new String(data);
+			System.out.println("The sphere is: " + reply);
+			refComPane.updateGroupList(reply);
+		}
 	}
 	
 	//*************************************************************************************************

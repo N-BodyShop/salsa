@@ -28,6 +28,7 @@ public class CommandPane implements ActionListener, ItemListener {
 	private String host;
 	private int port;
 	private CcsThread ccs;
+	private JButton activate;
 
 //*****************************************************************************************************************
 	/**
@@ -100,6 +101,10 @@ public class CommandPane implements ActionListener, ItemListener {
 		JPanel inset = new JPanel(new BorderLayout());
 		inset.add(new JLabel("Config Groups"), BorderLayout.NORTH);
 		inset.add(groups, BorderLayout.SOUTH);
+		activate = new JButton("Activate Subset");
+		activate.setActionCommand("activate");
+		activate.addActionListener(this);
+		inset.add(activate, BorderLayout.WEST);
 		panel.add(inset, BorderLayout.EAST);
 		frame.getContentPane().add(panel, BorderLayout.NORTH);
 		frame.getContentPane().add(tabPane, BorderLayout.CENTER);
@@ -148,8 +153,10 @@ public class CommandPane implements ActionListener, ItemListener {
 		port = Integer.parseInt(s);
 	}
 	
-	public void setCCS(CcsThread s){
-		ccs = s;
+//*****************************************************************************************************************
+
+	public void setCCS(){
+		ccs = new CcsThread(new Label(), host, port);
 	}
 
 //*****************************************************************************************************************
@@ -178,6 +185,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		//toolBar.getComponentAtIndex(0).setEnabled(false);
 		//toolBar.getComponentAtIndex(1).setEnabled(false);
 		groups.setEnabled(false);
+		activate.setEnabled(false);
 	}
 
 //*****************************************************************************************************************
@@ -200,13 +208,12 @@ public class CommandPane implements ActionListener, ItemListener {
 		//toolBar.getComponentAtIndex(0).setEnabled(true);
 		//toolBar.getComponentAtIndex(1).setEnabled(true);
 		groups.setEnabled(true);
+		activate.setEnabled(true);
 		//manualPanel.enable();
 		//everything else opens after render button pushed
 	}
 	
-	public void callParseSetter(ParentPanel p){
-		manualPanel.setParser(p);
-	}
+
 
 //*****************************************************************************************************************
 	/**
@@ -264,14 +271,14 @@ public class CommandPane implements ActionListener, ItemListener {
 	public void updateGroupList(String arg) {
 		try{
 		/* check the length of arg, ask for a new name if too long */
-		if(arg.length()<20){ 
+		if(arg.length()<20){
 			if(checkDoubles(arg)){
 				if(arg.length()==0){
 					/*do nothing*/
 				}else{
-					profilePanel.updateLable(arg);
+					//profilePanel.updateLable(arg);
 					groups.addItem(arg);
-					groups.setSelectedItem(arg);
+					//groups.setSelectedItem(arg);
 				}
 			}else{
 				String in = JOptionPane.showInputDialog("Try again:");
@@ -283,7 +290,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		}
 		}catch(Exception ex){/*this happens when the cancel button is pushed, so do nothing*/}
 	}
-	
+
 //*****************************************************************************************************************
 
 	public void clearGroups(){
@@ -291,20 +298,26 @@ public class CommandPane implements ActionListener, ItemListener {
 			groups.removeAllItems();
 		}
 	}
+	
+//*****************************************************************************************************************
+
 	/**
 	 * void actionPerformed
 	 */
 	public void actionPerformed(ActionEvent e){
 		String command = e.getActionCommand();
-		if(command=="SAVE_BUTTON"){
+		if(command.equals("SAVE_BUTTON")){
 			String in = JOptionPane.showInputDialog("Enter the name of the configuration");
 			updateGroupList(in);
-		}else if(command=="EXIT"){
+		}else if(command.equals("EXIT")){
 			System.exit(0);
+		}else if(command.equals("activate")){
+			System.out.println("Activating: " + getCurrentListItem());
+			ccs.addRequest(new Activate(getCurrentListItem()));
 		}
-	
+
 	}
-	
+
 //*****************************************************************************************************************
 	/**
 	 * void itemStateChanged - check to make sure the label in profilePanel is the same as
@@ -335,16 +348,52 @@ public class CommandPane implements ActionListener, ItemListener {
 		return (String)groups.getSelectedItem();
 	}
 	
+	/*
+	 * accessor method
+	 * gives classes access to the DefaultListModel in InputPanel which has the list of simulations
+	 */
 	public DefaultListModel getSimList(){
 		return inputPanel.getSimList();
 	}
 
+	/*
+	 * propogated method call, used to close the currently running viz window after the command
+	 * is entered in the manualPanel/CommandPrompt
+	 */
 	public void disposeWindow(){
 		configPanel.disposeWindow();
 		updateStatus(inputPanel.getSimName() + "...closed");
 	}
 	
+	/*
+	 * accessor method
+	 * gives classes access to the currently selected simulation, according to the InputPanel
+	 */
 	public String getSimName(){
 		return inputPanel.getSimName();
+	}
+	
+	/*
+	 * propogated method call.  This method is invoked from ConfigPanel, when the ParentPanel
+	 * is initialized.  The ParentPanel is passed from ConfigPanel, to CommandPane, to CommandPrompt,
+	 * where it is used to initialize the ParentPanel instance variable in the CommandParser
+	 */
+	public void callParseSetter(ParentPanel p){
+		manualPanel.setParser(p);
+	}
+	
+	//*******************************************************************************************************//
+	//*******************************************************************************************************//
+	//													 //
+	//                         SERVER REQUESTS APPEAR BELOW HERE		                                 //
+	//													 //
+	//*******************************************************************************************************//
+	//*******************************************************************************************************//
+	private class Activate extends CcsThread.request{
+
+		public Activate(String arg){
+			super("Activate", arg.getBytes());
+		}
+		public void handleReply(byte[] data){}
 	}
 }

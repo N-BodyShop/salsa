@@ -67,7 +67,8 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		commandLog.append("List of known commands:\n");
 		commandLog.append("Query for list of commands: " + " $commands\n");
 		commandLog.append("Get list of simulations: " + " $simlist\n");
-		commandLog.append("Chose a simulation: " + " $chosesim <int>\n");
+		commandLog.append("Chose a simulation: " + " $choosesim <int>\n");
+		commandLog.append("Chose a file to read commands from: " + " $openfile\n");
 		commandLog.append("Launch the simulation: " + " $launch\n");
 		commandLog.append("Xall: " + " $xall\n");
 		commandLog.append("Yall: " + " $yall\n");
@@ -77,8 +78,10 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		commandLog.append("Zoom command: " + " $zoom <double>\n");
 		commandLog.append("Rotating: " + " $rotate <left/right/up/down/counter/clock> <double>\n");
 		commandLog.append("Panning: " + " $pan <left/right/up/down/in/out> <double>\n");
+		commandLog.append("Resizing: " + " $resize <int width> <int height>\n");
 		commandLog.append("Recoloring: " + " $recolor <lin/log> <double> <double>\n");
 		commandLog.append("Value range request: " + " $range\n");
+		commandLog.append("Capturing .png images: " + " $dump <main/aux> <filename>\n");
 		commandLog.append("Close the visualization: " + " $closeviz\n");
 		commandLog.append("Quit Program: " + " $quit\n");
 		commandLog.append("\n");
@@ -139,8 +142,9 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 			commandField.setText("");
 			currentCommand = "";
 		}catch(Exception ex){
-			//System.out.println("Exception caugth...haven't initialized yet...?");
+			System.out.println("Exception caugth...haven't initialized yet...?");
 			updateScreen("Please launch the simulation from the Configure tab in order to initialize the program variables");
+			ex.printStackTrace();
 		}
 	}
 
@@ -186,7 +190,12 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 	}
 
 	public void setParser(ParentPanel p){
-		parser = new CommandParser(p, this);
+		if(parser==null){
+			parser = new CommandParser(p, this);
+		}else{
+			System.out.println("Setting new parser!");
+			parser.theParent = p;
+		}
 	}
 	
 	public DefaultListModel getSimList(){
@@ -203,5 +212,13 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 	
 	public void disposeWindow(){
 		refComPane.disposeWindow();
+	}
+	
+	public void updateGroupList(String arg){
+		refComPane.updateGroupList(arg);
+	}
+	
+	public void clearGroups(){
+		refComPane.clearGroups();
 	}
 }

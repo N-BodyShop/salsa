@@ -11,7 +11,7 @@ import java.awt.*;
  */
 public class CommandParser {
 	private CcsThread ccs;
-	private ParentPanel theParent;
+	public ParentPanel theParent;
 	private CommandPrompt thePrompt;
 	private String theCommand = "";
 	private double theArg;
@@ -32,6 +32,7 @@ public class CommandParser {
 		thePrompt = cp;
 		theSimList = thePrompt.getSimList();
 		ccs = new CcsThread(new Label(), theParent.host, theParent.port);
+		System.out.println("Parser is set...ROCK AND ROLL!");
 	}
 
 	//***********************************************************************************************
@@ -44,11 +45,33 @@ public class CommandParser {
 	 * @param arg the string to parse, entered in the manual tab of the CommandPane
 	 */
 	public void parseString(String arg){
-		System.out.println("Parsing string command");
+		System.out.println("Parsing string command: " + arg);
 		int firstSpace = arg.indexOf(" ");
 		if(firstSpace == -1){
 			//no space
-			if(arg.equals("quit")){
+			if(arg.equals("openfile")){
+				System.out.println("Filechooser launched!");
+				JFileChooser choser = new JFileChooser();
+				int selection = choser.showOpenDialog(theParent);
+				if(selection == JFileChooser.APPROVE_OPTION){
+					System.out.println("The file is: " + choser.getSelectedFile().getName());
+					System.out.println("The file path is: " + choser.getSelectedFile().getPath());
+					try{
+						BufferedReader reader = new BufferedReader(new FileReader(choser.getSelectedFile()));
+						while(reader.ready()){
+							String currentLine = reader.readLine();
+							//System.out.println("line says: " + reader.readLine());
+							parseString(currentLine);
+						}
+						reader.close();
+					}catch(FileNotFoundException ex){
+						System.out.println("File not found!");
+					}catch(IOException ex){
+						System.out.println("IO exception caught!");
+					}
+				}
+
+			}else if(arg.equals("quit")){
 				goodCommand(arg);
 				System.exit(0);
 			}else if(arg.equals("review")){
@@ -116,15 +139,30 @@ public class CommandParser {
 			//space/args are included
 			try{
 				theCommand = arg.substring(0,firstSpace);
-				if(theCommand.equals("resize")){
+				if(theCommand.equals("dump")){
+					if(theParent.isOpen){
+						String secondString = arg.substring(firstSpace+1);
+						int secondSpace = secondString.indexOf(" ");
+						String firstArg = secondString.substring(0, secondSpace);	//either 'main' or 'aux'
+						String secondArg = secondString.substring(secondSpace+1);
+						if(firstArg.equals("aux") || firstArg.equals("main")){
+							goodCommand(arg);
+							theParent.encodePNG(false, firstArg, secondArg);
+						}else{
+							badCommand("Check args: " + arg);
+						}
+					}else{
+						thePrompt.updateScreen("Don't think so...no visualization is running!");
+					}
+				}else if(theCommand.equals("resize")){
 					String secondString = arg.substring(firstSpace+1);
 					int secondSpace = secondString.indexOf(" ");
 					String secondArg = secondString.substring(0, secondSpace);
 					String thirdArg = secondString.substring(secondSpace+1);
 					int firstInt = Integer.parseInt(secondArg);
 					int secondInt = Integer.parseInt(thirdArg);
-					System.out.println("first arg is: " + firstInt);
-					System.out.println("second arg is: " + secondInt);
+					goodCommand(arg);
+					theParent.resizeMainView(firstInt, secondInt);
 				}else if(theCommand.equals("choosesim")){
 					String secondArg = arg.substring(firstSpace+1);
 					int intArg = Integer.parseInt(secondArg);
@@ -270,6 +308,8 @@ public class CommandParser {
 				System.out.println("Launching " + selectedSim);
 				//refComPane.updateStatus("Simulation loaded: " + selectedSim);
 				thePrompt.updateStatus(selectedSim);
+				thePrompt.clearGroups();
+				thePrompt.updateGroupList("All particles");
 
 			}
 		}

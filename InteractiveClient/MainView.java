@@ -13,7 +13,7 @@ public class MainView extends JPanel implements ComponentListener{
 	private CcsThread ccs;
 	public Vector3D x,y,z,origin;
 	public int width, height;
-	private MemoryImageSource source;
+	public MemoryImageSource source;
 	private byte[] pixels;
 	public JLabel display;
 	public boolean resizedImage;
@@ -171,7 +171,6 @@ public class MainView extends JPanel implements ComponentListener{
 	public void componentShown(ComponentEvent e) {}
 
 	public void componentResized(ComponentEvent e) {
-
 		width = e.getComponent().getWidth();
 		height = e.getComponent().getHeight();
 		resizedImage = true;
@@ -398,7 +397,10 @@ public class MainView extends JPanel implements ComponentListener{
 		public void handleReply(byte[] data) {
 			pixels = data;
 			displayImage(data);
-
+			if(theParent.resizeCall){
+				theParent.resizeCall = false;
+				theParent.refConfigPanel.packFrame();
+			}
 		}
 	}
 }
