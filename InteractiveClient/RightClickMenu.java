@@ -14,88 +14,73 @@ import java.io.*;
 import java.net.UnknownHostException;
 import java.util.*;
 
-public class RightClickMenu extends JPopupMenu 
-            implements ActionListener {
-    Simulation s;
-    ViewPanel vp;
-    ToolBarPanel tbp;
-    JMenu groupSubmenu;
-    String[] centerChoiceStrings = {"average z","largest value","lowest potential"};
+public class RightClickMenu extends JPopupMenu {
+	WindowManager windowManager;
+	SimulationView view;
+	JMenu groupSubmenu;
+	String[] centerChoiceStrings = {"average z","largest value","lowest potential"};
     
-    public RightClickMenu( Simulation sim, ViewPanel viewP ) {
-        super();
-        s = sim;
-        vp = viewP;
-                
-        JMenuItem item;
-        JRadioButtonMenuItem rbItem;
-        JCheckBoxMenuItem cbItem;
-        item = new JMenuItem("xall view");
-        item.setActionCommand("xall view");
-        item.addActionListener(this);
-        add(item);
-        item = new JMenuItem("yall view");
-        item.setActionCommand("yall view");
-        item.addActionListener(this);
-        add(item);
-        item = new JMenuItem("zall view");
-        item.setActionCommand("zall view");
-        item.addActionListener(this);
-        add(item);
+	public RightClickMenu(WindowManager wm, SimulationView v) {
+		windowManager = wm;
+		view = v;
+
+		JMenuItem item;
+		JRadioButtonMenuItem rbItem;
+		JCheckBoxMenuItem cbItem;
+		item = new JMenuItem("Refresh view");
+		item.setActionCommand("refresh");
+		item.addActionListener(view);
+		add(item);
+		item = new JMenuItem("xall view");
+		item.setActionCommand("xall");
+		item.addActionListener(view);
+		add(item);
+		item = new JMenuItem("yall view");
+		item.setActionCommand("yall");
+		item.addActionListener(view);
+		add(item);
+		item = new JMenuItem("zall view");
+		item.setActionCommand("zall");
+		item.addActionListener(view);
+		add(item);
+
+		addSeparator();
+
+		item = new JMenuItem("Manage attributes ...");
+		item.setActionCommand("manageAttributes");
+		item.addActionListener(view);
+		add(item);
+		item = new JMenuItem("Manage coloring ...");
+		item.setActionCommand("manageColoring");
+		item.addActionListener(view);
+		add(item);
+		item = new JMenuItem("Manage groups ...");
+		item.setActionCommand("manageGroups");
+		item.addActionListener(view);
+		add(item);
+		
+		addSeparator();
+		/*
         JMenu submenu = new JMenu("Choose centering...");
         ButtonGroup group = new ButtonGroup();
         for (int i=0; i < centerChoiceStrings.length; i++) {
             rbItem = new JRadioButtonMenuItem(centerChoiceStrings[i]);
             if (i==s.centerMethod) rbItem.setSelected(true);
-            rbItem.addActionListener(this);
+            rbItem.addActionListener(view);
             rbItem.setActionCommand(centerChoiceStrings[i]);
             group.add(rbItem);
             submenu.add(rbItem);
         }
+		
         add(submenu);
-        item = new JMenuItem("Update z");
-        item.setActionCommand("Update z");
-        item.addActionListener(this);
+        */
+        item = new JMenuItem("Capture image ...");
+        item.setActionCommand("screenCapture");
+        item.addActionListener(view);
         add(item);
-        item = new JMenuItem("recolor image");
-        item.setActionCommand("recolor image");
-        item.addActionListener(this);
-        add(item);
-        item = new JMenuItem("Create a Group...");
-        item.setActionCommand("Create a Group...");
-        item.addActionListener(this);
-        add(item);
-        item = new JMenuItem("Save image as png...");
-        item.setActionCommand("Save image as png...");
-        item.addActionListener(this);
-        add(item);
-        item = new JMenuItem("Another simulation...");
-        item.setActionCommand("cs");
-        item.addActionListener(this);
-//        add(item);
-        item = new JMenuItem("clear boxes/spheres");
-        item.setActionCommand("clear");
-        item.addActionListener(this);
-//        add(item);
-        item = new JMenuItem("review");
-        item.setActionCommand("review");
-        item.addActionListener(this);
-//        add(item);
-        String groupName;
-        ButtonGroup group2 = new ButtonGroup();
-        groupSubmenu = new JMenu("Display groups...");
-        for ( Enumeration en = s.Groups.keys(); 
-                en.hasMoreElements(); ){
-            groupName = (String)en.nextElement();
-            rbItem = new JRadioButtonMenuItem(groupName);
-            rbItem.addActionListener(this);
-            rbItem.setActionCommand("ActivateGroup");
-            group2.add(rbItem);
-            groupSubmenu.add(rbItem);
-        }
-        add(groupSubmenu);
     }
     
+	/*
     public void actionPerformed(ActionEvent e){
         String command =  e.getActionCommand();
         if ( command.equals("xall view") ) { xall();}
@@ -127,9 +112,14 @@ public class RightClickMenu extends JPopupMenu
         else if (command.equals("switchmap")){}
         else if (command.equals("Save image as png...")){ vp.writePng(); }
         else if (command.equals("clear")) {}
+        else if (command.equals("manageAttributes")) {
+			s.ccs.addRequest(new GetAttributeInformation());
+		}
     }
-    
-    public void refresh(){
+    */
+	
+    public void refresh() {
+		/*
         remove(groupSubmenu);
         ButtonGroup group2 = new ButtonGroup();
         JRadioButtonMenuItem rbItem;        
@@ -145,31 +135,7 @@ public class RightClickMenu extends JPopupMenu
             groupSubmenu.add(rbItem);
         }
         add(groupSubmenu);
-    }
-    
-    public void xall(){
-        tbp.resetSliders();
-        vp.x = new Vector3D(0, vp.boxSize*0.5, 0);
-        vp.y = new Vector3D(0, 0, vp.boxSize*0.5);
-        vp.z = new Vector3D(vp.x.cross(vp.y));
-        vp.origin = new Vector3D(0, 0, 0);
-        s.ccs.addRequest( new ActivateGroup( "All", vp ) );
-    }
-    public void yall(){
-        tbp.resetSliders();
-        vp.x = new Vector3D(-vp.boxSize*0.5, 0, 0);
-        vp.y = new Vector3D(0, 0, vp.boxSize*0.5);
-        vp.z = new Vector3D(vp.x.cross(vp.y));
-        vp.origin = new Vector3D(0, 0, 0);
-        s.ccs.addRequest( new ActivateGroup( "All", vp ) );
-    }
-    public void zall(){
-        tbp.resetSliders();
-        vp.x = new Vector3D(vp.boxSize*0.5, 0, 0);
-        vp.y = new Vector3D(0, vp.boxSize*0.5, 0);
-        vp.z = new Vector3D(vp.x.cross(vp.y));
-        vp.origin = new Vector3D(0, 0, 0);
-        s.ccs.addRequest( new ActivateGroup( "All", vp ) );
+		*/
     }
     
 }

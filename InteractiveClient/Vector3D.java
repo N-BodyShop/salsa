@@ -1,3 +1,5 @@
+//Vector3D.java
+
 public class Vector3D {
 
 	public double x, y, z;
@@ -19,8 +21,7 @@ public class Vector3D {
 		 y = v.y;
 		 z = v.z;
 	}
-		 
-
+	
 	final public double length() {
 		return Math.sqrt(x * x + y * y + z * z);
 	}

@@ -12,25 +12,25 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 
-public class RotateSlider extends JSlider implements MouseWheelListener{
+public class RotateSlider extends JSlider implements MouseWheelListener {
 
     String leftLabel;
     int oldAngle;
 
-    public RotateSlider( String leftLab, String rightLabel ){
-        super(0,359,180);
+    public RotateSlider(String leftLab, String rightLabel) {
+        super(-180, 180, 0);
         leftLabel = leftLab;
         Hashtable labelTable = new Hashtable();
-        labelTable.put( new Integer( 0 ), new JLabel(leftLabel) );
-        labelTable.put( new Integer( 359 ), new JLabel(rightLabel) );
-        setLabelTable( labelTable );
-        
+        labelTable.put(new Integer(-180), new JLabel(leftLabel));
+        labelTable.put(new Integer(180), new JLabel(rightLabel));
+        setLabelTable(labelTable);
         setPaintLabels(true);
+		
+		addMouseWheelListener(this);
     }
     
     public void mouseWheelMoved(MouseWheelEvent e) {
-        setValue(getValue()+e.getWheelRotation());
-        fireStateChanged();
+        setValue(getValue() - 15 * e.getWheelRotation());
     }
-
+	
 }

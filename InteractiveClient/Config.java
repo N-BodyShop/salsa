@@ -9,7 +9,7 @@ public class Config {
     public boolean isColor;
     public boolean isPush;
     public boolean is3d;
-    public Vector3D min,max;
+    public Vector3D min, max;
    
     private Vector3D readVector3D(DataInputStream is) throws IOException {
 		return new Vector3D(is.readDouble(), is.readDouble(), is.readDouble());
@@ -23,7 +23,9 @@ public class Config {
 		if (is3d) {
 			min = readVector3D(is);
 			max = readVector3D(is);
-		} else
-			min = max = new Vector3D(0,0,0);
+		} else {
+			min = new Vector3D();
+			max = new Vector3D();
+		}
     }
 }

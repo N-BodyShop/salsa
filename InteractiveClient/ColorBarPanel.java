@@ -10,28 +10,26 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import javax.swing.*;
-import java.io.*;
-import java.net.UnknownHostException;
+import javax.swing.event.*;
+import java.util.*;
 
-public class ColorBarPanel extends JPanel 
-                    implements MouseListener, MouseMotionListener,
-                    MouseWheelListener
-{
-    Simulation s;
-    public ViewPanel vp;
+public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWheelListener, ComponentListener {
+    Simulation sim;
+	SimulationView view = null;
+	public ColorModel colorModel;
     CBPopupMenu cbpm;
     MemoryImageSource cbsource;
     byte[] cm_red;
     byte[] cm_green;
     byte[] cm_blue;
-    byte[] imagebytes;
-    int cmap_size, cbstartx = 0, width, height;
+    byte[] pixels = new byte[0];
+    int cmap_size, cbstartx = 0, width, height, startColor;
     byte[] puke_red;
     byte[] puke_green;
     byte[] puke_blue;
     
-    public ColorBarPanel(Simulation sim, int h, int w) {
-        s = sim;
+    public ColorBarPanel(Simulation s, int w, int h) {
+        sim = s;
         width = w;
 		height = h;
 		
@@ -42,89 +40,88 @@ public class ColorBarPanel extends JPanel
 		puke_green = new byte[256];
 		puke_blue = new byte[256];
 		
-		cmap_size = 256 - s.numberOfColors;
+		startColor = 2 + sim.families.size();
+		cmap_size = 256 - startColor;
 		
         initPukeCM();
         setColorModelWRBB();
-        //setColorModelRainbow();
  		
         cbpm = new CBPopupMenu();
 		
-        imagebytes = new byte[width * height];
+		setSize(width, height);
+		
+		resize();
+		
+		addComponentListener(this);
+    }
+	
+	public void setView(SimulationView v) {
+		view = v;
+        addMouseListener(this);
+        addMouseMotionListener(this);
+        addMouseWheelListener(this);
+	}
+			
+	public void resize() {
+		if(pixels.length < width * height)
+        	pixels = new byte[width * height];
         byte value;
 		for(int i = 0; i < width; i++) {
-            value = (byte) (s.numberOfColors + java.lang.Math.floor((255.0 - s.numberOfColors) * i / (w - 1.0)));
+            value = (byte) (startColor + java.lang.Math.floor((255.0 - startColor) * i / (width - 1.0)));
 			for(int j = 0; j < height; j++) 
-                imagebytes[j * width + i] = value;
+                pixels[j * width + i] = value;
         }
-        
-        JLabel cbl = new JLabel();
-		cbsource = new MemoryImageSource(width, height, s.cm, imagebytes, 0, width);
+		cbsource = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
         cbsource.setAnimated(true);
-        cbl.setIcon(new ImageIcon(createImage(cbsource)));
-        cbl.addMouseListener(this);
-        cbl.addMouseMotionListener(this);
-        cbl.addMouseWheelListener(this);
-		
-        add(cbl);
-    }
-    
+        setIcon(new ImageIcon(createImage(cbsource)));
+	}
+      
+	public void componentResized(ComponentEvent e) {
+		width = getWidth();
+		height = getHeight();
+		resize();
+	}
+	
     public void mousePressed(MouseEvent e) {
-        maybeShowPopup(e);
-        cbstartx = e.getX();
-    }
-
-    public void mouseReleased(MouseEvent e) {
-        maybeShowPopup(e);
-    }
-
-    public void mouseClicked(MouseEvent e) {
-        maybeShowPopup(e);
-        if(e.getClickCount() == 2) { 
-            invertCM();
-			cbsource.newPixels(imagebytes, s.cm, 0, width);
-            vp.redisplay();
-        }
-    }
-
-    public void mouseEntered(MouseEvent e) {
-    }
-
-    public void mouseExited(MouseEvent e) {
-    }
-
-    private void maybeShowPopup(MouseEvent e) {
         if(e.isPopupTrigger()) 
             cbpm.show(e.getComponent(), e.getX(), e.getY());
-    }
-    
-    public void mouseDragged(MouseEvent e) {
-        translateCM((cbstartx - e.getX()) * cmap_size / width );
-        cbsource.newPixels(imagebytes, s.cm, 0, width);
-        vp.redisplay();
         cbstartx = e.getX();
     }
-
-    public void mouseMoved(MouseEvent e) {
+	
+    public void mouseClicked(MouseEvent e) {
+        if(e.getClickCount() == 2) { 
+            invertCM();
+			cbsource.newPixels(pixels, colorModel, 0, width);
+            view.redisplay(colorModel);
+        }
+    }
+	
+    public void mouseReleased(MouseEvent e) { }
+    public void mouseEntered(MouseEvent e) { }
+    public void mouseExited(MouseEvent e) { }
+    public void mouseMoved(MouseEvent e) { }
+	
+    public void mouseDragged(MouseEvent e) {
+        translateCM((cbstartx - e.getX()) * cmap_size / width );
+        cbsource.newPixels(pixels, colorModel, 0, width);
+        view.redisplay(colorModel);
+        cbstartx = e.getX();
     }
 
     public void mouseWheelMoved(MouseWheelEvent e) {
         translateCM(e.getWheelRotation());
-        cbsource.newPixels(imagebytes, s.cm, 0, width);
-        vp.redisplay();
+        cbsource.newPixels(pixels, colorModel, 0, width);
+        view.redisplay(colorModel);
     }
 
-    private class CBPopupMenu extends JPopupMenu implements ActionListener {
-        
+    private class CBPopupMenu extends JPopupMenu implements ActionListener { 
         public CBPopupMenu( ) {
-            super();
-            
             JMenuItem item;
             item = new JMenuItem("Standard Gradient");
             item.setActionCommand("standard");
             item.addActionListener(this);
             add(item);
-            item = new JMenuItem("Invert");
+            item = new JMenuItem("Invert map");
             item.setActionCommand("invert");
             item.addActionListener(this);
             add(item);
@@ -134,19 +131,17 @@ public class ColorBarPanel extends JPanel
             add(item);
         }
         
-        public void actionPerformed(ActionEvent e){
+        public void actionPerformed(ActionEvent e) {
             String command = e.getActionCommand();
-            if(command.equals("standard")) { 
+            if(command.equals("standard")) 
                 setColorModelWRBB();
-            } else if(command.equals("invert")) { 
+            else if(command.equals("invert"))
                 invertCM();
-            } else if(command.equals("rainbow")) { 
+            else if(command.equals("rainbow"))
                 setColorModelRainbow();
-            }
-            cbsource.newPixels(imagebytes, s.cm, 0, width);
-            vp.redisplay();
+            cbsource.newPixels(pixels, colorModel, 0, width);
+            view.redisplay(colorModel);
         }
-        
     }
 
     /*
@@ -154,18 +149,18 @@ public class ColorBarPanel extends JPanel
     */
     private void invertCM() {
         byte temp;
-        for(int i = 0; i < (255 - s.numberOfColors) / 2; ++i) {
-            temp = cm_red[i + s.numberOfColors];
-            cm_red[i + s.numberOfColors] = cm_red[255 - i];
+        for(int i = 0; i < (255 - startColor) / 2; ++i) {
+            temp = cm_red[i + startColor];
+            cm_red[i + startColor] = cm_red[255 - i];
             cm_red[255 - i] = temp;
-            temp = cm_green[i + s.numberOfColors];
-            cm_green[i + s.numberOfColors] = cm_green[255 - i];
+            temp = cm_green[i + startColor];
+            cm_green[i + startColor] = cm_green[255 - i];
             cm_green[255 - i] = temp;
-            temp = cm_blue[i + s.numberOfColors];
-            cm_blue[i + s.numberOfColors] = cm_blue[255 - i];
+            temp = cm_blue[i + startColor];
+            cm_blue[i + startColor] = cm_blue[255 - i];
             cm_blue[255 - i] = temp;
         }
-        s.cm = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+        colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
     }
     
 
@@ -173,25 +168,21 @@ public class ColorBarPanel extends JPanel
     * translates the color map a specified number of colors left or right
     */
     private void translateCM(int diff) {
-    System.out.println("Crash 1: "+diff);
         byte[] transferRed = new byte[cmap_size];
         byte[] transferGreen = new byte[cmap_size];
         byte[] transferBlue = new byte[cmap_size];
-    System.out.println("Crash 2");
         for(int i = 0; i < cmap_size; ++i) {
-            transferRed[i] = cm_red[s.numberOfColors + (i + diff + cmap_size) % cmap_size];
-            transferGreen[i] = cm_green[s.numberOfColors + (i + diff + cmap_size) % cmap_size];
-            transferBlue[i] = cm_blue[s.numberOfColors + (i + diff + cmap_size) % cmap_size];
+            transferRed[i] = cm_red[startColor + (i + diff + cmap_size) % cmap_size];
+            transferGreen[i] = cm_green[startColor + (i + diff + cmap_size) % cmap_size];
+            transferBlue[i] = cm_blue[startColor + (i + diff + cmap_size) % cmap_size];
         }
-    System.out.println("Crash 3");
         for(int i = 0; i < cmap_size; ++i) {
-            cm_red[i + s.numberOfColors] = transferRed[i];
-            cm_green[i + s.numberOfColors] = transferGreen[i];
-            cm_blue[i + s.numberOfColors] = transferBlue[i];
+            cm_red[i + startColor] = transferRed[i];
+            cm_green[i + startColor] = transferGreen[i];
+            cm_blue[i + startColor] = transferBlue[i];
         }
-    System.out.println("Crash 4");
 
-        s.cm = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+        colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
     }
 
 
@@ -205,26 +196,29 @@ public class ColorBarPanel extends JPanel
         puke_green[1] = (byte) 255;
         puke_blue[1] = 0;
 		
-		//the standard tipsy colors for gas, dark, star
-        puke_red[2] = (byte) 190;
-        puke_green[2] = (byte) 200;
-        puke_blue[2] = (byte) 255;
-        puke_red[3] = (byte) 255;
-        puke_green[3] = (byte) 63;
-        puke_blue[3] = (byte) 63;
-        puke_red[4] = (byte) 255;
-        puke_green[4] = (byte) 255;
-        puke_blue[4] = (byte) 140;
+		//set default colors for particle families
+		for(Enumeration e = sim.families.elements(); e.hasMoreElements(); ) {
+			Simulation.Family family = (Simulation.Family) e.nextElement();
+			int color = family.defaultColor;
+			if(2 + family.index >= startColor)
+				System.err.println("Color index messed up!");
+			puke_red[2 + family.index] = (byte) ((color >> 16) & 0xFF);
+			puke_green[2 + family.index] = (byte) ((color >> 8) & 0xFF);
+			puke_blue[2 + family.index] = (byte) ((color >> 0) & 0xFF);
+		}
 		
 		//put more puke colors here
     }
     
     /*
     * sets the colormap to WRBB
+	Note that bytes are signed in Java.  So when we use values from 0-255, Java
+	automatically converts them to the range -128-127.  If you treat bytes as unsigned
+	unifromly, the conversion should produce no side effects.  Just be aware.
     */
     private void setColorModelWRBB() {
         int i;
-        int nextColor = s.numberOfColors;
+        int nextColor = startColor;
         int chunk_size = (cmap_size - 1) / 5;
 
         for(i = 0; i < chunk_size; i++) {
@@ -260,14 +254,14 @@ public class ColorBarPanel extends JPanel
         }
 		
 		//copy in the default colors
-        for (i = 0; i < s.numberOfColors; i++) {
+        for (i = 0; i < startColor; i++) {
             cm_red[i] = puke_red[i];
             cm_green[i] = puke_green[i];
             cm_blue[i] = puke_blue[i];
         }
 		
 		//make and set the new color model
-        s.cm = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+        colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
     }
 
     /*
@@ -278,7 +272,7 @@ public class ColorBarPanel extends JPanel
 		float hue = 0;
 		float delta = maxHue / cmap_size;
 		int rainbowColor;
-		for(int i = s.numberOfColors; i < 256; ++i, hue += delta) {
+		for(int i = startColor; i < 256; ++i, hue += delta) {
 			rainbowColor = Color.HSBtoRGB(hue, 1.0f, 1.0f);
 			cm_red[i] = (byte) ((rainbowColor >> 16) & 0xff);
 			cm_green[i] = (byte) ((rainbowColor >> 8) & 0xff);
@@ -286,13 +280,17 @@ public class ColorBarPanel extends JPanel
 		}
 		
 		//copy in the default colors
-        for (int i = 0; i < s.numberOfColors; i++) {
+        for (int i = 0; i < startColor; i++) {
             cm_red[i] = puke_red[i];
             cm_green[i] = puke_green[i];
             cm_blue[i] = puke_blue[i];
         }
 
-		s.cm = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
+		colorModel = new IndexColorModel(8, 256, cm_red, cm_green, cm_blue);
     }
+	
+	public void componentHidden(ComponentEvent e) { }
+	public void componentMoved(ComponentEvent e) { }
+	public void componentShown(ComponentEvent e) { }
  
 }

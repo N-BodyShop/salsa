@@ -15,36 +15,45 @@ import java.io.*;
 import java.net.UnknownHostException;
 
 public class ToolBarPanel extends JPanel 
-        implements ActionListener, ChangeListener {
-    Simulation s;
-    ViewPanel vp;
-    RotateSlider upDownSlider;
-    RotateSlider leftRightSlider;
-    RotateSlider clockwiseSlider;
-    JTextField zoomFactor;
-
-    public ToolBarPanel( Simulation sim, ViewPanel viewP ){
-        s = sim;
-        vp = viewP;
-        vp.rcm.tbp = this;
+						  implements ActionListener, 
+						  			 ChangeListener, 
+									 ViewListener {
+	WindowManager windowManager;
+	SimulationView view;
+	RotateSlider upDownSlider;
+	RotateSlider leftRightSlider;
+	RotateSlider clockwiseSlider;
+    //JTextField zoomFactor;
+	
+	public ToolBarPanel(WindowManager wm, SimulationView v) {
+		windowManager = wm;
+		view = v;
     
-        setLayout( new BoxLayout(this,BoxLayout.X_AXIS) );
-        
-        JToolBar viewBar = new JToolBar();
-        viewBar.setLayout( new GridLayout(3,1) );
-        JButton xButton = new JButton("xall");
-        xButton.setActionCommand("xall view");
-        xButton.addActionListener(this);
-        JButton yButton = new JButton("yall");
-        yButton.setActionCommand("yall view");
-        yButton.addActionListener(this);
-        JButton zButton = new JButton("zall");
-        zButton.setActionCommand("zall view");
-        zButton.addActionListener(this);
-        viewBar.add(xButton);
-        viewBar.add(yButton);
-        viewBar.add(zButton);        
-
+		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+		
+		Box b = new Box(BoxLayout.PAGE_AXIS);
+		Box b2 = new Box(BoxLayout.LINE_AXIS);
+		b2.add(new JLabel("Coloring: "));
+		JComboBox coloringCombo = new JComboBox(windowManager.sim.createColoringModel());
+		coloringCombo.setPrototypeDisplayValue("Density");
+		coloringCombo.setSelectedIndex(0);
+		coloringCombo.setActionCommand("chooseColoring");
+		coloringCombo.addActionListener(this);
+		b2.add(coloringCombo);
+		b.add(b2);
+		b2 = new Box(BoxLayout.LINE_AXIS);
+		//b2.add(Box.createHorizontalGlue());
+		b2.add(new JLabel("Group: "));
+		JComboBox groupCombo = new JComboBox(windowManager.sim.createGroupModel());
+		groupCombo.setPrototypeDisplayValue("Density");
+		groupCombo.setSelectedIndex(0);
+		groupCombo.setActionCommand("activateGroup");
+		groupCombo.addActionListener(this);
+		b2.add(groupCombo);
+		b.add(b2);
+		b.add(Box.createVerticalGlue());
+		
+		/*
         JToolBar middleBar = new JToolBar();
         middleBar.setLayout( new GridLayout(3,1) );
         JButton reColor = new JButton("ReColor");
@@ -76,55 +85,73 @@ public class ToolBarPanel extends JPanel
         middleBar.add(zoomPanel);
 //        middleBar.add(fixO);
 //        middleBar.add(clear);
+        */
+		JToolBar sliderBar = new JToolBar();
+		sliderBar.setLayout(new GridLayout(3,1));
+		upDownSlider = new RotateSlider("Down", "Up   ");
+		upDownSlider.addChangeListener(this);
+		leftRightSlider = new RotateSlider("Left", "Right");
+		leftRightSlider.addChangeListener(this);
+		clockwiseSlider = new RotateSlider("Cntr", "Clock");
+		clockwiseSlider.addChangeListener(this);
+		sliderBar.add(upDownSlider);
+		sliderBar.add(leftRightSlider);
+		sliderBar.add(clockwiseSlider);
+		resetSliders();
         
-        JToolBar sliderBar = new JToolBar();
-        sliderBar.setLayout( new GridLayout(3,1) );
-//        JLabel rotateLabel = new JLabel("Rotations");
-        leftRightSlider = new RotateSlider("left","right");
-        leftRightSlider.addChangeListener(this);
-        clockwiseSlider = new RotateSlider("cw","ccw");
-        clockwiseSlider.addChangeListener(this);
-        upDownSlider = new RotateSlider("down","up");
-        upDownSlider.addChangeListener(this);
-//        sliderBar.add(rotateLabel);
-        sliderBar.add(leftRightSlider);
-        sliderBar.add(clockwiseSlider);
-        sliderBar.add(upDownSlider);
-        resetSliders();
-        
-        add(viewBar);
-        add(middleBar);
+		view.addViewListener(this);
+		
+        //add(middleBar);
+		add(b);
         add(sliderBar);
 
     }
 
-    public void actionPerformed(ActionEvent e){
-        String command =  e.getActionCommand();
-        if (command.equals("zoomIn")) {
-            vp.zoom( 1.0/(Double.parseDouble( zoomFactor.getText() )) );}
-        else if (command.equals("zoomOut")) {
-            vp.zoom( Double.parseDouble( zoomFactor.getText() ) );}
-        // Since most of the actions are exactly the same,
-        // please find the actions in RightClickMenu.java
-        else{vp.rcm.actionPerformed(e);}
+    public void actionPerformed(ActionEvent e) {
+		String command =  e.getActionCommand();
+		if(command.equals("chooseColoring")) {
+			System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
+			//view.activeColoring = ((JComboBox) e.getSource()).getSelectedIndex();
+			view.activeColoring = ((Simulation.Coloring) windowManager.sim.colorings.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
+			view.getNewImage();
+		} else if(command.equals("activateGroup")) {
+			System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
+			//view.activeGroup = ((JComboBox) e.getSource()).getSelectedIndex();
+			view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
+			view.getNewImage();
+		}
     }
     
-    public void stateChanged(ChangeEvent e){
-        RotateSlider slider = (RotateSlider)e.getSource();
+    public void stateChanged(ChangeEvent e) {
+        RotateSlider slider = (RotateSlider) e.getSource();
         String sliderName = slider.leftLabel;
-        double theta = (Math.PI/180.0)*( slider.oldAngle - slider.getValue());
-        if (sliderName.equals("left")){ vp.rotateLeft(theta);} 
-        else if (sliderName.equals("cw")){ vp.rotateCcw(theta); } 
-        else if (sliderName.equals("down")){vp.rotateUp(theta);}
-        slider.oldAngle = slider.getValue();
+        double theta = (Math.PI / 180.0) * (slider.getValue() - slider.oldAngle);
+        if(theta == 0)
+			return;
+		if(sliderName.equals("Down"))
+			view.rotateUp(theta);
+		else if(sliderName.equals("Left"))
+			view.rotateRight(theta);
+		else if(sliderName.equals("Cntr"))
+			view.rotateClock(theta);
+        view.getNewImage();
+		slider.oldAngle = slider.getValue();
+		
     }
     
-    public void resetSliders(){
-        clockwiseSlider.setValue(180);
-        clockwiseSlider.oldAngle=180;
-        upDownSlider.setValue(180);
-        upDownSlider.oldAngle=180;
-        leftRightSlider.setValue(180);
-        leftRightSlider.oldAngle=180;
+    public void resetSliders() {
+		//when setValue is called, it will fire a stateChanged.  So, must assign old value first so that theta == 0 is detected
+        clockwiseSlider.oldAngle = 0;
+        clockwiseSlider.setValue(0);
+        upDownSlider.oldAngle = 0;
+        upDownSlider.setValue(0);
+        leftRightSlider.oldAngle = 0;
+        leftRightSlider.setValue(0);
     }
+	
+	public void rotationPerformed(ViewEvent e) { }
+	
+	public void viewReset(ViewEvent e) {
+		resetSliders();
+	}
 }

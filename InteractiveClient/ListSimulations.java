@@ -9,27 +9,21 @@
 import java.util.*;
 
 public class ListSimulations extends CcsThread.request {
-
-    CcsThread ccs;
-    
-    public ListSimulations(CcsThread ccsT) {
-            super("ListSimulations", null);
-            ccs = ccsT;
+	Vector simulationList = new Vector();
+	
+    public ListSimulations() {
+		super("ListSimulations", null);
     }
 
     public void handleReply(byte[] data) {
         String reply = new String(data);
-        Vector simlist = new Vector();
+        simulationList = new Vector();
         int index = -1;
         int lastindex = 0;
-        while( index < reply.length()-1 ){
+        while(index < reply.length() - 1) {
             lastindex = index + 1;
-            index = reply.indexOf(",",lastindex);
-  //          System.out.println("Adding:  "+reply.substring(lastindex,index));
-            simlist.addElement(reply.substring(lastindex,index));
+            index = reply.indexOf(",", lastindex);
+            simulationList.addElement(reply.substring(lastindex, index));
         }
-        // we've established a connection, now we can choose what
-        // to look at
-        ChooseSimulationFrame csf = new ChooseSimulationFrame(ccs,simlist);
     }
 }

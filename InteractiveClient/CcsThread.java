@@ -13,14 +13,12 @@ import java.io.*;
 import java.net.UnknownHostException;
 
 class CcsThread implements Runnable {
-	//public static Date startPoint;
 
 	//Thin wrapper around a block of data
 	public static class message {
 		private byte[] data;
 
 		public message(byte[] data_) {
-			//startPoint = new Date();
 			data=data_;
 		}
 		
@@ -71,7 +69,6 @@ class CcsThread implements Runnable {
 	}
 
 	private boolean isBad;//Records that an error occured
-	//private Stack requests;//Keeps track of CcsRequests
 	private LinkedList requests;//Keeps track of CcsRequests
 	private volatile boolean keepGoing;//To signal exit
 	private CcsServer ccs;
@@ -96,6 +93,22 @@ class CcsThread implements Runnable {
                 ccs=new CcsServer(hostName,port);
 		myThread.start();
 	}
+	
+	public CcsThread(CcsThread ccsThread) {
+		requests = new LinkedList();
+		status = ccsThread.status;
+		hostName = ccsThread.hostName;
+		port = ccsThread.port;
+		isBad = ccsThread.isBad;
+		keepGoing = ccsThread.keepGoing;
+		myThread = new Thread(this);
+		try {
+			ccs = new CcsServer(hostName, port);
+			myThread.start();
+		} catch(Exception e) {
+			ioError(e, "Copying CcsThread object");
+		}
+	}
 		
 	public void addRequest(request req) {
 		addRequest(req,false);
@@ -106,6 +119,15 @@ class CcsThread implements Runnable {
 			requests.clear();
 		requests.addLast(req);
 		//System.out.println("Ccs.Thread.java addRequest called");
+	}
+
+	public void doBlockingRequest(request req) {
+		try {
+			CcsServer.Request r = ccs.sendRequest(req.getHandler(), req.getPE(), req.getData());
+			req.handleReply(ccs.recvResponse(r));
+		} catch(IOException e) {
+			ioError(e,"Error receiving response");
+		}
 	}
 	
 	public void finish() {
@@ -142,6 +164,7 @@ class CcsThread implements Runnable {
 			if (!keepGoing) break;
 			request curReq=(request)requests.removeFirst();
 			status.setText("Sending request "+curReq.getHandler());
+			//System.out.println("Sending request: " + curReq.getHandler());
 			try {
 				ccs.sendRequest(curReq.getHandler(),curReq.getPE(),curReq.getData());
 			} catch(IOException e) {
