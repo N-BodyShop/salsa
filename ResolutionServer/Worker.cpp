@@ -300,7 +300,9 @@ void Worker::clearSpheres(CkCcsRequestMsg* m) {
 void Worker::valueRange(CkCcsRequestMsg* m) {
 	double minMaxPair[2];
 	minMaxPair[0] = minValue;
+	minMaxPair[0] = swapEndianness(minMaxPair[0]);
 	minMaxPair[1] = maxValue;
+	minMaxPair[1] = swapEndianness(minMaxPair[1]);
 	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
 	delete m;
 }
