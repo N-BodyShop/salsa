@@ -8,7 +8,8 @@ import java.awt.event.*;
  */
 public class ConfigPanel extends JPanel implements ActionListener {
 	private CommandPane refComPane;
-	private JButton render;
+	public JButton render;
+	private JFrame theFrame;
 	private JTextField particleField;
 	private JTextField cmField;
 	private JTextField cfField;
@@ -16,6 +17,7 @@ public class ConfigPanel extends JPanel implements ActionListener {
 	private String particleText;
 	private String cmText;
 	private String cfText;
+	private ParentPanel theParent;
 
 	public ConfigPanel(CommandPane p) {
 		setBorder(BorderFactory.createTitledBorder("Configure the Image to be displayed"));
@@ -74,6 +76,7 @@ public class ConfigPanel extends JPanel implements ActionListener {
 //*****************************************************************************************************************
 	
 	public void actionPerformed(ActionEvent e){
+		System.out.println("Got to action command");
 		String command = e.getActionCommand();
 		if(command=="XALL"){
 			viewString = "xall";
@@ -102,29 +105,33 @@ public class ConfigPanel extends JPanel implements ActionListener {
 				System.out.println("the view is: " + viewString);
 
 
-				JFrame frame = new JFrame("NChilada *Main* Visualization");
-				frame.addWindowListener(new WindowAdapter() {
+				theFrame = new JFrame("NChilada *Main* Visualization");
+				theParent = new ParentPanel(refComPane.getHost(), refComPane.getPort(), viewString);
+				theFrame.addWindowListener(new WindowAdapter() {
 					public void windowClosing(WindowEvent e) {
 						render.setEnabled(true);
+						theParent.isOpen = false;
+						refComPane.updateStatus(refComPane.getSimName() + "...closed");
 					}
 				});
-				
-				JPanel mainPanel = new JPanel();
-				ViewingPanel leftPanel = new ViewingPanel(refComPane.getHost(), refComPane.getPort(), viewString, refComPane, frame);
-				SelectionView rightPanel = new SelectionView(refComPane.getHost(), refComPane.getPort(), leftPanel.getXVector(), leftPanel.getYVector(), leftPanel.getZVector(), leftPanel.getOriginVector(), leftPanel);
-				mainPanel.add(leftPanel);
-				mainPanel.add(rightPanel);
 
-
-				frame.getContentPane().add(mainPanel);
-				frame.pack();
-				frame.setVisible(true);
+				theFrame.getContentPane().add(theParent);
+				theFrame.pack();
+				theFrame.setVisible(true);
 				render.setEnabled(false);
 				
 				refComPane.enableTwo();
-				refComPane.updateStatus("Simulation Launched");
+				refComPane.callParseSetter(theParent);
+				refComPane.updateStatus("Simulation Launched : " + refComPane.getSimName());
 			//}
 		}
 	}
+	
+	public void disposeWindow(){
+		theFrame.dispose();
+		theParent.isOpen = false;
+		render.setEnabled(true);
+	}
+
 
 }

@@ -1,4 +1,4 @@
-CLASSES = CcsServer.class CcsThread.class JSliderOldValue.class Vector3D.class ColorMapDisplay.class Config.class InteractiveWindow.class ViewingPanel.class InteractiveClient.class CommandPane.class InputPanel.class ConfigPanel.class SubsetPanel.class QuantitativePanel.class ProfilePanel.class ManualPanel.class CommandPrompt.class Storage.class Point3D.class DuplicateView.class SelectionView.class
+CLASSES = CcsServer.class CcsThread.class JSliderOldValue.class Vector3D.class ColorMapDisplay.class Config.class InteractiveWindow.class ViewingPanel.class InteractiveClient.class CommandPane.class InputPanel.class ConfigPanel.class SubsetPanel.class QuantitativePanel.class ProfilePanel.class ManualPanel.class CommandPrompt.class Storage.class Point3D.class DuplicateView.class SelectionView.class ParentPanel.class MainView.class AuxiliaryView.class CommandParser.class
 
 TARGET = InteractiveClient
 VERSION = 0.1

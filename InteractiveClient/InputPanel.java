@@ -142,6 +142,12 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 			System.out.println("Unknown command");
 		}
 	}
+	
+//*****************************************************************************************************************
+
+	public DefaultListModel getSimList(){
+		return model;
+	}
 
 //*****************************************************************************************************************
 
@@ -181,7 +187,7 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 		public void handleReply(byte[] data) {
 			if(data[0]==0){
 				// bad
-				JOptionPane.showMessageDialog(new JFrame(), "The server does not like you");
+				//JOptionPane.showMessageDialog(new JFrame(), "The server does not like you");
 			}else{
 				// good
 				try{
@@ -235,10 +241,10 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 //*****************************************************************************************************************
 
 	private class ChooseSimulation extends CcsThread.request{
-	
+
 		public ChooseSimulation(String sim){
 			super("ChooseSimulation", sim.getBytes());
-			System.out.println("constructor");
+			//System.out.println("constructor");
 		}
 
 		public void handleReply(byte[] data){
@@ -284,16 +290,20 @@ public class InputPanel extends JPanel implements ActionListener, MouseListener 
 		if(tooShort.length==0){
 			return new char[1];
 		}else{
-			char[] storage = new char[tooShort.length];
-			for(int x=0; x<storage.length; x++){
+			char[] storage = new char[tooShort.length + 1];
+			for(int x=0; x<tooShort.length; x++){
 				storage[x] = tooShort[x];
 			}
-			char[] returned = new char[tooShort.length + 1];
-			for(int j = 0; j<storage.length; j++){
-				returned[j] = storage[j];
-			}
-			return returned;
+			//char[] returned = new char[tooShort.length + 1];
+			//for(int j = 0; j<storage.length; j++){
+			//	returned[j] = storage[j];
+			//}
+			return storage;
 		}
+	}
+	
+	public String getSimName(){
+		return selectedSim;
 	}
 
 

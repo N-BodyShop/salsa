@@ -36,18 +36,20 @@ public class SelectionView extends JPanel implements MouseListener, MouseMotionL
 	private Rectangle drawRect = new Rectangle();
 	private Rectangle finalRect = new Rectangle();
 	private String typeOfSelection;
+	private ParentPanel parent;
 
 
 	/****************************************************************************
 	 * CONSTRUCTOR
 	 */
-	public SelectionView(String hostname, int port, Vector3D newX, Vector3D newY, Vector3D newZ, Vector3D newO, ViewingPanel ref) {
+	public SelectionView(String hostname, int port, String cmd, ViewingPanel ref, ParentPanel par) {
 		super(new BorderLayout());
 		ccs = new CcsThread(new Label(), hostname, port);
 		h = hostname;
 		p = port;
 		refViewPanel = ref;
 		typeOfSelection = refViewPanel.getTypeOfSelection();
+		parent = par;
 
 		wrbb = createWRBBColorModel(256);
 		
@@ -98,7 +100,7 @@ public class SelectionView extends JPanel implements MouseListener, MouseMotionL
 		
 		add(b, BorderLayout.SOUTH);
 
-		ccs.addRequest(new CcsConfigRequest(newX, newY, newZ, newO));
+		ccs.addRequest(new CcsConfigRequest(cmd));
 
 	}
 
@@ -451,14 +453,11 @@ public class SelectionView extends JPanel implements MouseListener, MouseMotionL
 	 */
 
 	private class CcsConfigRequest extends CcsThread.request {
-		private Vector3D xVex, yVex, zVex, oVex;
+		private String cmd;
 
-		public CcsConfigRequest(Vector3D xV, Vector3D yV, Vector3D zV, Vector3D oV) {
+		public CcsConfigRequest(String a) {
 			super("lvConfig", 0);
-			xVex = xV;
-			yVex = yV;
-			zVex = zV;
-			oVex = oV;
+			cmd = a;
 			// for mapping System.out.println("CcsConfigRequest: constructor");
 		}
 
@@ -475,13 +474,24 @@ public class SelectionView extends JPanel implements MouseListener, MouseMotionL
 				if((config.max.y - config.min.y != boxSize) || (config.max.z - config.min.z != boxSize)) {
 					System.err.println("Box is not a cube!");
 				}
-
+				
+				if(cmd.equals("xall")){
+					parent.xall(x,y,z,origin,config.max,config.min);
+				}else if(cmd.equals("yall")){
+					//yall the view then rotate it
+				}else if(cmd.equals("zall")){
+					//zall the view then rotate it
+				}
+				/*
 				x = new Vector3D(xVex);
 				y = new Vector3D(yVex);
 				z = new Vector3D(zVex);
 				origin = new Vector3D(oVex);
+
+				*/
 				y.rotate(-Math.PI/2, x.unitVector());
 				ccs.addRequest(new ImageRequest(), true);
+
 
 			} catch(IOException e) {
 				System.err.println("Fatal: Couldn't obtain configuration information");

@@ -18,28 +18,23 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 
 	private JTextField commandField;
 	private JTextArea commandLog;
+	private Vector history;		//The history of previous commands is contained in a Vector.
+	private int location = 0;	//Gives the current location in the history.
+	private String currentCommand;	//Saves the command that may be partially typed when we begin to move through history.
+	private CommandParser parser;
+	private CommandPane refComPane;
+	private boolean disabledOnce = false;
 
-	/**
-	 * The history of previous commands is contained in a Vector.
-	 */
-	private Vector history;
-	/**
-	 * Gives the current location in the history.
-	 */
-	private int location = 0;
-	/**
-	 * Saves the command that may be partially typed when we begin to move through history.
-	 */
-	private String currentCommand;
 
-	/**
+	/*************************************************************************************************
 	 * Takes a Collection of items as the history of previous commands.
 	 * Sets up the panel, setting the display to non-editable, and
 	 * adding listeners to the text input field.
 	 */
-	public CommandPrompt(Collection c) {
+	public CommandPrompt(Collection c, CommandPane cp) {
 		super();
-
+		
+		refComPane = cp;
 		history = new Vector(c);
 		location = history.size();
 
@@ -64,16 +59,47 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		p.add(commandField, BorderLayout.CENTER);
 
 		add(p, BorderLayout.SOUTH);
+		instructions();
 	}
 
-	/**
+	public void instructions(){
+		commandLog.append("" + '\n');
+		commandLog.append("List of known commands:\n");
+		commandLog.append("Query for list of commands: " + " $commands\n");
+		commandLog.append("Get list of simulations: " + " $simlist\n");
+		commandLog.append("Chose a simulation: " + " $chosesim <int>\n");
+		commandLog.append("Launch the simulation: " + " $launch\n");
+		commandLog.append("Xall: " + " $xall\n");
+		commandLog.append("Yall: " + " $yall\n");
+		commandLog.append("Zall: " + " $zall\n");
+		commandLog.append("Clear command: " + " $clear\n");
+		commandLog.append("Zoom command: " + " $zoom <double>\n");
+		commandLog.append("Rotating: " + " $rotate <left/right/up/down/counter/clock> <double>\n");
+		commandLog.append("Panning: " + " $pan <left/right/up/down/in/out> <double>\n");
+		commandLog.append("Recoloring: " + " $recolor <lin/log> <double> <double>\n");
+		commandLog.append("Value range request: " + " $range\n");
+		commandLog.append("Close the visualization: " + " $closeviz\n");
+		commandLog.append("Quit Program: " + " $quit\n");
+		commandLog.append("\n");
+	}
+	/*************************************************************************************************
 	 * Creates an instance with no previous history.
 	 */
-	public CommandPrompt() {
-		this(new Vector());
+	public CommandPrompt(CommandPane p) {
+		this(new Vector(), p);
 	}
 
-	/**
+	/*************************************************************************************************/
+
+	public void updateScreen(String arg){
+		commandLog.append(arg + '\n');
+	}
+
+	public void clear(){
+		commandLog.setText("");
+		addComment("Cleared");
+	}
+	/*************************************************************************************************
 	 * This method is called by the text input (and can be called by other
 	 * areas of a program) to add a command to the display and add that command
 	 * to the history.  Subclasses may wish to add functionality to this
@@ -84,17 +110,18 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		commandLog.append(command + '\n');
 
 		//don't add sequences of duplicate command to history
-		if(history.size() == 0 || !command.equals((String) history.lastElement()))
+		if(history.size() == 0 || !command.equals((String) history.lastElement())){
 			history.add(command);
+		}
 		location = history.size();
 
-		commandField.setText("");
-		currentCommand = "";
+		//commandField.setText("");
+		//currentCommand = "";
 
 		//sendCommand()?
 	}
 
-	/**
+	/*************************************************************************************************
 	 * This method adds a timestamped comment to the display.
 	 */
 	public void addComment(String comment) {
@@ -102,14 +129,26 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		commandLog.append("# " + timestamp + " : " + comment + '\n');
 	}
 
+	/*************************************************************************************************/
+
 	public void actionPerformed(ActionEvent e) {
-		addCommand(commandField.getText());
+		try{
+			parser.parseString(commandField.getText());
+			//addCommand(commandField.getText());
+			commandField.setText("");
+			currentCommand = "";
+		}catch(Exception ex){
+			//System.out.println("Exception caugth...haven't initialized yet...?");
+			updateScreen("Please launch the simulation from the Configure tab in order to initialize the program variables");
+		}
 	}
+
+	/*************************************************************************************************/
 
 	public void keyTyped(KeyEvent e) {
 	}
 
-	/**
+	/*************************************************************************************************
 	 * Handles navigation through the history.
 	 */
 	public void keyPressed(KeyEvent e) {
@@ -127,6 +166,41 @@ public class CommandPrompt extends JPanel implements ActionListener, KeyListener
 		}
 	}
 
+	/*************************************************************************************************/
+
 	public void keyReleased(KeyEvent e) {
+	}
+	
+	public void disable(){
+		if(disabledOnce){
+			//do nothing
+		}else{
+			commandField.setEnabled(false);
+			disabledOnce = true;
+		}
+	}
+
+	public void enable(){
+		commandField.setEnabled(true);
+	}
+
+	public void setParser(ParentPanel p){
+		parser = new CommandParser(p, this);
+	}
+	
+	public DefaultListModel getSimList(){
+		return refComPane.getSimList();
+	}
+
+	public void updateStatus(String arg){
+		refComPane.updateStatus("Launched: " + arg);
+	}
+	
+	public void launch(){
+		refComPane.launch();
+	}
+	
+	public void disposeWindow(){
+		refComPane.disposeWindow();
 	}
 }

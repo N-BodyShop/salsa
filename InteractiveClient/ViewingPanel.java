@@ -57,20 +57,22 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 	private CommandPane refComPane;	//reference CommandPane, to access methods in CommandPane class
 	private String typeOfSelection;	//keep track of whether user is subsetting using a box or a sphere
 	private JFrame parentFrame;
+	private ParentPanel parent;
 
 	/****************************************************************************
 	 * CONSTRUCTOR
 	 */
-	public ViewingPanel(String hostname, int port, String cmd, CommandPane ref, JFrame parent) {
+	public ViewingPanel(String hostname, int port, String cmd, CommandPane ref, JFrame frame, ParentPanel par) {
 		super(new BorderLayout());
 		ccs = new CcsThread(new Label(), hostname, port);
 		h = hostname;
 		p = port;
 		refComPane = ref;
-		parentFrame = parent;
+		parentFrame = frame;
+		parent = par;
 
 		wrbb = createWRBBColorModel();
-		
+
 		start_z = 0;
 		width = 512;
 		height = 512;
@@ -292,7 +294,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				if((config.max.y - config.min.y != boxSize) || (config.max.z - config.min.z != boxSize)) {
 					System.err.println("Box is not a cube!");
 				}
-				
+
 				if(cmd=="xall"){
 					xButton.doClick();
 				}else if(cmd=="yall"){
@@ -315,7 +317,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		start_x = e.getX();
 		start_y = e.getY();
 		start_z = e.getY();
-		
+
 		if(e.getModifiers()==18){
 			try{
 				if(typeOfSelection.equals("box")){
@@ -504,6 +506,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 	 */
 
 	private void selectWindow(){
+		/*
 		JFrame f = new JFrame("Selection view");
 		sv = new SelectionView(h,p,x,y,z,origin,this);
 		f.getContentPane().add(sv);
@@ -511,6 +514,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		f.setVisible(true);
 		f.setSize(parentFrame.getWidth(), parentFrame.getHeight());
 		rotated = false;	//set to false, to allow drawing on the new window
+		*/
 	}
 
 	/**************************************************************************************************
@@ -763,6 +767,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			//width = 256;
 			//height = 256;
 			//lowRes = true;
+
 			origin = /*new Vector3D(0,0,0);*/ config.max.plus(config.min).scalarMultiply(0.5);
 			//x = new Vector3D(0, config.max.x - config.min.x, 0);
 			//y = new Vector3D(0, 0, config.max.y - config.min.y);

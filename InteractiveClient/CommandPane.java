@@ -4,9 +4,11 @@ import java.awt.event.*;
 import java.lang.*;
 
 /**
- * CommandPane is the main command window for the NChilada Visualization client.  
+ * CommandPane is the main command window for the NChilada Visualization client.
  * It allows the user to select, view, modify, and store information about particle
  * simulations
+ * Original mastermind: Amir Kouretchian
+ * Version 0.Best
  */
 public class CommandPane implements ActionListener, ItemListener {
 	private JFrame frame;
@@ -83,7 +85,7 @@ public class CommandPane implements ActionListener, ItemListener {
 		subsetPanel = new SubsetPanel();
 		quantitativePanel = new QuantitativePanel();
 		profilePanel = new ProfilePanel(this);
-		manualPanel = new CommandPrompt();
+		manualPanel = new CommandPrompt(this);
 		tabPane.addTab("Input", inputPanel);
 		tabPane.addTab("Configure", configPanel);
 		tabPane.addTab("Subset", subsetPanel);
@@ -107,6 +109,10 @@ public class CommandPane implements ActionListener, ItemListener {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setVisible(true);
 		disable();
+	}
+	
+	public void launch(){
+		configPanel.render.doClick();
 	}
 
 //*****************************************************************************************************************
@@ -181,6 +187,7 @@ public class CommandPane implements ActionListener, ItemListener {
 	 */
 	public void enableOne(){
 		tabPane.setEnabled(true);
+		//manualPanel.disable();
 		//config tab opens
 	}
 
@@ -193,7 +200,12 @@ public class CommandPane implements ActionListener, ItemListener {
 		//toolBar.getComponentAtIndex(0).setEnabled(true);
 		//toolBar.getComponentAtIndex(1).setEnabled(true);
 		groups.setEnabled(true);
+		//manualPanel.enable();
 		//everything else opens after render button pushed
+	}
+	
+	public void callParseSetter(ParentPanel p){
+		manualPanel.setParser(p);
 	}
 
 //*****************************************************************************************************************
@@ -322,5 +334,17 @@ public class CommandPane implements ActionListener, ItemListener {
 	public String getCurrentListItem(){
 		return (String)groups.getSelectedItem();
 	}
+	
+	public DefaultListModel getSimList(){
+		return inputPanel.getSimList();
+	}
 
+	public void disposeWindow(){
+		configPanel.disposeWindow();
+		updateStatus(inputPanel.getSimName() + "...closed");
+	}
+	
+	public String getSimName(){
+		return inputPanel.getSimName();
+	}
 }

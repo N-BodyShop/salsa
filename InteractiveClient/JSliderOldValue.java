@@ -5,6 +5,7 @@ public class JSliderOldValue extends JSlider {
 	
 	public JSliderOldValue(int min, int max, int value) {
 		super(min, max, value);
+		oldValue = value;
 	}
 	
 	public int getOldValue() {
