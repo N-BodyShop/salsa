@@ -144,7 +144,7 @@ void Main::chooseSimulation(CkCcsRequestMsg* m) {
 		delayedReply = m->reply;
 		//return a list of available attributes
 	}
-	if((fp = fopen(string(m->data, m->length).c_str(), "r")) != NULL) {
+	else if((fp = fopen(string(m->data, m->length).c_str(), "r")) != NULL) {
 	    fclose(fp);
 	    workers.loadSimulation(string(m->data, m->length),
 				   CkCallback(CkIndex_Main::startVisualization(0), thishandle));
