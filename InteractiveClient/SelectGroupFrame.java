@@ -36,6 +36,7 @@ public class SelectGroupFrame extends JFrame
         groupName = new NameValue("Create a Group Named:");
         
         JLabel text = new JLabel("based on the following criteria:");
+        text.setAlignmentX(LEFT_ALIGNMENT);
         
         SelectGroupPanel sgp = new SelectGroupPanel(s,vp,this);
         sgps = new Vector();
@@ -45,6 +46,7 @@ public class SelectGroupFrame extends JFrame
         chooseButton = new JButton("Create Group");
         chooseButton.setActionCommand("choose");
         chooseButton.addActionListener(this);
+        chooseButton.setAlignmentX(CENTER_ALIGNMENT);
 
         contentPane.add(groupName);
         contentPane.add(text);
@@ -108,8 +110,9 @@ public class SelectGroupFrame extends JFrame
             System.out.println("Sent CreateGroup message: "+groupInfo);
         }
         public void handleReply(byte[] data) {
+            s.ccs.addRequest( new ActivateGroup( groupName.getValue(), vp ) );
             setVisible(false);
-            vp.getNewImage();
        }
     }
+
 }

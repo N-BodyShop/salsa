@@ -1,5 +1,5 @@
 //
-//  java
+//  RightClickMenu.java
 //  
 //
 //  Created by Greg Stinson on Sun Oct 19 2003.
@@ -48,7 +48,7 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         item.setActionCommand("recolor");
         item.addActionListener(this);
         add(item);
-        item = new JMenuItem("Select a Group...");
+        item = new JMenuItem("Create a Group...");
         item.setActionCommand("group");
         item.addActionListener(this);
         add(item);
@@ -83,6 +83,11 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         }
         else if (command.equals("group"))  { 
             SelectGroupFrame sgf = new SelectGroupFrame(s, vp);
+            sgf.addWindowListener( new WindowAdapter() {
+                    public void windowClosing(WindowEvent e){
+                        s.groupSelecting = false;
+                    }
+                });
         }
 //        else if (command.equals("cs")){ ChooseSimulationFrame csf = 
 //                                    new ChooseSimulationFrame(s.ccs,);}
@@ -97,7 +102,7 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         vp.y = new Vector3D(0, 0, vp.boxSize*0.5);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
-        vp.getNewImage();
+        s.ccs.addRequest( new ActivateGroup( "All", vp ) );
     }
     public void yall(){
         tbp.resetSliders();
@@ -105,7 +110,7 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         vp.y = new Vector3D(vp.boxSize*0.5, 0, 0);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
-        vp.getNewImage();
+        s.ccs.addRequest( new ActivateGroup( "All", vp ) );
     }
     public void zall(){
         tbp.resetSliders();
@@ -113,7 +118,7 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         vp.y = new Vector3D(0, vp.boxSize*0.5, 0);
         vp.z = new Vector3D(vp.x.cross(vp.y));
         vp.origin = new Vector3D(0, 0, 0);
-        vp.getNewImage();
+        s.ccs.addRequest( new ActivateGroup( "All", vp ) );
     }
     
 }

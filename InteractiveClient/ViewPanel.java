@@ -13,7 +13,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
-public class ViewPanel extends JPanel implements MouseListener, MouseMotionListener {
+public class ViewPanel extends JPanel implements MouseListener {
 
     Simulation s;
     Config config;
@@ -25,8 +25,6 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
     byte [] pixels;
     JLabel display;
     double angleLeft, angleCcw, angleUp;
-    double xBegin, yBegin;
-    Rectangle rect;
     
     public ViewPanel( Simulation sim, int w, int h,double bs, Vector3D oh ){
         s = sim;
@@ -46,7 +44,7 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
         add(display, BorderLayout.CENTER);
         addMouseListener(this);
 
-        s.ccs.addRequest(new ImageRequest(), true);
+        s.ccs.addRequest(new ActivateGroup( "All", this) );
 
         rcm = new RightClickMenu(s, this);
     }
@@ -120,7 +118,6 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
     public void mouseClicked(MouseEvent e) {
         maybeShowPopup(e);
         if ( s.groupSelecting ){
-            rect = new Rectangle(e.getX(),e.getY(),0,0);
         } else {
             switch ( e.getModifiers() ) {
                 case MouseEvent.BUTTON1_MASK:
@@ -143,21 +140,6 @@ public class ViewPanel extends JPanel implements MouseListener, MouseMotionListe
     }
 
     public void mouseExited(MouseEvent e) {
-    }
-
-    public void mouseDragged(MouseEvent e) {
-        if (s.groupSelecting){
-            repaint();
-            Graphics graph = this.getGraphics();
-            graph.setColor(Color.white);
-            Double x = new Double(e.getX()-rect.getX());
-            Double y = new Double(e.getY()-rect.getY());
-            rect.setSize(x.intValue(), y.intValue());
-            graph.drawRect(rect.x,rect.y,rect.width,rect.height);
-        }
-    }
-
-    public void mouseMoved(MouseEvent e) {
     }
 
     private void maybeShowPopup(MouseEvent e) {

@@ -52,7 +52,7 @@ public class ConnectFrame extends JFrame
         pack();
 		
 		//place it in the center of the screen
-		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         setLocation(screenSize.width / 2 - getSize().width / 2, screenSize.height / 2 - getSize().height / 2);
 
         //make it appear now that it's pretty
