@@ -283,6 +283,7 @@ public:
 	void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
 	void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 	void createGroup_AttributeSphere(std::string const& groupName,
+					 std::string const& parentName,
 					 std::string const& attributeName,
 					 Vector3D<double> center, double size,
 					 CkCallback const& cb);

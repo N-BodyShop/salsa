@@ -160,43 +160,47 @@ void Main::getCenterOfMass(int handle)
 	
 void Main::createGroup_Family(int handle)
 {
-    char *familyName;
+    char *groupName, *parentName, *familyName;
     CkReductionMsg* mesg;
     int result;
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
-    PyArg_ParseTuple(arg, "s", &familyName);
-    workers.createGroup_Family(familyName, createCallbackResumeThread(mesg, result));
+    PyArg_ParseTuple(arg, "sss", &groupName, &parentName, &familyName);
+    workers.createGroup_Family(groupName, parentName, familyName,
+			       createCallbackResumeThread(mesg, result));
     delete mesg;
     }
 	
 void Main::createGroup_AttributeRange(int handle)
 {
-    char *groupName, *attributeName;
+    char *groupName, *parentName, *attributeName;
     double minValue, maxValue;
     int result;
     CkReductionMsg* mesg;
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
-    PyArg_ParseTuple(arg, "ssdd", &groupName, &attributeName, &minValue,
-		     &maxValue);
-    workers.createGroup_AttributeRange(groupName, attributeName, minValue, maxValue, createCallbackResumeThread(mesg, result));
+    PyArg_ParseTuple(arg, "sssdd", &groupName, &parentName, &attributeName,
+		     &minValue, &maxValue);
+    workers.createGroup_AttributeRange(groupName, parentName, attributeName,
+				       minValue, maxValue,
+				       createCallbackResumeThread(mesg, result));
     delete mesg;
     }
 
 void Main::createGroupAttributeSphere(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    char *achGroupName, *attributeName;
+    char *achGroupName, *parentName, *attributeName;
     double xCenter, yCenter, zCenter, dSize;
     
-    PyArg_ParseTuple(arg, "ssdddd", &achGroupName, &attributeName, &xCenter,
-		     &yCenter, &zCenter, &dSize);
+    PyArg_ParseTuple(arg, "sssdddd", &achGroupName, &parentName,
+		     &attributeName, &xCenter, &yCenter, &zCenter, &dSize);
     Vector3D<double> v3dCenter(xCenter, yCenter, zCenter);
     string sGroupName(achGroupName);
+    string sParentName(parentName);
     string sAttributeName(attributeName);
     
-    workers.createGroup_AttributeSphere(sGroupName, sAttributeName,
-					v3dCenter, dSize,
+    workers.createGroup_AttributeSphere(sGroupName, sParentName,
+					sAttributeName, v3dCenter, dSize,
 					CkCallbackResumeThread());
 }
 

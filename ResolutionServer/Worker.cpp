@@ -613,7 +613,6 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			if(!projectedKernel.isReady())
 				initializeProjectedKernel(100);
 			
-			float massRange = req.maxMass - req.minMass;
 			if(thisIndex == 0) {
 				cout << "Mass range is from " << minMass << " to " << maxMass << endl;
 				cout << "Splatter range is from " << req.minMass << " to " << req.maxMass << endl;
@@ -1396,9 +1395,13 @@ void Worker::createGroup_AttributeRange(std::string const& groupName, std::strin
 }
 
 void Worker::createGroup_AttributeSphere(std::string const& groupName,
-std::string const& attributeName, Vector3D<double> center, double size, CkCallback const& cb) {
+					 std::string const& parentGroupName,
+					 std::string const& attributeName,
+					 Vector3D<double> center, double size,
+					 CkCallback const& cb) {
 	int result = 0;
-	boost::shared_ptr<SimulationHandling::Group> g = make_SphericalGroup(*sim, attributeName, center, size);
+	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	boost::shared_ptr<SimulationHandling::Group> g = make_SphericalGroup(*sim, parentGroup, attributeName, center, size);
 	if(g) {
 		groups[groupName] = g;
 		result = 1;
