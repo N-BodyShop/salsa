@@ -1,5 +1,8 @@
 #!/bin/csh
 
+set REMOTEHOST = squall.astro.washington.edu
+set REMOTEDIR = /users/gwl/public/ResolutionServer-0.2-alpha
+
 set FILE = ""
 if ( $#argv == 1 ) then
   if ( "`echo $1|cut -c1`" == "/" ) then
@@ -9,7 +12,7 @@ if ( $#argv == 1 ) then
   endif
 endif
 
-set SALSAARGS = `ssh squall.astro.washington.edu "cd ~gwl/public/ResolutionServer-0.2-alpha; ./run_server.sh +p4 $FILE" |tail -1`
+set SALSAARGS = `ssh $REMOTEHOST "cd $REMOTEDIR; ./run_server.sh +p4 $FILE" |tail -1`
 set SALSAARGS = "$SALSAARGS $FILE"
 java -jar Salsa.jar $SALSAARGS
-ssh squall.astro.washington.edu pkill charmrun
+ssh $REMOTEHOST pkill charmrun
