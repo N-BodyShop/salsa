@@ -47,7 +47,11 @@ public class SelectGroupPanel extends JPanel
         attributeList.addActionListener(this);
         
         minPanel = new NameValue("min. value:");
+        minPanel.setActionCommand("choose");
+        minPanel.addActionListener(sgf);
         maxPanel = new NameValue("max. value:");
+        maxPanel.setActionCommand("choose");
+        maxPanel.addActionListener(sgf);
         attrib = (String)attributeList.getSelectedItem();
         s.ccs.addRequest( new ValueRange(attrib) );
 
@@ -62,8 +66,8 @@ public class SelectGroupPanel extends JPanel
         add(attributeList);
         add(minPanel);
         add(maxPanel);
-        add(plusButton);
-        add(minusButton);
+//        add(plusButton);
+//        add(minusButton);
     }
 
     public void actionPerformed(ActionEvent e){

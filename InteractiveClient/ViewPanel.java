@@ -45,7 +45,6 @@ public class ViewPanel extends JPanel implements MouseListener {
         addMouseListener(this);
 
         s.ccs.addRequest(new ActivateGroup( "All", this) );
-
         rcm = new RightClickMenu(s, this);
     }
     
@@ -143,8 +142,11 @@ public class ViewPanel extends JPanel implements MouseListener {
     }
 
     private void maybeShowPopup(MouseEvent e) {
-        if (e.isPopupTrigger()) 
+        if (e.isPopupTrigger()) {
+        // needed if menu is updated, but I'm thinking it won't be now
+            rcm = new RightClickMenu(s, this);
             rcm.show(e.getComponent(), e.getX(), e.getY());
+        }
     }
     
     private class ImageRequest extends CcsThread.request {

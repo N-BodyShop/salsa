@@ -13,10 +13,12 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
-public class RightClickMenu extends JPopupMenu implements ActionListener {
+public class RightClickMenu extends JPopupMenu 
+            implements ActionListener {
     Simulation s;
     ViewPanel vp;
     ToolBarPanel tbp;
+    String[] centerChoiceStrings = {"average z","largest value","lowest potential"};
     
     public RightClickMenu( Simulation sim, ViewPanel viewP ) {
         super();
@@ -24,36 +26,55 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
         vp = viewP;
                 
         JMenuItem item;
+        JRadioButtonMenuItem rbItem;
+        JCheckBoxMenuItem cbItem;
         item = new JMenuItem("xall view");
-        item.setActionCommand("xall");
+        item.setActionCommand("xall view");
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("yall view");
-        item.setActionCommand("yall");
+        item.setActionCommand("yall view");
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("zall view");
-        item.setActionCommand("zall");
+        item.setActionCommand("zall view");
         item.addActionListener(this);
         add(item);
-        item = new JMenuItem("Choose centering...");
-        item.setActionCommand("chooseCenter");
-        item.addActionListener(this);
-        add(item);
+        JMenu submenu = new JMenu("Choose centering...");
+        ButtonGroup group = new ButtonGroup();
+        for (int i=0; i < centerChoiceStrings.length; i++) {
+            rbItem = new JRadioButtonMenuItem(centerChoiceStrings[i]);
+            if (i==0) rbItem.setSelected(true);
+            rbItem.addActionListener(this);
+            rbItem.setActionCommand(centerChoiceStrings[i]);
+            group.add(rbItem);
+            submenu.add(rbItem);
+        }
+        add(submenu);
         item = new JMenuItem("Update z");
-        item.setActionCommand("center");
+        item.setActionCommand("Update z");
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("recolor image");
-        item.setActionCommand("recolor");
+        item.setActionCommand("recolor image");
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("Create a Group...");
-        item.setActionCommand("group");
+        item.setActionCommand("Create a Group...");
         item.addActionListener(this);
         add(item);
+        ButtonGroup group2 = new ButtonGroup();
+        submenu = new JMenu("Display groups...");
+        for (int i=0; i < s.Groups.size(); i++) {
+            rbItem = new JRadioButtonMenuItem(((Group)s.Groups.get(i)).Name);
+            rbItem.addActionListener(this);
+            rbItem.setActionCommand("ActivateGroup");
+            group2.add(rbItem);
+            submenu.add(rbItem);
+        }
+        add(submenu);
         item = new JMenuItem("Save image as png...");
-        item.setActionCommand("png");
+        item.setActionCommand("Save image as png...");
         item.addActionListener(this);
         add(item);
         item = new JMenuItem("Another simulation...");
@@ -72,16 +93,18 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
     
     public void actionPerformed(ActionEvent e){
         String command =  e.getActionCommand();
-        if ( command.equals("xall") ) { xall();}
-        else if (command.equals("yall"))  { yall();}
-        else if (command.equals("zall"))  { zall();}
-        else if (command.equals("chooseCenter"))  { PreferencesFrame pf = new PreferencesFrame(s,vp);}
-        else if (command.equals("center"))  { vp.center();}
+        if ( command.equals("xall view") ) { xall();}
+        else if (command.equals("yall view"))  { yall();}
+        else if (command.equals("zall view"))  { zall();}
+        else if (command.equals("average z")) { s.centerMethod = 0; vp.center();}
+        else if (command.equals("largest value")) { s.centerMethod = 1; vp.center();}
+        else if (command.equals("lowest potential")) { s.centerMethod = 2; vp.center();}
+        else if (command.equals("Update z"))  { vp.center();}
         else if (command.equals("fixo"))  { System.out.println("Origin fixed");}
-        else if (command.equals("recolor"))  { 
+        else if (command.equals("recolor image"))  { 
             ReColorFrame rcf = new ReColorFrame(s, vp);
         }
-        else if (command.equals("group"))  { 
+        else if (command.equals("Create a Group..."))  { 
             SelectGroupFrame sgf = new SelectGroupFrame(s, vp);
             sgf.addWindowListener( new WindowAdapter() {
                     public void windowClosing(WindowEvent e){
@@ -89,13 +112,18 @@ public class RightClickMenu extends JPopupMenu implements ActionListener {
                     }
                 });
         }
+        else if (command.equals("ActivateGroup"))  { 
+            JMenuItem source = (JMenuItem)(e.getSource());
+            s.ccs.addRequest( new ActivateGroup( source.getText(), vp ) );
+        }
 //        else if (command.equals("cs")){ ChooseSimulationFrame csf = 
 //                                    new ChooseSimulationFrame(s.ccs,);}
         else if (command.equals("switchmap")){}
-        else if (command.equals("png")){ vp.writePng(); }
+        else if (command.equals("Save image as png...")){ vp.writePng(); }
         else if (command.equals("clear")) {}
     }
     
+
     public void xall(){
         tbp.resetSliders();
         vp.x = new Vector3D(0, vp.boxSize*0.5, 0);

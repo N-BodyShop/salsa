@@ -32,13 +32,13 @@ public class ToolBarPanel extends JPanel
         JToolBar viewBar = new JToolBar();
         viewBar.setLayout( new GridLayout(3,1) );
         JButton xButton = new JButton("xall");
-        xButton.setActionCommand("xall");
+        xButton.setActionCommand("xall view");
         xButton.addActionListener(this);
         JButton yButton = new JButton("yall");
-        yButton.setActionCommand("yall");
+        yButton.setActionCommand("yall view");
         yButton.addActionListener(this);
         JButton zButton = new JButton("zall");
-        zButton.setActionCommand("zall");
+        zButton.setActionCommand("zall view");
         zButton.addActionListener(this);
         viewBar.add(xButton);
         viewBar.add(yButton);
@@ -56,7 +56,7 @@ public class ToolBarPanel extends JPanel
         clear.setActionCommand("clear");
         clear.addActionListener(this);
         middleBar.add(reColor);
-        middleBar.add(fixO);
+//        middleBar.add(fixO);
 //        middleBar.add(clear);
         
         JToolBar sliderBar = new JToolBar();

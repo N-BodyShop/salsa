@@ -32,6 +32,8 @@ public class Simulation {
         Name = new String();
         Families = new Vector();
         Groups = new Vector();
+        Group group = new Group( "All" );
+        Groups.addElement( group );
         centerMethod = 0;
         selectedAttributeIndex = 0;
     }
