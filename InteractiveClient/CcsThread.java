@@ -71,7 +71,8 @@ class CcsThread implements Runnable {
 	}
 
 	private boolean isBad;//Records that an error occured
-	private Stack requests;//Keeps track of CcsRequests
+	//private Stack requests;//Keeps track of CcsRequests
+	private LinkedList requests;//Keeps track of CcsRequests
 	private volatile boolean keepGoing;//To signal exit
 	private CcsServer ccs;
 	private Label status;//Place to show status info.
@@ -84,7 +85,7 @@ class CcsThread implements Runnable {
 	
 	public CcsThread (Label status_, String hostName_, int port_) 
             throws UnknownHostException, IOException {
-		requests=new Stack();
+		requests = new LinkedList();
 		status=status_;
 		hostName=hostName_;
 		port=port_;
@@ -101,10 +102,9 @@ class CcsThread implements Runnable {
 	}
 	
 	public void addRequest(request req, boolean flushOld) {
-		if (flushOld) //Clean out all previous requests
-			while (!requests.empty())
-				requests.pop();
-		requests.push(req);
+		if(flushOld) //Clean out all previous requests
+			requests.clear();
+		requests.addLast(req);
 		//System.out.println("Ccs.Thread.java addRequest called");
 	}
 	
@@ -132,7 +132,7 @@ class CcsThread implements Runnable {
 		status.setText("Connected to "+hostName+" ("+
 			       ccs.getNumPes()+" processors)");
 		while (keepGoing) {
-			while (requests.empty()&&keepGoing) {
+			while(requests.isEmpty() && keepGoing) {
 				//Wait for another request
 				try { //Give other threads a chance
 					int sleepMs=30;
@@ -140,7 +140,7 @@ class CcsThread implements Runnable {
 				} catch (InterruptedException E) {}
 			}
 			if (!keepGoing) break;
-			request curReq=(request)requests.pop();
+			request curReq=(request)requests.removeFirst();
 			status.setText("Sending request "+curReq.getHandler());
 			try {
 				ccs.sendRequest(curReq.getHandler(),curReq.getPE(),curReq.getData());
