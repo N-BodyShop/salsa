@@ -288,7 +288,7 @@ void drawLine(byte* image, const int width, const int height, const pair<double,
 			x = 2 * (xpix + 0.5) / width - 1;
 			y = p1.second + (p2.second - p1.second) * (x - p1.first) / (p2.first - p1.first);
 			ypix = static_cast<int>(floor(height * (1 - y) / 2));
-			if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+			if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
 				image[xpix + ypix * width] = lineColor;
 		}
 	}
@@ -302,9 +302,48 @@ void drawLine(byte* image, const int width, const int height, const pair<double,
 			y = 1 - 2 * (ypix + 0.5) / height;
 			x = p1.first + (p2.first - p1.first) * (y - p1.second) / (p2.second - p1.second);
 			xpix = static_cast<int>(floor(width * (x + 1) / 2));
-			if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+			if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
 				image[xpix + ypix * width] = lineColor;
 		}
+	}
+}
+
+void drawCircle(byte* image, const int width, const int height, const pair<double, double> origin, const double radius) {
+	int min_pixel, max_pixel, xpix, ypix;
+	double x, y, rsq = radius * radius, temp;
+	
+	min_pixel = static_cast<int>(floor(width * (origin.first - radius + 1) / 2));
+	max_pixel = static_cast<int>(floor(width * (origin.first + radius + 1) / 2));
+	if(max_pixel < min_pixel)
+		swap(min_pixel, max_pixel);
+	for(xpix = min_pixel; xpix <= max_pixel; ++xpix) {
+		x = 2 * (xpix + 0.5) / width - 1;
+		temp = sqrt((x - origin.first) * (x - origin.first) - rsq);
+		y = origin.second + temp;
+		ypix = static_cast<int>(floor(height * (1 - y) / 2));
+		if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+			image[xpix + ypix * width] = lineColor;
+		y = origin.second - temp;
+		ypix = static_cast<int>(floor(height * (1 - y) / 2));
+		if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
+			image[xpix + ypix * width] = lineColor;
+	}
+	
+	min_pixel = static_cast<int>(floor(height * (1 - origin.second + radius) / 2));
+	max_pixel = static_cast<int>(floor(height * (1 - origin.second - radius) / 2));
+	if(max_pixel < min_pixel)
+		swap(min_pixel, max_pixel);
+	for(ypix = min_pixel; ypix <= max_pixel; ++ypix) {
+		y = 1 - 2 * (ypix + 0.5) / height;
+		temp = sqrt((y - origin.second) * (y - origin.second) - rsq);
+		x = origin.first + temp;
+		xpix = static_cast<int>(floor(width * (x + 1) / 2));
+		if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+			image[xpix + ypix * width] = lineColor;
+		x = origin.first - temp;
+		xpix = static_cast<int>(floor(width * (x + 1) / 2));
+		if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
+			image[xpix + ypix * width] = lineColor;
 	}
 }
 
@@ -336,11 +375,6 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 					cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
 				if(image[pixel] < myParticles[i].color)
 					image[pixel] = myParticles[i].color;
-				/*if(image[pixel] + myParticles[i].color > 255)
-					image[pixel] = 255;
-				else
-					image[pixel] += myParticles[i].color;
-				*/
 			}
 		}
 	}
@@ -362,48 +396,16 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	if(spheres.size() > 0) {
 		//draw spheres onto canvas
-		unsigned int pix_x, pix_y;
+		pair<double, double> origin;
+		double radius;
 		for(vector<Sphere<double> >::iterator iter = spheres.begin(); iter != spheres.end(); ++iter) {
-			x = dot(req.x, iter->origin - req.o);
-			if(x > -1 && x < 1) {
-				y = dot(req.y, iter->origin - req.o);
-				if(y > -1 && y < 1) {
-					cerr << "Sphere origin is in the frame" << endl;
-					pix_x = static_cast<unsigned int>(req.width * (x + 1) / 2);
-					pix_y = static_cast<unsigned int>(req.height * (y + 1) / 2);
-					for(int j = 0; j < 3; ++j) {
-						for(int k = 0; k < 3; ++k) {
-							pixel = pix_x - 1 + j + req.width * (pix_y - 1 + k);
-							if(pixel < imageSize)
-								image[pixel] = sphereColor;
-							else
-								cerr << "Pixel is bad" << endl;
-						}
-					}
-				}
-			}
+			origin.first = dot(req.x, iter->origin - req.o);
+			origin.second = dot(req.y, iter->origin - req.o);
+			radius = 3.0 / req.width;
+			drawCircle(image, req.width, req.height, origin, radius);
 		}
 	}
-	/*
-	for(u_int64_t i = 0; i < numParticles; ++i) {
-		x = dot(req.x, myParticles[i].position - req.o);
-		if(x >= 0 && x < 1) {
-			y = dot(req.y, myParticles[i].position - req.o);
-			if(y >= 0 && y < 1) {
-				pixel = static_cast<unsigned int>(req.width * x) + req.width * static_cast<unsigned int>(req.height * y);
-				if(pixel >= imageSize)
-					cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-				if(image[pixel] < myParticles[i].color)
-					image[pixel] = myParticles[i].color;
-				/*if(image[pixel] + myParticles[i].color > 255)
-					image[pixel] = 255;
-				else
-					image[pixel] += myParticles[i].color;
-				
-			}
-		}
-	}
-	*/
+
 	double stop = CkWallTimer();
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
 	cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
