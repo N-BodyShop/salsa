@@ -8,9 +8,9 @@
 #include <set>
 #include <iterator>
 
-#ifndef MACOSX
+#ifdef HAVE_LIBPOPT
 #include <popt.h>
-#endif /*MACOSX*/
+#endif
 
 #include "pup_network.h"
 
@@ -28,7 +28,7 @@ int verbosity;
 Main::Main(CkArgMsg* m) {
 	verbosity = 0;
 	
-#ifdef MACOSX
+#ifdef HAVE_LIBPOPT
 	poptOption optionsTable[] = {
 		{"verbose", 'v', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, 0, 1, "be verbose about what's going on", "verbosity"},
 		POPT_AUTOHELP

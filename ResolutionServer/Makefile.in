@@ -1,0 +1,61 @@
+STRUCTURES_PATH = ../structures
+
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR)
+LDFLAGS +=  -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
+LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
+
+PYTHON_INCLUDE_DIR = @PYTHON_INCLUDE_DIR@
+PYTHON_LIB = @PYTHON_LIB@
+
+BOOST_PATH = @BOOST_PATH@
+BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I$(BOOST_PATH)
+XERCESCROOT = @XERCESCROOT@
+
+LIBS = @LIBS@
+CHARMC = @CHARMC@
+CXX = $(CHARMC)
+CC = $(CXX)
+
+TARGET = ResolutionServer
+VERSION = 0.2-beta2
+all: $(TARGET)
+
+$(TARGET).o: $(TARGET).decl.h Reductions.decl.h
+
+Reductions.o: Reductions.decl.h ParticleStatistics.h
+
+$(TARGET): ResolutionServer.o Worker.o MetaInformationHandler.o Reductions.o HighLevelPython.o ../SimulationHandler/SiXFormat.o ../SimulationHandler/TipsyFormat.o $(STRUCTURES_PATH)/libTipsy.a
+	$(CXX) -o $(TARGET) $(LDFLAGS) $+ $(LDLIBS)
+
+$(STRUCTURES_PATH)/libTipsy.a:
+	cd $(STRUCTURES_PATH); make
+
+ResolutionServer.o: PythonInstance.h
+Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
+Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h
+
+%.decl.h %.def.h : %.ci
+	$(CHARMC) $<
+
+.PHONY: all clean docs dist binarydist
+
+docs:
+	doxygen $(TARGET).doxygen
+
+dist:
+	mkdir $(TARGET)-$(VERSION)
+	cp Makefile $(TARGET).doxygen *.h *.cpp *.ci $(TARGET)-$(VERSION)/
+	tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
+	rm -Rf $(TARGET)-$(VERSION)
+
+clean:
+	rm -f core* *.o *~ $(TARGET) *.decl.h *.def.h charmrun conv-host 
+
+binarydist: all
+	mkdir -p $(HOME)/public/$(TARGET)-$(VERSION)
+	cp charmrun $(TARGET) simlist nodelist run_server.sh wrapper $(HOME)/public/$(TARGET)-$(VERSION)
+	#mkdir $(TARGET)-$(VERSION)
+	#cp charmrun $(TARGET) simlist nodelist run_server.sh $(TARGET)-$(VERSION)
+	#tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
+	#rm -Rf $(TARGET)-$(VERSION)
+	
