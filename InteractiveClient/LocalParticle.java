@@ -26,7 +26,8 @@ public class LocalParticle extends JPanel
     public void actionPerformed(ActionEvent e) {
 	
 	System.out.println("Executing: " + codeField.getText());
-	windowManager.ccs.addRequest(new ExecuteLocalCode("import ck\ndef localparticle(p):\n\t" + codeField.getText() + "\n\0localparticle"));
+	//	windowManager.ccs.addRequest(new ExecuteLocalCode("import ck\ndef localparticle(p):\n\t" + codeField.getText() + "\n\0localparticle"));
+	windowManager.ccs.addRequest(new ExecuteLocalCode("import ck\ndef localparticle(p):\n\t" + codeField.getText() + "\n"));
     }
     public class ExecuteLocalCode extends CcsThread.request {
 	public ExecuteLocalCode(String code) {
