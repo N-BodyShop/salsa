@@ -37,7 +37,7 @@ public class GroupManager extends Manager
 		
 		JPanel lhs = new JPanel();
 		lhs.setBorder(BorderFactory.createTitledBorder("Groups"));
-		lhs.add(groupList);
+		lhs.add(new JScrollPane(groupList));
 		
 		displayPanel = new JPanel();
 		displayPanel.setBorder(BorderFactory.createTitledBorder("Group definition"));
@@ -104,7 +104,7 @@ public class GroupManager extends Manager
 	}
 	
 	public void valueChanged(ListSelectionEvent e) {
-		if(e.getValueIsAdjusting() == false) {
+		if(e.getValueIsAdjusting() == false && groupList.getSelectedValue() != null) {
 			Simulation.Group g = (Simulation.Group) sim.groups.get(groupList.getSelectedValue());
 			groupNameField.setText(g.name);
 			if(g.infoKnown) {
@@ -142,11 +142,15 @@ public class GroupManager extends Manager
 				sim.groups.remove(oldName);
 				sim.groups.put(g.name, g);
 			}
+			groupList.clearSelection();
+			groupList.setSelectedValue(g.name, true);
 		} else if(command.equals("new")) {
 			++groupCount;
 			Simulation.Group g = new Simulation.Group("New Group " + groupCount);
 			//fill g more correctly here
 			sim.groups.put(g.name, g);
+			groupList.clearSelection();
+			groupList.setSelectedValue(g.name, true);
 		} else if(command.equals("chooseAttribute")) {
 			String attribute = (String) attributeNameBox.getSelectedItem();
 			double minVal = 1E200;
