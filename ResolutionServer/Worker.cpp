@@ -279,28 +279,29 @@ void drawLine(byte* image, const int width, const int height, const pair<double,
 	int min_pixel, max_pixel, xpix, ypix;
 	double x, y;
 	
-	min_pixel = static_cast<int>(width * (p1.first + 1) / 2);
-	max_pixel = static_cast<int>(width * (p2.first + 1) / 2);
-	if(max_pixel > min_pixel)
+	min_pixel = static_cast<int>(floor(width * (p1.first + 1) / 2));
+	max_pixel = static_cast<int>(floor(width * (p2.first + 1) / 2));
+	if(max_pixel < min_pixel)
 		swap(min_pixel, max_pixel);
 	if(max_pixel >= 0 && min_pixel < width) {
 		for(xpix = min_pixel; xpix <= max_pixel; ++xpix) {
 			x = 2 * (xpix + 0.5) / width - 1;
-			y = static_cast<int>(p1.second + (p2.second - p1.second) * (x - p1.first) / (p2.first - p1.first));
-			ypix = static_cast<int>(height * (1 - y) / 2);
+			y = p1.second + (p2.second - p1.second) * (x - p1.first) / (p2.first - p1.first);
+			ypix = static_cast<int>(floor(height * (1 - y) / 2));
 			if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
 				image[xpix + ypix * width] = lineColor;
 		}
 	}
 	
-	min_pixel = static_cast<int>(height * (1 - p1.second) / 2);
-	max_pixel = static_cast<int>(height * (1 - p2.second) / 2);
-	if(max_pixel > min_pixel)
+	min_pixel = static_cast<int>(floor(height * (1 - p1.second) / 2));
+	max_pixel = static_cast<int>(floor(height * (1 - p2.second) / 2));
+	if(max_pixel < min_pixel)
 		swap(min_pixel, max_pixel);
 	if(max_pixel >= 0 && min_pixel < height) {
 		for(ypix = min_pixel; ypix <= max_pixel; ++ypix) {
 			y = 1 - 2 * (ypix + 0.5) / height;
-			x = static_cast<int>(p1.first + (p2.first - p1.first) * (y - p1.second) / (p2.second - p1.second));
+			x = p1.first + (p2.first - p1.first) * (y - p1.second) / (p2.second - p1.second);
+			xpix = static_cast<int>(floor(width * (x + 1) / 2));
 			if(xpix >= 0 && xpix < width && ypix >=0 && ypix < height)
 				image[xpix + ypix * width] = lineColor;
 		}
