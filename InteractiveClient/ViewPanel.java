@@ -54,7 +54,8 @@ public class ViewPanel extends JPanel implements MouseListener {
         x = x.scalarMultiply(zoomFactor);
         y = y.scalarMultiply(zoomFactor);
         z = z.scalarMultiply(zoomFactor);
-        s.ccs.addRequest(new ImageRequest(), true);
+        getNewImage();
+        s.ccs.addRequest( new Center() );
     }
     
     public void rotateLeft( double theta ){
@@ -149,6 +150,23 @@ public class ViewPanel extends JPanel implements MouseListener {
 
         public void handleReply(byte[] data) {
                 displayImage(data);
+        }
+    }
+
+    private class Center extends CcsThread.request {
+
+        public Center() {
+            super("Center", null);
+            setData(encodeRequest());
+        }
+
+        public void handleReply(byte[] data) {
+            DataInputStream dis = new DataInputStream( new ByteArrayInputStream(data));
+            try {
+                double m = dis.readDouble();
+                origin = origin.plus(z.unitVector().scalarMultiply( m ));
+                System.out.println("Server response: "+m+"  New origin for rotation: "+origin);
+            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
         }
     }
 
