@@ -10,6 +10,9 @@
 #include "Reductions.h"
 
 void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb) {		
+	boxes.clear();
+	spheres.clear();
+	
 	FILE* infile = fopen(posfilename.c_str(), "rb");
 	if(!infile) {
 		cerr << "Worker " << thisIndex << ": Couldn't open position file \"" << posfilename << "\"" << endl;
@@ -313,8 +316,8 @@ void Worker::recolor(CkCcsRequestMsg* m) {
 		return;
 	}
 	beLogarithmic = swapEndianness(*reinterpret_cast<int *>(m->data));
-	float minVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int)));
-	float maxVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double)));
+	double minVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int)));
+	double maxVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double)));
 	if(verbosity > 2) {
 		cout << "Re-coloring from " << minVal << " to " << maxVal;
 		if(beLogarithmic)
@@ -323,18 +326,18 @@ void Worker::recolor(CkCcsRequestMsg* m) {
 			cout << ", linearly" << endl;
 	}
 	
-	float invdelta = 1.0 / (maxVal - minVal);
-	float value;
+	double invdelta = 1.0 / (maxVal - minVal);
+	double value;
 	for(u_int64_t i = 0; i < numParticles; ++i) {
 		value = myParticles[i].value;
 		if(beLogarithmic) {
 			if(value > 0)
 				value = log10(value);
 			else
-				value = maxValue;
+				value = -HUGE_VAL;
 		}
 		
-		value = floor(numColors * (value - minValue) * invdelta);
+		value = floor(numColors * (value - minVal) * invdelta);
 		
 		if(value < 0 || value >= numColors)
 			myParticles[i].color = 0;
