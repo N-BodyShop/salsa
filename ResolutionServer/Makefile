@@ -17,6 +17,8 @@ Reductions.o: Reductions.decl.h
 
 $(TARGET): Worker.o Reductions.o
 
+Worker.o ResolutionServer.o: ResolutionServer.h
+
 %.decl.h %.def.h : %.ci
 	$(CHARMC) $<
 

@@ -38,17 +38,16 @@ class colored_particle {
 public:
 	
 	Vector3D<Tipsy::Real> position;
+	float value;
 	byte color;
 	
-	colored_particle() : color(0)  { }
+	colored_particle() : value(0), color(0)  { }
 	
-	colored_particle(const Tipsy::simple_particle& p) : position(p.pos), color(255) { }
+	colored_particle(const Tipsy::simple_particle& p) : position(p.pos), value(0), color(0) { }
 };
 
 class Main : public Chare {
 	CProxy_Worker workers;
-	int logarithmic;
-	int reversed;
 	std::string simulationListFilename;
 	typedef std::map<std::string, std::pair<std::string, std::string> > simListType;
 	simListType simulationList;
@@ -77,8 +76,7 @@ class Worker : public ArrayElement1D {
 	OrientedBox<float> boundingBox;
 	vector<Box<float> > boxes;
 	vector<Sphere<double> > spheres;
-	const static byte boxColor = 255;
-	const static byte sphereColor = 255;
+	const static byte numColors = 254;
 public:
 	
 	Worker() : imageSize(0) { }
@@ -87,7 +85,7 @@ public:
 		delete[] image;
 	}
 	
-	void readParticles(const std::string& posfilename, const std::string& valuefilename, byte numColors, bool logarithmic, bool reversed, const CkCallback& cb);
+	void readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
 	
@@ -95,6 +93,8 @@ public:
 	void clearBoxes(CkCcsRequestMsg* m);
 	void specifySphere(CkCcsRequestMsg* m);
 	void clearSpheres(CkCcsRequestMsg* m);
+	void valueRange(CkCcsRequestMsg* m);
+	void recolor(CkCcsRequestMsg* m);
 };
 
 template <typename T1>

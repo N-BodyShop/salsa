@@ -9,10 +9,7 @@
 #include "ResolutionServer.h"
 #include "Reductions.h"
 
-void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, byte numColors, bool logarithmic, bool reversed, const CkCallback& cb) {
-	beLogarithmic = logarithmic;
-	bool reverseColors = reversed;
-		
+void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb) {		
 	FILE* infile = fopen(posfilename.c_str(), "rb");
 	if(!infile) {
 		cerr << "Worker " << thisIndex << ": Couldn't open position file \"" << posfilename << "\"" << endl;
@@ -116,6 +113,33 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 		return;
 	}
 	
+	if(minValue == maxValue) {
+		if(verbosity > 2)
+			cout << "Worker " << thisIndex << ": All particles have the same color" << endl;
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			myParticles[i].value = minValue;
+			myParticles[i].color = 255;
+		}
+	} else {
+		if(!seekField(valfh, &xdrs, startParticle)) {
+			cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
+			contribute(0, 0, CkReduction::concat, cb);
+			return;
+		}
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			if(!xdr_template(&xdrs, &myParticles[i].value)) {
+				cerr << "Worker " << thisIndex << ": Couldn't read in all of my positions" << endl;
+				contribute(0, 0, CkReduction::concat, cb);
+				return;
+			}
+			myParticles[i].color = 255;
+		}
+	}
+	
+	if(verbosity > 3)
+		cout << "Worker " << thisIndex << ": Values read." << endl;
+	
+	/*
 	if(reverseColors) {
 		float temp = -minValue;
 		minValue = -maxValue;
@@ -165,7 +189,7 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 	
 	if(verbosity > 3)
 		cout << "Worker " << thisIndex << ": Colors set." << endl;
-		
+	*/
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
@@ -273,6 +297,54 @@ void Worker::clearSpheres(CkCcsRequestMsg* m) {
 	delete m;
 }
 
+void Worker::valueRange(CkCcsRequestMsg* m) {
+	double minMaxPair[2];
+	minMaxPair[0] = minValue;
+	minMaxPair[1] = maxValue;
+	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
+	delete m;
+}
+
+void Worker::recolor(CkCcsRequestMsg* m) {
+	if(m->length != sizeof(int) + 2 * sizeof(double)) {
+		cerr << "Re-color message is wrong size!" << endl;
+		return;
+	}
+	beLogarithmic = swapEndianness(*reinterpret_cast<int *>(m->data));
+	float minVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int)));
+	float maxVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double)));
+	if(verbosity > 2) {
+		cout << "Re-coloring from " << minVal << " to " << maxVal;
+		if(beLogarithmic)
+			cout << ", logarithmically" << endl;
+		else
+			cout << ", linearly" << endl;
+	}
+	
+	float delta = maxVal - minVal;
+	float value;
+	for(u_int64_t i = 0; i < numParticles; ++i) {
+		value = myParticles[i].value;
+		if(beLogarithmic) {
+			if(value > 0)
+				value = log10(value);
+			else
+				value = maxValue;
+		}
+		
+		if(value >= minVal && value < maxValue)
+			myParticles[i].color = static_cast<byte>(1 + numColors * (value - minVal) / delta);
+		else
+			myParticles[i].color = 0;
+	}
+	
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+	if(verbosity > 3)
+		cout << "Re-colored particles" << endl;
+}
+
 const byte lineColor = 255;
 
 void drawLine(byte* image, const int width, const int height, int x0, int y0, int x1, int y1) {
@@ -309,40 +381,6 @@ void drawLine(byte* image, const int width, const int height, int x0, int y0, in
 		}
 	}
 }
-/*
-void drawLine(byte* image, const int width, const int height, const pair<double, double> p1, const pair<double, double> p2) {
-	int min_pixel, max_pixel, xpix, ypix;
-	double x, y;
-	
-	min_pixel = static_cast<int>(floor(width * (p1.first + 1) / 2));
-	max_pixel = static_cast<int>(floor(width * (p2.first + 1) / 2));
-	if(max_pixel < min_pixel)
-		swap(min_pixel, max_pixel);
-	if(max_pixel >= 0 && min_pixel < width) {
-		for(xpix = min_pixel; xpix <= max_pixel; ++xpix) {
-			x = 2 * (xpix + 0.5) / width - 1;
-			y = p1.second + (p2.second - p1.second) * (x - p1.first) / (p2.first - p1.first);
-			ypix = static_cast<int>(floor(height * (1 - y) / 2));
-			if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-				image[xpix + ypix * width] = lineColor;
-		}
-	}
-	
-	min_pixel = static_cast<int>(floor(height * (1 - p1.second) / 2));
-	max_pixel = static_cast<int>(floor(height * (1 - p2.second) / 2));
-	if(max_pixel < min_pixel)
-		swap(min_pixel, max_pixel);
-	if(max_pixel >= 0 && min_pixel < height) {
-		for(ypix = min_pixel; ypix <= max_pixel; ++ypix) {
-			y = 1 - 2 * (ypix + 0.5) / height;
-			x = p1.first + (p2.first - p1.first) * (y - p1.second) / (p2.second - p1.second);
-			xpix = static_cast<int>(floor(width * (x + 1) / 2));
-			if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height)
-				image[xpix + ypix * width] = lineColor;
-		}
-	}
-}
-*/
 		
 void drawCirclePoints(byte* image, const int width, const int height, const int xCenter, const int yCenter, const int x, const int y) {
 	int xpix, ypix;

@@ -14,13 +14,9 @@ int verbosity;
 Main::Main(CkArgMsg* m) {
 	
 	verbosity = 0;
-	logarithmic = 0;
-	reversed = 0;
 	
 	poptOption optionsTable[] = {
 		{"verbose", 'v', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, 0, 1, "be verbose about what's going on", "verbosity"},
-		{"logarithmic", 'l', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, &logarithmic, 0, "color by the log of the value", "logarithmic"},
-		{"reversed", 'r', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, &reversed, 0, "reverse color value", "reverse-color"},
 		POPT_AUTOHELP
 		POPT_TABLEEND
 	};
@@ -56,24 +52,7 @@ Main::Main(CkArgMsg* m) {
 		return;
 	} else
 		simulationListFilename = fname;
-	/*
-	if(fname == 0) {
-		cerr << "You must provide a position file to visualize" << endl;
-		poptPrintUsage(context, stderr, 0);
-		CkExit();
-		return;
-	} else
-		posfilename = fname;
-	
-	fname = poptGetArg(context);
-	if(fname == 0) {
-		cerr << "You must provide a color value file to visualize" << endl;
-		poptPrintUsage(context, stderr, 0);
-		CkExit();
-		return;
-	} else
-		valuefilename = fname;
-	*/
+
 	poptFreeContext(context);
 	delete m;
 	
@@ -82,12 +61,6 @@ Main::Main(CkArgMsg* m) {
 	
     workers = CProxy_Worker::ckNew(CkNumPes());
 	cout << "Created workers!" << endl;
-	if(logarithmic)
-		cout << "Color scale is logarithmic" << endl;
-	if(reversed)
-		cout << "Color scale is reversed" << endl;
-	//workers.readParticles(posfilename, valuefilename, logarithmic, reversed, CkCallback(CkIndex_Main::nextPart(0), thishandle));
-	//cout << "Workers reading!" << endl;
 	
 	authenticated = false;
 	CcsRegisterHandler("AuthenticateNChilada", CkCallback(CkIndex_Main::authenticate(0), thishandle));
@@ -98,6 +71,8 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("ClearBoxes", CkCallback(CkIndex_Worker::clearBoxes(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("SpecifySphere", CkCallback(CkIndex_Worker::specifySphere(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("ClearSpheres", CkCallback(CkIndex_Worker::clearSpheres(0), CkArrayIndex1D(0), workers));
+	CcsRegisterHandler("ValueRange", CkCallback(CkIndex_Worker::valueRange(0), CkArrayIndex1D(0), workers));
+	CcsRegisterHandler("Recolor", CkCallback(CkIndex_Worker::recolor(0), CkArrayIndex1D(0), workers));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -153,7 +128,7 @@ void Main::chooseSimulation(CkCcsRequestMsg* m) {
 	cout << "You chose: \"" << m->data << "\"" << endl;
 	simListType::iterator chosen = simulationList.find(string(m->data, m->data + m->length));
 	if(authenticated && chosen != simulationList.end()) {
-		workers.readParticles(chosen->second.first, chosen->second.second, 254, logarithmic, reversed, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+		workers.readParticles(chosen->second.first, chosen->second.second, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
 		delayedReply = m->reply;
 	} else {
 		unsigned char fail = 0;

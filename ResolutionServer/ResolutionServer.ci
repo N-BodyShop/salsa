@@ -20,7 +20,7 @@ mainmodule ResolutionServer {
 	array [1D] Worker {
 		entry Worker();
 		
-		entry void readParticles(const std::string& posfilename, const std::string& valuefilename, byte numColors, bool logarithmic, bool reversed, const CkCallback& cb);
+		entry void readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb);
 		
 		entry void generateImage(liveVizRequestMsg* m);
 		
@@ -28,5 +28,7 @@ mainmodule ResolutionServer {
 		entry void clearBoxes(CkCcsRequestMsg* m);
 		entry void specifySphere(CkCcsRequestMsg* m);
 		entry void clearSpheres(CkCcsRequestMsg* m);
+		entry void valueRange(CkCcsRequestMsg* m);
+		entry void recolor(CkCcsRequestMsg* m);
 	};
 };
