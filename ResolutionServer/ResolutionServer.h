@@ -13,6 +13,7 @@
 
 #include "pup_stl.h"
 #include "liveViz.h"
+#include "PythonCCS.h"
 #include "ckcallback-ccs.h"
 
 #include "TipsyParticles.h"
@@ -135,12 +136,12 @@ public:
 };
 
 class PythonInstance;
-class PythonMain;
+class PythonTopMain;
 
 extern "C" void initResolutionServer();
 
-class Main : public Chare {
-	friend class PythonMain;
+class Main : public CBase_Main {
+	friend class PythonTopMain;
 	
 	CProxy_MetaInformationHandler metaProxy;
 	CProxy_Worker workers;
@@ -174,6 +175,7 @@ public:
 	
 	void initializePython();
 	void executePythonCode(CkCcsRequestMsg* m);
+	void localParticleCode(CkCcsRequestMsg * m);
 };
 
 class MetaInformationHandler : public Group {
@@ -201,9 +203,11 @@ namespace SimulationHandling {
 class Group;
 }
 
-class Worker : public ArrayElement1D {
+#include "Group.h"
+
+class Worker : public CBase_Worker {
 	friend class Main;
-	friend class PythonMain;
+	friend class PythonTopMain;
 	
 	CProxy_MetaInformationHandler metaProxy;
 	CkCallback callback;
@@ -225,6 +229,11 @@ class Worker : public ArrayElement1D {
 	
 	typedef std::map<std::string, boost::shared_ptr<SimulationHandling::Group> > GroupMap;
 	GroupMap groups;
+	// Filippo's Python stuff
+	boost::shared_ptr<SimulationHandling::Group> localPartG;
+	SimulationHandling::Group::GroupFamilies::iterator localPartFamIter;
+	SimulationHandling::GroupIterator localPartIter;
+	SimulationHandling::GroupIterator localPartEnd;
 	
 	template <typename T>
 	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip);
@@ -262,6 +271,9 @@ public:
 	
 	void createGroup_Family(std::string const& familyName, CkCallback const& cb);
 	void createGroup_AttributeRange(std::string const& groupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
+	void localParticleCode(std::string s, const CkCallback &cb);
+	int buildIterator(PyObject*, void*); // for localParticle
+	int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
 };
 
 #endif //RESOLUTIONSERVER_H

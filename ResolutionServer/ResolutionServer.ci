@@ -6,7 +6,7 @@ mainmodule ResolutionServer {
 	
 	readonly int verbosity;
 
-	mainchare Main {
+	mainchare [python] Main {
 		entry Main(); //creates interpreter, load Python binding to Main classes, expose this object to instance of interpreter
 		
 		entry void listSimulations(CkCcsRequestMsg* m);
@@ -23,11 +23,12 @@ mainmodule ResolutionServer {
 		entry void makeGroup(CkCcsRequestMsg* m);
 		entry [threaded] void activateGroup(CkCcsRequestMsg* m);
 		entry [threaded] void drawVectors(CkCcsRequestMsg* m);
+		entry [threaded] void localParticleCode(CkCcsRequestMsg* m);
 		
 		entry void executePythonCode(CkCcsRequestMsg* m);
 	};
 	
-	array [1D] Worker {
+	array [1D] [python] Worker {
 		entry Worker(const CkGroupID& metaID);
 		
 		entry void loadSimulation(const std::string& simulationName, const CkCallback& cb);
@@ -50,6 +51,7 @@ mainmodule ResolutionServer {
 		entry void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
 		entry void createGroup_Family(const std::string& familyName, const CkCallback& cb);
 		entry void createGroup_AttributeRange(const std::string& groupName, const std::string& attributeName, double minValue, double maxValue, const CkCallback& cb);
+		entry void localParticleCode(std::string s, const CkCallback &cb);
 	};
 	
 	group MetaInformationHandler {

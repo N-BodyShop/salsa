@@ -96,7 +96,7 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		u_int64_t numParticles = totalNumParticles / CkNumPes();
 		u_int64_t leftover = totalNumParticles % CkNumPes();
 		u_int64_t startParticle = CkMyPe() * numParticles;
-		if(CkMyPe() < leftover) {
+		if(CkMyPe() < (int) leftover) {
 			numParticles++;
 			startParticle += CkMyPe();
 		} else
@@ -1197,7 +1197,7 @@ void Worker::getAttributeInformation(CkCcsRequestMsg* m) {
 void Worker::getColoringInformation(CkCcsRequestMsg* m) {	
 	ostringstream oss;
 	oss << "numColorings = " << colorings.size() << "\n";
-	for(int i = 0; i < colorings.size(); ++i) {
+	for(int i = 0; i < (int) colorings.size(); ++i) {
 		oss << "coloring-" << i << ".name = " << colorings[i].name << "\n";
 		oss << "coloring-" << i << ".id = " << i << "\n";
 		oss << "coloring-" << i << ".infoKnown = " << (colorings[i].infoKnown ? "true\n" : "false\n");
@@ -1386,3 +1386,121 @@ void Worker::createGroup_AttributeRange(std::string const& groupName, std::strin
 	}
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
+
+// Below is a test of Filippo's python integrator
+
+void Worker::localParticleCode(std::string s, const CkCallback &cb) 
+{
+    CkCcsRequestMsg *msg=new (s.length(),0) CkCcsRequestMsg;
+
+    msg->length=s.length()+1; // make sure final NULL gets copied
+    memcpy(msg->data, s.c_str(), s.length()+1);
+
+    iterate(msg);
+    contribute(0, 0, CkReduction::concat, cb); // barrier
+    }
+
+int Worker::buildIterator(PyObject *arg, void *iter) {
+    GroupMap::iterator gIter = groups.find("All");
+
+    if(gIter == groups.end())
+	return 0;
+    localPartG = gIter->second;
+    localPartFamIter = localPartG->families.begin();
+    if(localPartFamIter == localPartG->families.end())
+	return 0;
+    localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
+    localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
+    if(localPartIter == localPartEnd)
+	return 0;
+
+    ParticleFamily& family = (*sim)[*localPartFamIter];
+    
+    for(AttributeMap::iterator attrIter = family.attributes.begin();
+	attrIter != family.attributes.end(); attrIter++) {
+	TypedArray& arr = attrIter->second;
+	if(arr.dimensions != 1)
+	    continue;
+	if(arr.data == 0) //attribute not loaded
+	    sim->loadAttribute(*localPartFamIter, attrIter->first, family.count.numParticles, family.count.startParticle);
+	switch(arr.code) {
+	case int32:
+	    pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
+	    break;
+	case float32:
+	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
+	    break;
+	case float64:
+	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
+	    break;
+	default:
+	    assert(0);
+	    }
+	}
+    return 1;
+    }
+
+int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
+    // Copy out from Python object
+
+    ParticleFamily& family = (*sim)[*localPartFamIter];
+    
+    for(AttributeMap::iterator attrIter = family.attributes.begin();
+	attrIter != family.attributes.end(); attrIter++) {
+	TypedArray& arr = attrIter->second;
+	if(arr.dimensions != 1)
+	    continue;
+	long lvalue; // Python only does longs
+	double dvalue;
+	
+	switch(arr.code) {
+	case int32:
+	    pythonGetInt(arg, (char *) attrIter->first.c_str(), &lvalue);
+	    arr.getArray(Type2Type<int>())[*localPartIter] = lvalue;
+	    break;
+	case float32:
+	    pythonGetFloat(arg, (char *) attrIter->first.c_str(), &dvalue);
+	    arr.getArray(Type2Type<float>())[*localPartIter] = dvalue;
+	    break;
+	case float64:
+	    pythonGetFloat(arg, (char *) attrIter->first.c_str(), &arr.getArray(Type2Type<double>())[*localPartIter]);
+	    break;
+	default:
+	    assert(0);
+	    }
+	}
+    // Increment
+    localPartIter++;
+    if(localPartIter == localPartEnd) {
+	localPartFamIter++;
+	if(localPartFamIter == localPartG->families.end()) {
+	    return 0;
+	    }
+	localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
+	localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
+	family = (*sim)[*localPartFamIter];
+	}
+
+    // Stuff new values in
+    
+    for(AttributeMap::iterator attrIter = family.attributes.begin();
+	attrIter != family.attributes.end(); attrIter++) {
+	TypedArray& arr = attrIter->second;
+	if(arr.dimensions != 1)
+	    continue;
+	switch(arr.code) {
+	case int32:
+	    pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
+	    break;
+	case float32:
+	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
+	    break;
+	case float64:
+	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
+	    break;
+	default:
+	    assert(0);
+	    }
+	}
+    return 1;
+    }

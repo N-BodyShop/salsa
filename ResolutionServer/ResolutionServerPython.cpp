@@ -17,15 +17,15 @@ using namespace std;
 using namespace boost::python;
 using namespace SimulationHandling;
 
-/* PythonMain wraps a Main object and provides functions exportable to Python
+/* PythonTopMain wraps a Main object and provides functions exportable to Python
  */
-class PythonMain {
+class PythonTopMain {
 	Main* m;
 	Worker* w;
 	
 public:
 	
-	PythonMain(Main* m_) : m(m_) {
+	PythonTopMain(Main* m_) : m(m_) {
 		w = m->workers[0].ckLocal();
 	}
 	
@@ -153,12 +153,12 @@ void Main::initializePython() {
 		PyErr_Print();
 	}
 	
-	//create an instance of PythonMain, tie it to this object
-	//pythonInterpreter->pythonMain.reset(new PythonMain(this));
-	PythonMain* pythonMain = new PythonMain(this); //pythonMain will not get deleted, and is therefore a memory leak, damn it!
-	//pythonInterpreter->pythonMain = PythonMain(this);
-	//Make a converter for an existing PythonMain object
-	to_python_indirect<PythonMain*, detail::make_reference_holder> tpi;
+	//create an instance of PythonTopMain, tie it to this object
+	//pythonInterpreter->pythonMain.reset(new PythonTopMain(this));
+	PythonTopMain* pythonMain = new PythonTopMain(this); //pythonMain will not get deleted, and is therefore a memory leak, damn it!
+	//pythonInterpreter->pythonMain = PythonTopMain(this);
+	//Make a converter for an existing PythonTopMain object
+	to_python_indirect<PythonTopMain*, detail::make_reference_holder> tpi;
 	//Use it, and insert the PythonMain into namespace of Python
 	//pythonInterpreter->main_namespace["system"] = handle<>(borrowed(tpi(pythonInterpreter->pythonMain)));
 	//pythonInterpreter->main_namespace["system"] = handle<>(borrowed(tpi(pythonInterpreter->pythonMain.get())));
@@ -191,19 +191,19 @@ void Main::executePythonCode(CkCcsRequestMsg* m) {
 BOOST_PYTHON_MODULE(ResolutionServer) {
 	
 	//expose the class, give it the same name in Python as C++, don't let it be constructed
-	class_<PythonMain, boost::noncopyable>("PythonMain", no_init)
+	class_<PythonTopMain, boost::noncopyable>("PythonTopMain", no_init)
 		//expose functions
-		.def("getNumParticles", &PythonMain::getNumParticles)
-		.def("getFamilies", &PythonMain::getFamilies)
-		.def("getAttributes", &PythonMain::getAttributes)
-		.def("getGroups", &PythonMain::getGroups)
-		.def("getAttributeRange", &PythonMain::getAttributeRange)
-		.def("getAttributeSum", &PythonMain::getAttributeSum)
-		.def("getDimensions", &PythonMain::getDimensions)
-		.def("getDataType", &PythonMain::getDataType)
-		.def("getCenterOfMass", &PythonMain::getCenterOfMass)
-		.def("createGroup_Family", &PythonMain::createGroup_Family)
-		.def("createGroup_AttributeRange", &PythonMain::createGroup_AttributeRange)
+		.def("getNumParticles", &PythonTopMain::getNumParticles)
+		.def("getFamilies", &PythonTopMain::getFamilies)
+		.def("getAttributes", &PythonTopMain::getAttributes)
+		.def("getGroups", &PythonTopMain::getGroups)
+		.def("getAttributeRange", &PythonTopMain::getAttributeRange)
+		.def("getAttributeSum", &PythonTopMain::getAttributeSum)
+		.def("getDimensions", &PythonTopMain::getDimensions)
+		.def("getDataType", &PythonTopMain::getDataType)
+		.def("getCenterOfMass", &PythonTopMain::getCenterOfMass)
+		.def("createGroup_Family", &PythonTopMain::createGroup_Family)
+		.def("createGroup_AttributeRange", &PythonTopMain::createGroup_AttributeRange)
 		;
 	
 	class_<PythonStdoutWrapper, boost::noncopyable>("PythonStdoutWrapper", no_init)

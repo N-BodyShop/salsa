@@ -124,7 +124,7 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cout << "Created workers and meta handler" << endl;
 	
-	initializePython();
+	// initializePython();
 	
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
@@ -145,7 +145,8 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("GetColoringInformation", CkCallback(CkIndex_Worker::getColoringInformation(0), CkArrayIndex1D(0), workers));
 
 	CcsRegisterHandler("ExecutePythonCode", CkCallback(CkIndex_Main::executePythonCode(0),thishandle));
-	
+	CcsRegisterHandler("LocalParticleCode",
+			   CkCallback(CkIndex_Main::localParticleCode(0), thishandle));
 	cerr << "Waiting for ccs authentication" << endl;
 }
 
@@ -320,6 +321,14 @@ void Main::drawVectors(CkCcsRequestMsg* m) {
 	unsigned char success = 1;
 	CcsSendDelayedReply(m->reply, 1, &success);
 	delete m;
+}
+
+void Main::localParticleCode(CkCcsRequestMsg * m) 
+{
+    workers.localParticleCode(string(m->data, m->length), CkCallbackResumeThread());
+    unsigned char success = 1;
+    CcsSendDelayedReply(m->reply, 1, &success);
+    delete m;
 }
 
 #include "ResolutionServer.def.h"
