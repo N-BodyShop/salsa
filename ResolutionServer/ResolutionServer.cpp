@@ -135,6 +135,7 @@ void Main::listSimulations(CkCcsRequestMsg* m) {
 }
 
 void Main::chooseSimulation(CkCcsRequestMsg* m) {
+    FILE *fp;
 	if(verbosity)
 		cout << "You chose: \"" << string(m->data, m->length) << "\"" << endl;
 	simListType::iterator chosen = simulationList.find(string(m->data, m->length));
@@ -142,7 +143,14 @@ void Main::chooseSimulation(CkCcsRequestMsg* m) {
 		workers.loadSimulation(chosen->second, CkCallback(CkIndex_Main::startVisualization(0), thishandle));
 		delayedReply = m->reply;
 		//return a list of available attributes
-	} else {
+	}
+	if((fp = fopen(string(m->data, m->length).c_str(), "r")) != NULL) {
+	    fclose(fp);
+	    workers.loadSimulation(string(m->data, m->length),
+				   CkCallback(CkIndex_Main::startVisualization(0), thishandle));
+	    delayedReply = m->reply;
+	}
+	else {
 		unsigned char fail = 0;
 		CcsSendDelayedReply(m->reply, 1, &fail);
 	}
