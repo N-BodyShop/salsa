@@ -18,6 +18,7 @@ Reductions.o: Reductions.decl.h ParticleStatistics.h
 $(TARGET): Worker.o MetaInformationHandler.o Reductions.o ../SimulationHandler/SiXFormat.o ../SimulationHandler/TipsyFormat.o
 
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
+Worker.o: PixelDrawing.cpp
 
 %.decl.h %.def.h : %.ci
 	$(CHARMC) $<

@@ -217,11 +217,12 @@ void Main::statsCollected(CkReductionMsg* m) {
 
 void Main::calculateDepth(CkCcsRequestMsg* m) {
 	delayedReply = m->reply;
-	MyVizRequest req = *reinterpret_cast<MyVizRequest *>(m->data + 4);
+	MyVizRequest* preq = reinterpret_cast<MyVizRequest *>(m->data + 4 * sizeof(int));
 	//get correct endianness
 	PUP::fromNetwork p;
-	p | req;
-	workers.calculateDepth(req, CkCallback(CkIndex_Main::depthCalculated(0), thishandle));
+	p | *preq;
+	cout << "Centering request got MyVizRequest: " << *preq << endl;
+	workers.calculateDepth(*preq, CkCallback(CkIndex_Main::depthCalculated(0), thishandle));
 	delete m;
 }
 

@@ -124,94 +124,7 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 
 const byte lineColor = 1;
 
-void drawLine(byte* image, const int width, const int height, int x0, int y0, int x1, int y1, const int color = lineColor) {
-	int dx = 1;
-	int a = x1 - x0;
-	if(a < 0) {
-		dx = -1;
-		a = -a;
-	}
-	
-	int dy = 1;
-	int b = y1 - y0;
-	if(b < 0) {
-		dy = -1;
-		b = -b;
-	}
-	
-	int two_a = 2 * a, two_b = 2 * b;
-	int xcrit = two_a - b;
-	int eps = 0;
-	
-	for(;;) {
-		if(x0 > 0 && x0 < width && y0 > 0 && y0 < height && image[x0 + width * y0] < color)
-			image[x0 + width * y0] = color;
-		if(x0 == x1 && y0 == y1)
-			break;
-		if(eps <= xcrit) {
-			x0 += dx;
-			eps += two_b;
-		}
-		if(eps >= a || a <= b) {
-			y0 += dy;
-			eps -= two_a;
-		}
-	}
-}
-		
-void drawCirclePoints(byte* image, const int width, const int height, const int xCenter, const int yCenter, const int x, const int y, const int color = lineColor) {
-	int xpix, ypix;
-	
-	xpix = xCenter + x;
-	ypix = yCenter + y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter - x;
-	ypix = yCenter + y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter + x;
-	ypix = yCenter - y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter - x;
-	ypix = yCenter - y;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter + y;
-	ypix = yCenter + x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter - y;
-	ypix = yCenter + x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter + y;
-	ypix = yCenter - x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-	xpix = xCenter - y;
-	ypix = yCenter - x;
-	if(xpix >= 0 && xpix < width && ypix >= 0 && ypix < height && image[xpix + ypix * width] < color)
-		image[xpix + ypix * width] = color;
-}
-
-void drawCircle(byte* image, const int width, const int height, const int x0, const int y0, const int radius, const int color = lineColor) {
-	int x = 0;
-	int y = radius;
-	int p = 1 - radius;
-	
-	while(x < y) {
-		++x;
-		if(p < 0)
-			p += 2 * x + 1;
-		else {
-			--y;
-			p += 2 * (x - y) + 1;
-		}
-		drawCirclePoints(image, width, height, x0, y0, x, y, color);
-	}
-}
+#include "PixelDrawing.cpp"
 
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/iterator/counting_iterator.hpp>
@@ -310,9 +223,10 @@ inline int sign(T x) {
 }
 
 void Worker::generateImage(liveVizRequestMsg* m) {
-	double start = CkWallTimer();
+	//double start = CkWallTimer();
 	
-	MyVizRequest req(m->req);
+	MyVizRequest req;
+	liveVizRequestUnpack(m, req);
 	
 	if(verbosity > 2 && thisIndex == 0)
 		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
@@ -322,7 +236,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		imageSize = req.width * req.height;
 		image = new byte[imageSize];
 	}
-	memset(image, 0, imageSize);
+	memset(image, 0, req.width * req.height);
 
 	MetaInformationHandler* meta = metaProxy.ckLocalBranch();
 	if(!meta) {
@@ -341,7 +255,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	SimplePredicate* pred = new SimplePredicate;
 	
 	Coloring& c = colorings[req.coloring];
-	activeGroupName = groupNames[static_cast<int>(req.maxZ)];
+	activeGroupName = groupNames[req.activeGroup];
 	
 	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 		//don't try to draw inactive families
@@ -355,7 +269,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			colors = simIter->second.getAttribute(coloringPrefix + "familyColor", Type2Type<byte>());
 		if(activeGroupName != "All") {
 			ParticleGroup& activeGroup = simIter->second.groups[activeGroupName];
-			if(thisIndex == 0)
+			if(verbosity > 2 && thisIndex == 0)
 				cerr << "Drawing using group " << activeGroupName << " which has " << activeGroup.size() << " particles" << endl;
 			//pred.setIndexed(activeGroup.begin(), activeGroup.end());
 			delete pred;
@@ -416,11 +330,14 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				if(x > -1 && x < 1) {
 					y = dot(req.y, positions[*iter] - req.o);
 					if(y > -1 && y < 1) {
-						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-						if(pixel >= imageSize)
-							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-						if(image[pixel] < colors[*iter])
-							image[pixel] = colors[*iter];
+						if(req.radius == 0) {
+							pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+							if(pixel >= imageSize)
+								cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+							if(image[pixel] < colors[*iter])
+								image[pixel] = colors[*iter];
+						} else
+							drawDisk(image, req.width, req.height, static_cast<unsigned int>(req.width * (x + 1) / 2), static_cast<unsigned int>(req.height * (1 - y) / 2), req.radius, colors[*iter]);
 					}
 				}
 			}
@@ -461,7 +378,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		}
 	}
 	*/
-	double stop = CkWallTimer();
+	//double stop = CkWallTimer();
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, max_image_data);
 	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
 	//cout << "my part: " << (stop - start) << " seconds" << endl;
@@ -801,7 +718,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	
 	//should only use active particles to calculate this!!!!
 	
-	switch(static_cast<int>(req.minZ)) {
+	switch(req.centerFindingMethod) {
 		case 0: { //average of all pixels in frame	
 			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());

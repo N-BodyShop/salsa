@@ -35,18 +35,6 @@ struct Coloring {
 	Coloring(const std::string& s);
 };
 
-inline void operator|(PUP::er& p, liveVizRequest3d& req) {
-	p | req.code;
-	p | req.wid;
-	p | req.ht;
-	p | req.x;
-	p | req.y;
-	p | req.z;
-	p | req.o;
-	p | req.minZ;
-	p | req.maxZ;
-}
-
 template <typename T1>
 Vector3D<T1> switchVector(const CkVector3d& v) {
 	return Vector3D<T1>(static_cast<T1>(v.x), static_cast<T1>(v.y), static_cast<T1>(v.z));
@@ -57,55 +45,48 @@ CkVector3d switchVector(const Vector3D<T2>& v) {
 	return CkVector3d(static_cast<double>(v.x), static_cast<double>(v.y), static_cast<double>(v.z));
 }
 
+
 class MyVizRequest {
 public:
 	int coloring;
+	int radius;
 	int width;
 	int height;
 	Vector3D<double> x;
 	Vector3D<double> y;
 	Vector3D<double> z;
 	Vector3D<double> o;
-	double minZ;
-	double maxZ;
+	int centerFindingMethod;
+	int activeGroup;
 	
 	
 	MyVizRequest() : width(0), height(0) { }
-	
-	MyVizRequest(const liveVizRequest3d& req) {
-		coloring = req.code;
-		width = req.wid;
-		height = req.ht;
-		x = switchVector<double>(req.x);
-		y = switchVector<double>(req.y);
-		z = switchVector<double>(req.z);
-		o = switchVector<double>(req.o);
-		minZ = req.minZ;
-		maxZ = req.maxZ;
-	}
-	
+
 	friend std::ostream& operator<< (std::ostream& os, const MyVizRequest& r) {
 		return os << "coloring: " << r.coloring
+				<< "\nradius: " << r.radius
 				<< "\nwidth: " << r.width
 				<< "\nheight: " << r.height
 				<< "\nx axis: " << r.x
 				<< "\ny axis: " << r.y
 				<< "\nz axis: " << r.z
 				<< "\norigin: " << r.o
-				<< "\nz range: " << r.minZ << " <=> " << r.maxZ;
+				<< "\ncenter finding: " << r.centerFindingMethod 
+				<< "\nactive group: " << r.activeGroup;
 	}
 };
 
 inline void operator|(PUP::er& p, MyVizRequest& req) {
 	p | req.coloring;
+	p | req.radius;
 	p | req.width;
 	p | req.height;
 	p | req.x;
 	p | req.y;
 	p | req.z;
 	p | req.o;
-	p | req.minZ;
-	p | req.maxZ;
+	p | req.centerFindingMethod;
+	p | req.activeGroup;
 }
 
 #include "ParticleStatistics.h"
