@@ -13,7 +13,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
-public class ViewPanel extends JPanel implements MouseListener {
+public class ViewPanel extends JPanel implements MouseListener, MouseMotionListener {
 
     Simulation s;
     Config config;
@@ -25,6 +25,7 @@ public class ViewPanel extends JPanel implements MouseListener {
     byte [] pixels;
     JLabel display;
     double angleLeft, angleCcw, angleUp;
+    Rectangle rect;
     
     public ViewPanel( Simulation sim, int w, int h,double bs, Vector3D oh ){
         s = sim;
@@ -139,6 +140,25 @@ public class ViewPanel extends JPanel implements MouseListener {
     }
 
     public void mouseExited(MouseEvent e) {
+    }
+
+    public void mouseDragged(MouseEvent e) {
+            System.out.println("boolean: "+s.groupSelecting);
+        if (s.groupSelecting){
+            repaint();
+            rect = new Rectangle(e.getX(),e.getY(),0,0);
+            System.out.println("Rectangle created: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
+            Graphics graph = this.getGraphics();
+            graph.setColor(Color.white);
+            Double x = new Double(e.getX()-rect.getX());
+            Double y = new Double(e.getY()-rect.getY());
+            rect.setSize(x.intValue(), y.intValue());
+            graph.drawRect(rect.x,rect.y,rect.width,rect.height);
+            System.out.println("Draw rectangle: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
+        }
+    }
+
+    public void mouseMoved(MouseEvent e) {
     }
 
     private void maybeShowPopup(MouseEvent e) {

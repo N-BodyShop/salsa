@@ -21,12 +21,12 @@ public class ToolBarPanel extends JPanel
     RotateSlider upDownSlider;
     RotateSlider leftRightSlider;
     RotateSlider clockwiseSlider;
+    JTextField zoomFactor;
 
     public ToolBarPanel( Simulation sim, ViewPanel viewP ){
         s = sim;
         vp = viewP;
         vp.rcm.tbp = this;
-        System.out.println("Set toolbar in right click menu");
     
         setLayout( new BoxLayout(this,BoxLayout.X_AXIS) );
         
@@ -50,6 +50,22 @@ public class ToolBarPanel extends JPanel
         JButton reColor = new JButton("ReColor");
         reColor.setActionCommand("recolor image");
         reColor.addActionListener(this);
+        
+        JPanel zoomPanel = new JPanel();
+        zoomPanel.setLayout( new BoxLayout(zoomPanel,BoxLayout.X_AXIS) );
+        JButton zoomIn = new JButton("zoomIn");
+        zoomIn.setActionCommand("zoomIn");
+        zoomIn.addActionListener(this);
+        JButton zoomOut = new JButton("zoomOut");
+        zoomOut.setActionCommand("zoomOut");
+        zoomOut.addActionListener(this);
+        zoomFactor = new JTextField("2.0");
+        zoomFactor.setActionCommand("zoomIn");
+        zoomFactor.addActionListener(this);
+        zoomPanel.add(zoomIn);
+        zoomPanel.add(zoomOut);
+        zoomPanel.add(zoomFactor);
+        
         JCheckBox fixO = new JCheckBox("Fix origin for rotation");
         fixO.setActionCommand("fixo");
         fixO.addActionListener(this);
@@ -57,6 +73,7 @@ public class ToolBarPanel extends JPanel
         clear.setActionCommand("clear");
         clear.addActionListener(this);
         middleBar.add(reColor);
+        middleBar.add(zoomPanel);
 //        middleBar.add(fixO);
 //        middleBar.add(clear);
         
@@ -82,9 +99,14 @@ public class ToolBarPanel extends JPanel
     }
 
     public void actionPerformed(ActionEvent e){
+        String command =  e.getActionCommand();
+        if (command.equals("zoomIn")) {
+            vp.zoom( 1.0/(Double.parseDouble( zoomFactor.getText() )) );}
+        else if (command.equals("zoomOut")) {
+            vp.zoom( Double.parseDouble( zoomFactor.getText() ) );}
         // Since most of the actions are exactly the same,
         // please find the actions in RightClickMenu.java
-        vp.rcm.actionPerformed(e);
+        else{vp.rcm.actionPerformed(e);}
     }
     
     public void stateChanged(ChangeEvent e){

@@ -11,15 +11,13 @@ import java.util.*;
 import java.awt.image.*;
 
 public class Group {
-    String Name;
-    Vector groupPieces;
+    Hashtable groupPieces;
     
-    public Group(String N){
-        Name = N;
+    public Group(){
         reset();
     }
 	
     public void reset() {
-        groupPieces = new Vector();
+        groupPieces = new Hashtable();
     }
 }

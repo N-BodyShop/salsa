@@ -13,12 +13,12 @@ import java.awt.image.*;
 public class Simulation {
     String Name;
     CcsThread ccs;
-    int numberOfFamilies;
     int numberOfColors;
     ColorModel cm;
-    Vector Families;
+    Hashtable Families;
     int selectedAttributeIndex;
-    Vector Groups;
+    Hashtable Groups;
+    String selectedGroup;
     boolean groupSelecting;
     int centerMethod;
     Vector3D rotationOrigin;
@@ -30,10 +30,10 @@ public class Simulation {
 	
     public void reset() {
         Name = new String();
-        Families = new Vector();
-        Groups = new Vector();
-        Group group = new Group( "All" );
-        Groups.addElement( group );
+        Families = new Hashtable();
+        Groups = new Hashtable();
+        Groups.put( "All", new Group() );
+        selectedGroup = "All";
         centerMethod = 0;
         selectedAttributeIndex = 0;
     }

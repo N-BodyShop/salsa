@@ -11,7 +11,6 @@ import java.util.*;
 import java.awt.image.*;
 
 public class GroupPiece {
-    String attribute;
     double min;
     double max;
     
@@ -20,13 +19,11 @@ public class GroupPiece {
     }
 	
     public void reset() {
-        attribute = new String();
         min = 0;
         max = 0;
     }
     
-    public GroupPiece(String attrib, double mini, double maxi){
-        attribute = attrib;
+    public GroupPiece(double mini, double maxi){
         min = mini;
         max = maxi;
     }

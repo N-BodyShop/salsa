@@ -34,6 +34,7 @@ public class SelectGroupFrame extends JFrame
                                 BoxLayout.Y_AXIS));
         
         groupName = new NameValue("Create a Group Named:");
+        groupName.setActionCommand("choose");
         
         JLabel text = new JLabel("based on the following criteria:");
         text.setAlignmentX(LEFT_ALIGNMENT);
@@ -80,21 +81,29 @@ public class SelectGroupFrame extends JFrame
 
     public void actionPerformed(ActionEvent e){
         if ( "choose".equals(e.getActionCommand()) ){
-            String groupInfo = new String( groupName.getValue() +"," );
-            Group group = new Group( groupName.getValue() );
-            for ( int i = 0; i < sgps.size(); i++ ) {
-                groupInfo = groupInfo + ((SelectGroupPanel)sgps.get(i)).attrib + "," +
-                    ((SelectGroupPanel)sgps.get(i)).minPanel.getValue() + ","+
-                    ((SelectGroupPanel)sgps.get(i)).maxPanel.getValue() + ",";
-                group.groupPieces.addElement(
-                    new GroupPiece(((SelectGroupPanel)sgps.get(i)).attrib,
-                        Double.parseDouble(((SelectGroupPanel)sgps.get(i)).minPanel.getValue()), 
-                        Double.parseDouble(((SelectGroupPanel)sgps.get(i)).maxPanel.getValue()) )
-                    );
-            }
-            s.Groups.addElement( group ); 
-            s.groupSelecting = false;
-            s.ccs.addRequest( new CreateGroup( groupInfo ) );
+            String gName = groupName.getValue();
+/*            if ( s.Groups.containsKey(gName) ) {
+                JOptionPane.showMessageDialog(this, 
+                    "Group named "+gName+" already exists.");
+            } else {*/
+                String groupInfo = new String( gName +"," );
+                Group group = new Group(  );
+                SelectGroupPanel tempSGP;
+                for ( int i = 0; i < sgps.size(); i++ ) {
+                    tempSGP = (SelectGroupPanel)sgps.get(i);
+                    groupInfo = groupInfo + tempSGP.attrib + "," +
+                        tempSGP.minPanel.getValue() + ","+ 
+                        tempSGP.maxPanel.getValue() + ",";
+                    group.groupPieces.put(tempSGP.attrib,
+                        new GroupPiece( Double.parseDouble(tempSGP.minPanel.getValue()), 
+                            Double.parseDouble(tempSGP.maxPanel.getValue()) )
+                        );
+                }
+                s.Groups.put( gName, group ); 
+                s.selectedGroup = gName;
+                s.groupSelecting = false;
+                s.ccs.addRequest( new CreateGroup( groupInfo ) );
+   //         }
         } else {
             attrib = (String)((SelectGroupPanel)sgps.get(0)).attributeList.getSelectedItem();
             s.selectedAttributeIndex = ((SelectGroupPanel)sgps.get(0)).attributeList.getSelectedIndex();

@@ -12,7 +12,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.UnknownHostException;
 
-public class SimulationFrame extends JFrame implements MouseMotionListener {
+public class SimulationFrame extends JFrame {
     Simulation s;
     double xBegin, yBegin;
     Rectangle rect;
@@ -41,25 +41,6 @@ public class SimulationFrame extends JFrame implements MouseMotionListener {
         //make it appear now that it's pretty
         setVisible(true);
      }
-
-    public void mouseDragged(MouseEvent e) {
-            System.out.println("boolean: "+s.groupSelecting);
-        if (s.groupSelecting){
-            repaint();
-            rect = new Rectangle(e.getX(),e.getY(),0,0);
-            System.out.println("Rectangle created: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
-            Graphics graph = this.getGraphics();
-            graph.setColor(Color.white);
-            Double x = new Double(e.getX()-rect.getX());
-            Double y = new Double(e.getY()-rect.getY());
-            rect.setSize(x.intValue(), y.intValue());
-            graph.drawRect(rect.x,rect.y,rect.width,rect.height);
-            System.out.println("Draw rectangle: "+rect.x+" "+rect.y+" "+rect.width+" "+rect.height);
-        }
-    }
-
-    public void mouseMoved(MouseEvent e) {
-    }
 
 
 }

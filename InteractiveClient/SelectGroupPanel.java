@@ -35,12 +35,19 @@ public class SelectGroupPanel extends JPanel
     
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
         
-        for ( int i=0; i < s.numberOfFamilies; i++ ){
-            for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
+        Vector tempAttrib;
+        Family family;
+        for ( Enumeration e = s.Families.elements(); 
+                e.hasMoreElements(); ){
+            family = (Family)e.nextElement();
+            tempAttrib = new Vector(family.attributes);
+            tempAttrib.removeAll(attributes);
+            attributes.addAll(tempAttrib);
+/*            for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
                 if ( !attributes.contains(((Family)s.Families.get(i)).attributes.get(j)) ){
                     attributes.addElement(((Family)s.Families.get(i)).attributes.get(j));
                 }
-            }
+            }*/
         }
         attributeList = new JComboBox(attributes);
         attributeList.setSelectedIndex(selectedAttributeIndex);

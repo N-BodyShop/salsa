@@ -161,7 +161,6 @@ public class ColorBarPanel extends JPanel
     */
     private ColorModel createWRBBColorModel() {
         cmap_size = 256 - s.numberOfColors;
-        System.out.println("cmap_size:"+cmap_size);
         cm_red = new byte[256];
         cm_green = new byte[256];
         cm_blue = new byte[256];

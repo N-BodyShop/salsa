@@ -37,15 +37,18 @@ public class ReColorFrame extends JFrame
         JPanel particlePanel = new JPanel();
         particlePanel.setLayout(new BoxLayout(particlePanel, 
                                 BoxLayout.X_AXIS));
-        
-        for ( int i=0; i < s.numberOfFamilies; i++ ){
-            ((Family)s.Families.get(i)).checkBox.addItemListener(this);
-            particlePanel.add(((Family)s.Families.get(i)).checkBox);
-            for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
-                if ( !attributes.contains(((Family)s.Families.get(i)).attributes.get(j)) ){
-                    attributes.addElement(((Family)s.Families.get(i)).attributes.get(j));
-                }
-            }
+        Family family;
+        Vector tempAttrib;
+        // This is the fun java way of parsing through all the elements
+        // in a Hashtable.  Yippee for casting!  Equivalent to 
+        // foreach $e (@Families) in Perl.
+        for ( Enumeration e = s.Families.elements(); e.hasMoreElements(); ){
+            family = (Family)e.nextElement();
+            family.checkBox.addItemListener(this);
+            particlePanel.add(family.checkBox);
+            tempAttrib = new Vector(family.attributes);
+            tempAttrib.removeAll(attributes);
+            attributes.addAll(tempAttrib);
         }
         
         attributeList = new JComboBox(attributes);
@@ -89,8 +92,16 @@ public class ReColorFrame extends JFrame
 
     public void actionPerformed(ActionEvent e){
         if ( "choose".equals(e.getActionCommand()) ){
-            String ll = (String)linLog.getSelectedItem();
-            int type = 0;
+            String message = (String)linLog.getSelectedItem()+","+attrib+","+
+                minPanel.getValue()+","+maxPanel.getValue();
+            Family family;
+            String key;
+            for ( Enumeration en = s.Families.keys(); en.hasMoreElements(); ){
+                key = (String)en.nextElement();
+                family = (Family)s.Families.get(key);
+                if ( family.on ){ message = message +","+ key; }
+            }
+/*            int type = 0;
             if (ll.equals("linear") ){type = 0;} else { type = 1;};
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try {
@@ -99,8 +110,10 @@ public class ReColorFrame extends JFrame
                 dos.writeDouble(Double.parseDouble(minPanel.getValue()));
                 dos.writeDouble(Double.parseDouble(maxPanel.getValue()));
                 dos.writeBytes(attrib);
-                s.ccs.addRequest( new ChooseColorValue( baos.toByteArray() ) );
-            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}
+                s.ccs.addRequest( new ChooseColorValue( +","+ ) );
+            } catch (IOException ioe) {System.err.println("ioexception:"+ioe);}*/
+            s.ccs.addRequest( new ChooseColorValue( message ) );
+
         } else {
             attrib = (String)attributeList.getSelectedItem();
             s.selectedAttributeIndex = attributeList.getSelectedIndex();
@@ -111,27 +124,28 @@ public class ReColorFrame extends JFrame
 
     public void itemStateChanged(ItemEvent e) {
         Object source = e.getItemSelectable();
-        
-        for ( int i=0; i < s.numberOfFamilies; i++ ){
-            if ( source == ((Family)s.Families.get(i)).checkBox ) {
+        Family family;
+        for ( Enumeration en = s.Families.elements(); 
+                en.hasMoreElements(); ){
+            family = (Family)en.nextElement();
+            if ( source == family.checkBox ) {
                 if ( e.getStateChange() == ItemEvent.DESELECTED ) {
-                    ((Family)s.Families.get(i)).on = false;
-                } else { ((Family)s.Families.get(i)).on = true; }
+                    family.on = false;
+                } else { family.on = true; }
             }
         }
         
         attributes = new Vector();
         attributeList.removeAllItems();
-        for ( int i=0; i < s.numberOfFamilies; i++ ){
-            for ( int j = 0; j < ((Family)s.Families.get(i)).numberOfAttributes; j++ ){
-                if ( !attributes.contains(((Family)s.Families.get(i)).attributes.get(j)) && 
-                            ((Family)s.Families.get(i)).on ){
-                    attributeList.addItem(((Family)s.Families.get(i)).attributes.get(j));
-                    attributes.addElement(((Family)s.Families.get(i)).attributes.get(j));
+        for ( Enumeration en = s.Families.elements(); en.hasMoreElements(); ){
+            family = (Family)en.nextElement();
+            for ( int j = 0; j < family.attributes.size(); j++ ){
+                if ( !attributes.contains(family.attributes.get(j)) && family.on ){
+                    attributes.addElement(family.attributes.get(j));
+                    attributeList.addItem(family.attributes.get(j));
                 }
             }
         }
-        
     }
     
     private class ValueRange extends CcsThread.request{

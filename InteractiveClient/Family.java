@@ -11,14 +11,11 @@ import java.util.*;
 import java.awt.image.*;
 
 public class Family {
-    String Name;
-    int numberOfAttributes;
     Vector attributes;
     JCheckBox checkBox;
     boolean on;
     
-    public Family(String N){
-        Name = N;
+    public Family(String Name){
         checkBox = new JCheckBox(Name);
         checkBox.setSelected(true);
         reset();
@@ -26,7 +23,6 @@ public class Family {
 	
     public void reset() {
         attributes = new Vector();
-        numberOfAttributes = 0;
         on = true;
     }
 }

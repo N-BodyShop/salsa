@@ -12,6 +12,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import java.net.UnknownHostException;
+import java.util.*;
 
 public class RightClickMenu extends JPopupMenu 
             implements ActionListener {
@@ -80,10 +81,13 @@ public class RightClickMenu extends JPopupMenu
         item.setActionCommand("review");
         item.addActionListener(this);
 //        add(item);
+        String groupName;
         ButtonGroup group2 = new ButtonGroup();
         groupSubmenu = new JMenu("Display groups...");
-        for (int i=0; i < s.Groups.size(); i++) {
-            rbItem = new JRadioButtonMenuItem(((Group)s.Groups.get(i)).Name);
+        for ( Enumeration en = s.Groups.keys(); 
+                en.hasMoreElements(); ){
+            groupName = (String)en.nextElement();
+            rbItem = new JRadioButtonMenuItem(groupName);
             rbItem.addActionListener(this);
             rbItem.setActionCommand("ActivateGroup");
             group2.add(rbItem);
@@ -101,7 +105,7 @@ public class RightClickMenu extends JPopupMenu
         else if (command.equals("largest value")) { s.centerMethod = 1; vp.center();}
         else if (command.equals("lowest potential")) { s.centerMethod = 2; vp.center();}
         else if (command.equals("Update z"))  { vp.center();}
-        else if (command.equals("fixo"))  { System.out.println("Origin fixed");}
+//        else if (command.equals("fixo"))  { System.out.println("Origin fixed");}
         else if (command.equals("recolor image"))  { 
             ReColorFrame rcf = new ReColorFrame(s, vp);
         }
@@ -115,6 +119,7 @@ public class RightClickMenu extends JPopupMenu
         }
         else if (command.equals("ActivateGroup"))  { 
             JMenuItem source = (JMenuItem)(e.getSource());
+            s.selectedGroup = source.getText();
             s.ccs.addRequest( new ActivateGroup( source.getText(), vp ) );
         }
 //        else if (command.equals("cs")){ ChooseSimulationFrame csf = 
@@ -129,10 +134,13 @@ public class RightClickMenu extends JPopupMenu
         ButtonGroup group2 = new ButtonGroup();
         JRadioButtonMenuItem rbItem;        
         groupSubmenu = new JMenu("Display groups...");
-        for (int i=0; i < s.Groups.size(); i++) {
-            rbItem = new JRadioButtonMenuItem(((Group)s.Groups.get(i)).Name);
+        String groupName;
+        for ( Enumeration en = s.Groups.keys(); en.hasMoreElements(); ){
+            groupName = (String)en.nextElement();
+            rbItem = new JRadioButtonMenuItem(groupName);
             rbItem.addActionListener(this);
             rbItem.setActionCommand("ActivateGroup");
+            if (groupName.equals(s.selectedGroup)) {rbItem.setSelected(true);}
             group2.add(rbItem);
             groupSubmenu.add(rbItem);
         }
