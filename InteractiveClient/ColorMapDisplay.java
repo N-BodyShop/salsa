@@ -8,6 +8,7 @@ public class ColorMapDisplay extends JLabel {
 	private byte[] image;
 	
 	public ColorMapDisplay(int w, int h) {
+		//System.out.println("Colomap called with width of " + w);
 		width = w;
 		height = h;
 		image = new byte[width * height];
@@ -26,5 +27,19 @@ public class ColorMapDisplay extends JLabel {
 	
 	public void redisplay(ColorModel cm) {
 		setIcon(new ImageIcon(createImage(new MemoryImageSource(width, height, cm, image, 0, width))));
+	}
+	
+	public void reset(int w, int h) {
+		width = w;
+		height = h;
+		byte value = 0;
+		image = new byte[width * height];
+		for(int i = 0; i < width; i++) {
+		    value = (byte) (255 * i / width);
+			for(int j = 0; j < height; j++)
+				image[j * width + i] = value;
+		}
+		setSize(width, height);
+
 	}
 }

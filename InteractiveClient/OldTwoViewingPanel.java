@@ -1,17 +1,4 @@
-//ViewingPanel
-
-/*
- * List of commands that can be used:
- * 1. hold ctrl, click and drag mouse button one to draw a selectino box on the window
- * 2. hold shift and right click and drag in the vertical direction to translate the z cooridantes of the
- * 	origin vector...if the translation slider does not seem to be updating, drag smaller increments
- * 	as you hold the shift button...also, try translating a small portion in the opposite direction to
- * 	get the UI to update
- * 3. right click and drag vertically to zoom in and out
- * 4. click and drag the roller to pan
- * 5. click button one while holding the shift and control buttons to open a 'rotated' view
- *	of the current image...this is used for selecting particular sections of simulated space
- */
+//OldTwoViewingPanel
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -41,42 +28,33 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 	private byte[] pixels;
 	private boolean resizedImage;
 	private boolean lowRes;
-	private double zLoc, depth;	//used to assist with origin's z translation
-	private Box theBox;	//used to construct the ViewingPanel in the constructor, and again in CcsConfigRequest
-	private int sliderMult;	//used in mouseReleased to accurately update zSlider according to z translation of origin
-	private String h;	//the host name stored
-	private int p;		//the port name stored
-	private int NUM_POINTS;	//sets the size of xSimNumbers, ySimNumbers, zSimNumbers, and posVectors
-	private double[] xSimNumbers, ySimNumbers, zSimNumbers;	//used to calculate translation vectors for subset selections
-	private Vector3D[] posVectors;				//store the translation vectors mentioned above
-	private int xBoxConstraintOne, xBoxConstraintTwo;	//set the constraints of the drawing range/point for SelectionView objects
-	private boolean drawn, rotated;		//used to control whether or not u can draw on a SelectionView object
-	private byte[] encoded;	//the array of bytes passed to the server for drawing subest boxes
-	private SelectionView sv;	//the SelectionView object that this window opens
-	private Rectangle drawRect = new Rectangle();	//used to draw rubber band boxes
-	private CommandPane refComPane;	//reference CommandPane, to access methods in CommandPane class
-	private String typeOfSelection;	//keep track of whether user is subsetting using a box or a sphere
-	private JFrame parentFrame;
+	private double zLoc;
+	private double depth;
+	private Box theBox;
+	private int sliderMult;
+	private Point3D start;
+	private Point3D end;
+	private String host;
+	private int por;
+	private int resizeWindow;
+
 
 	/****************************************************************************
 	 * CONSTRUCTOR
 	 */
-	public ViewingPanel(String hostname, int port, String cmd, CommandPane ref, JFrame parent) {
+	public ViewingPanel(String hostname, int port, String cmd, int numWindows) {
 		super(new BorderLayout());
+		host = hostname;
+		por = port;
 		ccs = new CcsThread(new Label(), hostname, port);
-		h = hostname;
-		p = port;
-		refComPane = ref;
-		parentFrame = parent;
 
-		wrbb = createWRBBColorModel();
+		wrbb = createWRBBColorModel(256);
 		
 		start_z = 0;
 		width = 512;
 		height = 512;
-		drawn = rotated = false;
-		typeOfSelection = "nothing";
-
+		resizeWindow = numWindows;
+		
 		lowValue = 0;
 		highValue = 1;
 
@@ -92,7 +70,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		display.setIcon(new ImageIcon(display.createImage(source)));
 		display.addMouseListener(this);
 		display.addMouseMotionListener(this);
-
+		
 		lowRes = false;
 		lowResWidth = 50;
 		lowResHeight = 50;
@@ -108,9 +86,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				JSliderOldValue source = (JSliderOldValue) e.getSource();
 				if(!source.getValueIsAdjusting() && (source.getValue() - source.getOldValue() != 0)) {
 					//System.out.println("Adjusting up/down slider!");
-					drawn = false;
-					rotated = true;
-					try{sv.disableButton();}catch(Exception le){}
 					double theta = Math.PI * (source.getValue() - source.getOldValue()) / 180.0;
 					y.rotate(theta, x.unitVector());
 					z = x.cross(y);
@@ -125,9 +100,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				JSliderOldValue source = (JSliderOldValue) e.getSource();
 				if(!source.getValueIsAdjusting() && (source.getValue() - source.getOldValue() != 0)) {
 					//System.out.println("Adjusting left/right slider!");
-					drawn = false;
-					rotated = true;
-					try{sv.disableButton();}catch(Exception le){}
 					double theta = Math.PI * (source.getValue() - source.getOldValue()) / 180.0;
 					x.rotate(theta, y.unitVector());
 					z = x.cross(y);
@@ -142,9 +114,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				JSliderOldValue source = (JSliderOldValue) e.getSource();
 				if(!source.getValueIsAdjusting() && (source.getValue() - source.getOldValue() != 0)) {
 					//System.out.println("Adjusting clock/cntr slider!");
-					drawn = false;
-					rotated = true;
-					try{sv.disableButton();}catch(Exception le){}
 					double theta = Math.PI * (source.getValue() - source.getOldValue()) / 180.0;
 					x.rotate(theta, z.unitVector());
 					y.rotate(theta, z.unitVector());
@@ -174,41 +143,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		box.add(b);
 		box.add(Box.createHorizontalGlue());
 		
-		b = Box.createVerticalBox();
-		JButton duplicate = new JButton("Duplicate");
-		duplicate.setActionCommand("duplicate");
-		duplicate.addActionListener(this);
-		b.add(duplicate);
-		
-		JButton clear = new JButton("Clear dots");
-		clear.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e){
-				try{
-				if(typeOfSelection.equals("box")){
-					ccs.addRequest(new ClearBoxes());
-				}else{
-					ccs.addRequest(new ClearSpheres());
-				}
-				}catch(Exception ex){}
-			}
-		});
-		JButton saveSubset = new JButton("Save Subset");
-		saveSubset.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e){
-				System.out.println("Save this configuration");
-				String in = JOptionPane.showInputDialog("Enter the name of this view");
-				if(in==null){
-					//the user has pressed cancel, so do nothing
-				}else{
-					//store this string in the commandpane
-					refComPane.updateGroupList(in);
-				}
-			}
-		});
-
-		b.add(clear);
-		b.add(saveSubset);
-		box.add(b);
 		/*
 		b = Box.createVerticalBox();
 		lowValueField = new JTextField(String.valueOf(lowValue), 10);
@@ -245,8 +179,15 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 
 		add(box, BorderLayout.SOUTH);
 
-		ccs.addRequest(new CcsConfigRequest(cmd, xButton, yButton, zButton));
-
+		ccs.addRequest(new CcsConfigRequest());
+		
+		if(cmd=="xall"){
+			xButton.doClick();
+		}else if(cmd=="yall"){
+			yButton.doClick();
+		}else if(cmd=="zall"){
+			zButton.doClick();
+		}else{}
 	}
 	
 	//********************************************************************************************
@@ -255,18 +196,12 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 	 */
 
     private class CcsConfigRequest extends CcsThread.request {
-    		private String cmd;
-		JButton xButton, yButton, zButton;
 
-		public CcsConfigRequest(String a, JButton xB, JButton yB, JButton zB) {
+		public CcsConfigRequest() {
 	    		super("lvConfig", 0);
-			cmd = a;
-			xButton = xB;
-			yButton = yB;
-			zButton = zB;
 			// for mapping System.out.println("CcsConfigRequest: constructor");
 		}
-
+		
 		public void handleReply(byte[] configData){
 			// for mapping System.out.println("CcsConfigRequest: handleReply");
 	  		try {
@@ -292,15 +227,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				if((config.max.y - config.min.y != boxSize) || (config.max.z - config.min.z != boxSize)) {
 					System.err.println("Box is not a cube!");
 				}
-				
-				if(cmd=="xall"){
-					xButton.doClick();
-				}else if(cmd=="yall"){
-					yButton.doClick();
-				}else if(cmd=="zall"){
-					zButton.doClick();
-				}else{}
-
 			} catch(IOException e) {
 				System.err.println("Fatal: Couldn't obtain configuration information");
 				e.printStackTrace();
@@ -311,33 +237,10 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
      * void mousePressed
      */
 	public void mousePressed(MouseEvent e) {
-		System.out.println("Mouse was pressed: " + e.paramString());
+		//System.out.println("Mouse was pressed: " + e.paramString());
 		start_x = e.getX();
 		start_y = e.getY();
 		start_z = e.getY();
-		
-		if(e.getModifiers()==18){
-			try{
-				if(typeOfSelection.equals("box")){
-					System.out.println("Drawing box");
-					drawRect.setLocation(start_x, start_y);
-					drawRect.setSize(0, 0);
-					display.getGraphics().drawRect(drawRect.x, drawRect.y, drawRect.width, drawRect.height);
-				}else if(typeOfSelection.equals("sphere")){
-					//draw sphere
-					System.out.println("Drawing sphere");
-				}else{
-					/* if drawing hasn't been done before, ask the user what kind of drawing they want */
-					Object[] choices = {"box", "sphere"};
-					Object selectedValue = JOptionPane.showInputDialog(null,"Chose type of subsetting", "Input",JOptionPane.INFORMATION_MESSAGE, null,choices, choices[0]);
-					typeOfSelection = (String)selectedValue;
-					//System.out.println("Chose: " + (String)selectedValue);
-				}
-			}catch(NullPointerException ex){
-				/* the user pressed the cancel button in the dialogue for chosing drawing type, so do nothing */
-			}
-		}
-
 
 		/*
 		switch(e.getModifiers()) {
@@ -358,65 +261,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				break;
 		}
 		*/
-	}
-	
-	/**************************************************************************************************
-	 * void mouseDragged
-	 */
-
-	public void mouseDragged(MouseEvent e) {
-		if(e.getModifiers() == 16) {
-			//mod 16 corresponds to mask1
-			drawn = false;
-			rotated = true;
-			try{sv.disableButton();}catch(Exception le){}
-			int oldX = start_x;
-			int oldY = start_y;
-			start_x = e.getX();
-			start_y = e.getY();
-
-			double theta = Math.PI * (e.getX() - oldX) / 180.0;
-			//Vector3D xprime = x;
-			x.rotate(theta, y.unitVector());
-
-			theta = Math.PI * (oldY - e.getY()) / 180.0;
-			y.rotate(theta, x.unitVector());
-			z = x.cross(y);
-
-			ccs.addRequest(new ImageRequest(), true);
-
-		}else if(e.getModifiers() == 18){
-			//mod 18 corresponds to ctrl+mask1
-			Graphics g = display.getGraphics();
-			g.setColor(Color.white);
-			if(typeOfSelection.equals("box")){
-				//draw rubber band box
-				if(e.getX()>start_x){
-					if(e.getY()>start_y){
-						//being dragged from top left to bottom right
-						drawRect.setBounds(start_x, start_y, e.getX()-start_x, e.getY()-start_y);
-					}else{
-						//being dragged from bottom left to top right
-						drawRect.setBounds(start_x, e.getY(), e.getX()-start_x, start_y-e.getY());
-					}
-				}else{
-					if(e.getY()>start_y){
-						//being dragged from top right to bottom left
-						drawRect.setBounds(e.getX(), start_y, start_x-e.getX(), e.getY()-start_y);
-					}else{
-						//being dragged from bottom righ to top left
-						drawRect.setBounds(e.getX(), e.getY(), start_x-e.getX(), start_y-e.getY());
-					}
-				}
-				repaint();
-				g.drawRect(drawRect.x, drawRect.y, drawRect.width, drawRect.height);
-			}else{
-				//draw a line
-				repaint();
-				g.drawLine(start_x, start_y, e.getX(), e.getY());
-			}
-		}
-
 	}
 
 	/****************************************************************************************
@@ -449,76 +293,148 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			case MouseEvent.BUTTON3_MASK | InputEvent.SHIFT_MASK:
 				// translate origin in z direction until config.min.z or config.max.z
 				z = x.cross(y);
-				double zShift = ((2*((double)start_z - e.getY()))/height)*y.length();
-				Vector3D translationVector = z.unitVector().scalarMultiply(zShift);
-				System.out.println("translation length: " + translationVector.length());
+				Vector3D translationVector = (z.scalarMultiply(((double) start_z - e.getY()) / (depth*500.0)));
 
 				if ((e.getY() - start_z) < 0) {
 					//the translation request is INTO the screen, so translate by adding
 					zLoc = zLoc + translationVector.length();
-					//if (zLoc > config.max.z) {
-					//	zLoc = config.max.z;
-					//} else {
+					if (zLoc > config.max.z) {
+						zLoc = config.max.z;
+					} else {
 						origin = origin.plus(translationVector);
 						zIndicator.setValue((new Double(zLoc*sliderMult)).intValue());
-					//}
+					}
 				} else {
 					//the translation request is OUT Of the screen, so translate by subtracting
 					zLoc = zLoc - translationVector.length();
-					//if (zLoc < config.min.z) {
-					//	zLoc = config.min.z;
-					//} else {
+					if (zLoc < config.min.z) {
+						zLoc = config.min.z;
+					} else {
 						origin = origin.plus(translationVector);
 						zIndicator.setValue((new Double(zLoc*sliderMult)).intValue());
-					//}
+					}
 				}
 				break;
 			case MouseEvent.BUTTON1_MASK | InputEvent.CTRL_MASK:
-				//System.out.println("Drawing");
-
-				if(typeOfSelection.equals("sphere")){
-					//draw line
-					Graphics g = display.getGraphics();
-					g.setColor(Color.white);
-					g.drawLine(start_x, start_y, e.getX(), e.getY());
-					selectionBox(e.getX(), e.getY());
-					drawn = true;
-					selectWindow();
-				}else{
-					//draw box
-					Graphics g = display.getGraphics();
-					g.setColor(Color.white);
-					g.drawRect(drawRect.x, drawRect.y, drawRect.width, drawRect.height);
-					selectionBox(e.getX(), e.getY());
-					drawn = true;
-					selectWindow();
-				}
+				System.out.println("Drawing");
+				selectionBox(getGraphics(), e.getX(), e.getY());
 				break;
-			//case MouseEvent.BUTTON1_MASK | InputEvent.CTRL_MASK | InputEvent.SHIFT_MASK:
-
+			case MouseEvent.BUTTON1_MASK | InputEvent.CTRL_MASK | InputEvent.SHIFT_MASK:
+				//rotate();
+				System.out.println("Opening 'rotated view' window");
+				break;
 		}
+	}
+
+	/**************************************************************************************************/
+/*this method will be used to implement a window that is rotated 90 degrees
+	public void rotate(){
+		if(resizeWindow==0){
+			//new window has never been opened, so open it now
+			resizeWindow++;
+			JFrame f = new JFrame("NChilada *Secondary* Visualization");
+			f.getContentPane().add(new ViewingPanel(host, por, "xall", resizeWindow));
+			f.addWindowListener(new WindowAdapter() {
+				public void windowClosing(WindowEvent e) {
+					resizeWindow = 0;
+				}
+			});
+			f.pack();
+			f.setVisible(true);
+		}else{
+			//anything other than zero means another window is open, so don't do nothin
+		}
+
+		System.out.println("Spinning it");
+		x.rotateLeftRight(Math.PI/2);
+		y.rotateLeftRight(Math.PI/2);
+		z.rotateLeftRight(Math.PI/2);
+		origin.rotateLeftRight(Math.PI/2);
+		ccs.addRequest(new ImageRequest(), true);
+	}
+*/
+	/**************************************************************************************************/
+
+	public void selectionBox(Graphics g, int currentX, int currentY){
+		g.setColor(Color.white);
+		if((currentX-start_x)>0){
+			if((currentY-start_y)>0){
+				g.drawRect(start_x, start_y+12, currentX-start_x, currentY-start_y);
+				start = new Point3D(start_x, start_y, 0);
+				end = new Point3D(currentX, currentY, 0);
+			}else{
+				g.drawRect(start_x, currentY+12, currentX-start_x, start_y-currentY);
+				start = new Point3D(start_x, currentY, 0);
+				end = new Point3D(currentX, start_y, 0);
+			}
+		}else{
+			if((currentY-start_y)>0){
+				g.drawRect(currentX, start_y+12, start_x-currentX, currentY-start_y);
+				start = new Point3D(currentX, start_y, 0);
+				end = new Point3D(start_x, currentY, 0);
+			}else{
+				g.drawRect(currentX, currentY+12, start_x-currentX, start_y-currentY);
+				start = new Point3D(currentX, currentY, 0);
+				end = new Point3D(start_x, start_y, 0);
+			}
+		}
+		System.out.println("start_x: " + start_x + " start_Y: " + start_y);
+		System.out.println("upper left corner: " + start.toString());
+		System.out.println("lower right corner: " + end.toString());
+
+
+		double simX = ((2*(start.getX()/width))-1)*x.length();
+		//System.out.println("Simulation startx: " + simX);
+		double simY = (1-(2*(start.getY()/height)))*y.length();
+		//System.out.println("Simulation starty: " + simY);
+		Vector3D simXVector = (x.scalarMultiply(1/x.length())).scalarMultiply(simX);
+		//System.out.println("simXVector X: " + simXVector.x);
+		Vector3D simYVector = y.unitVector().scalarMultiply(simY);
+
+		Vector3D pointSimSpace = (origin.plus(simXVector)).plus(simYVector);
+		Point3D realPoint = new Point3D(pointSimSpace);
+		System.out.println("actual point in sim space:");
+		System.out.println(realPoint.toString());
+
+	}
+
+	/**************************************************************************************************
+	 * void mouseClicked
+	 */
+
+	public void mouseClicked(MouseEvent e) {
+	}
+
+	/**************************************************************************************************
+	 * void mouseEntered
+	 */
+
+	public void mouseEntered(MouseEvent e) {
 	}
 	
 	/**************************************************************************************************
-	 * called from mouseReleased to open a SelectionView
+	 * void mouseDragged ADDED WITH NEW LISTENER
 	 */
 
-	private void selectWindow(){
-		JFrame f = new JFrame("Selection view");
-		sv = new SelectionView(h,p,x,y,z,origin,this);
-		f.getContentPane().add(sv);
-		f.pack();
-		f.setVisible(true);
-		f.setSize(parentFrame.getWidth(), parentFrame.getHeight());
-		rotated = false;	//set to false, to allow drawing on the new window
-	}
+	public void mouseDragged(MouseEvent e) {
+		if(e.getModifiers() == 16) {
 
-	/**************************************************************************************************
-	 * accessor method to let SelectionView objects know what kind of drawing selection is being used
-	 */
+			int oldX = start_x;
+			int oldY = start_y;
+			start_x = e.getX();
+			start_y = e.getY();
 
-	public String getTypeOfSelection(){
-		return typeOfSelection;
+			double theta = Math.PI * (e.getX() - oldX) / 180.0;
+			//Vector3D xprime = x;
+			x.rotate(theta, y.unitVector());
+
+			theta = Math.PI * (oldY - e.getY()) / 180.0;
+			y.rotate(theta, x.unitVector());
+			z = x.cross(y);
+
+			ccs.addRequest(new ImageRequest(), true);
+		}
+
 	}
 
 	/**************************************************************************************************
@@ -534,207 +450,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 	 */
 
 	public void mouseExited(MouseEvent e) {
-	}
-	
-	/**************************************************************************************************
-	 * void mouseClicked
-	 */
-
-	public void mouseClicked(MouseEvent e) {
-	}
-
-	/**************************************************************************************************
-	 * void mouseEntered
-	 */
-
-	public void mouseEntered(MouseEvent e) {
-	}
-
-	/**************************************************************************************************/
-	/*
-	 * selectionBox does the calculations of the scalar multiplier of each of the vertices of the drawn box
-	 * or line, depending on the users drawing preference
-	 */
-	public void selectionBox(int currentX, int currentY){
-		//g.setColor(Color.white);
-		if(typeOfSelection.equals("box")){
-			/* calculate vertices of box */
-			NUM_POINTS = 8;
-			xSimNumbers = new double[NUM_POINTS];
-			ySimNumbers = new double[NUM_POINTS];
-			zSimNumbers = new double[NUM_POINTS];
-			posVectors = new Vector3D[NUM_POINTS];
-
-			double w = currentX - start_x; //the width of the drawn box
-			double h = currentY - start_y; //the height of the drawn box
-
-			if(w>0){
-				xBoxConstraintOne = start_x;
-				xBoxConstraintTwo = currentX;
-				if(h>0){
-					//box is drawn from upper left to bottom right
-					//g.drawRect(start_x, start_y, currentX-start_x, currentY-start_y);
-
-					xSimNumbers[0] = xSimNumbers[3] = xSimNumbers[4] = xSimNumbers[7] = xSimMultiply(start_x);
-					xSimNumbers[1] = xSimNumbers[2] = xSimNumbers[5] = xSimNumbers[6] = xSimMultiply(currentX);
-					ySimNumbers[0] = ySimNumbers[1] = ySimNumbers[4] = ySimNumbers[5] = ySimMultiply(start_y);
-					ySimNumbers[2] = ySimNumbers[3] = ySimNumbers[6] = ySimNumbers[7] = ySimMultiply(currentY);
-
-				}else{
-					//box is drawn from lower left to upper right
-					//g.drawRect(start_x, currentY, currentX-start_x, start_y-currentY);
-
-					xSimNumbers[0] = xSimNumbers[3] = xSimNumbers[4] = xSimNumbers[7] = xSimMultiply(start_x);
-					xSimNumbers[1] = xSimNumbers[2] = xSimNumbers[5] = xSimNumbers[6] = xSimMultiply(currentX);
-					ySimNumbers[2] = ySimNumbers[3] = ySimNumbers[6] = ySimNumbers[7] = ySimMultiply(start_y);
-					ySimNumbers[0] = ySimNumbers[1] = ySimNumbers[4] = ySimNumbers[5] = ySimMultiply(currentY);
-				}
-			}else{
-				xBoxConstraintOne = currentX;
-				xBoxConstraintTwo = start_x;
-				if(h>0){
-					//box is drawn from top right to bottom left
-					//g.drawRect(currentX, start_y, start_x-currentX, currentY-start_y);
-
-					xSimNumbers[1] = xSimNumbers[2] = xSimNumbers[5] = xSimNumbers[6] = xSimMultiply(start_x);
-					xSimNumbers[0] = xSimNumbers[3] = xSimNumbers[4] = xSimNumbers[7] = xSimMultiply(currentX);
-					ySimNumbers[0] = ySimNumbers[1] = ySimNumbers[4] = ySimNumbers[5] = ySimMultiply(start_y);
-					ySimNumbers[2] = ySimNumbers[3] = ySimNumbers[6] = ySimNumbers[7] = ySimMultiply(currentY);
-
-				}else{
-					//box is drawn from bottom right to top left
-					//g.drawRect(currentX, currentY, start_x-currentX, start_y-currentY);
-
-					xSimNumbers[1] = xSimNumbers[2] = xSimNumbers[5] = xSimNumbers[6] = xSimMultiply(start_x);
-					xSimNumbers[0] = xSimNumbers[3] = xSimNumbers[4] = xSimNumbers[7] = xSimMultiply(currentX);
-					ySimNumbers[2] = ySimNumbers[3] = ySimNumbers[6] = ySimNumbers[7] = ySimMultiply(start_y);
-					ySimNumbers[0] = ySimNumbers[1] = ySimNumbers[4] = ySimNumbers[5] = ySimMultiply(currentY);
-				}
-			}
-		}else{
-			/* calculate vertices of line */
-			NUM_POINTS = 2;
-			xSimNumbers = new double[NUM_POINTS];
-			ySimNumbers = new double[NUM_POINTS];
-			zSimNumbers = new double[NUM_POINTS];
-			posVectors = new Vector3D[NUM_POINTS];
-
-			xBoxConstraintOne = start_x;
-			xBoxConstraintTwo = currentX;
-
-			xSimNumbers[0] = xSimMultiply(start_x);
-			ySimNumbers[0] = ySimMultiply(start_y);
-			xSimNumbers[1] = xSimMultiply(currentX);
-			ySimNumbers[1] = ySimMultiply(currentY);
-			
-			double xDist = xSimNumbers[1]-xSimNumbers[0];
-			double yDist = ySimNumbers[1]-ySimNumbers[0];
-			xDist = xDist*xDist;
-			yDist = yDist*yDist;
-			double radius = Math.sqrt(xDist+yDist);
-			zSimNumbers[1]=radius;
-		}
-	}
-
-	/**************************************************************************************************/
-	
-	public boolean hasDrawn(){
-		return drawn;
-	}
-	
-	/**************************************************************************************************/
-	
-	public boolean hasRotated(){
-		return rotated;
-	}
-
-	/**************************************************************************************************/
-
-	public int getBoxConstraintOne(){
-		return xBoxConstraintOne;
-	}
-
-	/**************************************************************************************************/
-
-	public int getBoxConstraintTwo(){
-		return xBoxConstraintTwo;
-	}
-	
-	/**************************************************************************************************/
-
-	public double xSimMultiply(double mult){
-		return ((2*(mult/width))-1)*x.length();
-	}
-
-	/**************************************************************************************************/
-	
-	public double ySimMultiply(double mult){
-		return ((2*(mult/height))-1)*y.length();
-	}
-	
-	/**************************************************************************************************/
-	
-	public double zSimMultiply(double mult){
-		return (1-(2*(mult/sv.height)))*y.length();
-	}
-	
-	/**************************************************************************************************/
-
-	public void setZSimPoints(int one, int two, int three, int four, double value){
-		if(typeOfSelection.equals("sphere")){
-			//setting up for a sphere
-			zSimNumbers[one] = value;
-
-		}else{
-			//setting up for a box
-			zSimNumbers[one] = zSimNumbers[two] = zSimNumbers[three] = zSimNumbers[four] = value;
-		}
-	}
-
-	/**************************************************************************************************/
-
-	public Vector3D getZ(){
-		return z;
-	}
-	
-	/**************************************************************************************************
-	 * called from SelectionView after a box has been drawn to specify the depth of the box image to be
-	 * requested
-	 */
-
-	public void setPosVectors(){
-		//System.out.println("Begin posVector process");
-		try{
-			Vector3D xHat = x.unitVector();
-			Vector3D yHat = y.unitVector();
-			Vector3D zHat = z.unitVector();
-
-			for(int x = 0; x < NUM_POINTS; x++){
-				posVectors[x] = origin.plus(xHat.scalarMultiply(xSimNumbers[x])).plus(yHat.scalarMultiply(ySimNumbers[x])).plus(zHat.scalarMultiply(zSimNumbers[x]));
-				System.out.println("Vector " + x + " is at " + posVectors[x].toString());
-			}
-			encoded = encodeVectors();
-
-		}catch(Exception e){
-			System.out.println("error in setPosVectors: " + e.toString());
-			System.out.println("stack trace: " );
-			e.printStackTrace();
-		}
-
-	}
-
-	/**************************************************************************************************
-	 * called from SelectionView when the Request Image button is pushed
-	 */
-
-	public void requestBoxImage(String arg){
-		if(arg.equals("box")){
-			System.out.println("Box image requested");
-			ccs.addRequest(new SpecifyBox(encoded));
-		}else{
-			System.out.println("Sphere image requested");
-			ccs.addRequest(new SpecifySphere(encoded));
-		}
 	}
 	
 	/**************************************************************************************************
@@ -759,7 +474,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		System.out.println("Got action performed. Command: " + e.getActionCommand());
 
 		if(e.getActionCommand().equals("xall")) {
-			rotated = true;
 			//width = 256;
 			//height = 256;
 			//lowRes = true;
@@ -768,7 +482,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			//y = new Vector3D(0, 0, config.max.y - config.min.y);
 			x = new Vector3D(0, boxSize, 0);
 			y = new Vector3D(0, 0, boxSize);
-			z = new Vector3D(x.cross(y));
+			z = new Vector3D(y.cross(x));
 
 			double xRatio = x.length() / width;
 			double yRatio = y.length() / height;
@@ -790,7 +504,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			ccs.addRequest(new ImageRequest(), true);
 
 		} else if(e.getActionCommand().equals("yall")) {
-			rotated = true;
 			//width = 500;
 			//height = 500;
 			origin = /*new Vector3D(0,0,0);*/ config.max.plus(config.min).scalarMultiply(0.5);
@@ -798,7 +511,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			//y = new Vector3D(0, 0, config.max.z - config.min.z);
 			x = new Vector3D(boxSize, 0, 0);
 			y = new Vector3D(0, 0, boxSize);
-			z = new Vector3D(x.cross(y));
+			z = new Vector3D(y.cross(x));
 
 			double xRatio = x.length() / width;
 			double yRatio = y.length() / height;
@@ -820,12 +533,11 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			ccs.addRequest(new ImageRequest(), true);
 
 		} else if(e.getActionCommand().equals("zall")) {
-			rotated = true;
 			lowRes = false;
 			origin = /*new Vector3D(0,0,0);*/ config.max.plus(config.min).scalarMultiply(0.5);
 			x = new Vector3D(boxSize,0,0);
 			y = new Vector3D(0,boxSize,0);
-			z = new Vector3D(x.cross(y));
+			z = new Vector3D(y.cross(x));
 
 			double xRatio = x.length() / width;
 			double yRatio = y.length() / height;
@@ -857,18 +569,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 				highValue = Double.parseDouble(highValueField.getText());
 			} catch(NumberFormatException ex) {
 				System.err.println("Bad high value!");
-			}
-		} else if(e.getActionCommand().equals("duplicate")) {
-			System.out.println("opening duplicate view");
-			String in = JOptionPane.showInputDialog("Enter the name of Duplicate view");
-			if(in==null){
-				//the user has pressed cancel, so do nothing
-			}else{
-				JFrame f = new JFrame("Duplicate: " + in);
-				f.getContentPane().add(new DuplicateView(h, p, x, y, z, origin));
-				f.pack();
-				f.setSize(450,500);
-				f.setVisible(true);
 			}
 		} else {
 			System.out.println("Other action event!");
@@ -917,8 +617,7 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		//cmdisplay = new ColorMapDisplay(width, 10);
 		cmdisplay.redisplay(wrbb);
 		//add(cmdisplay, BorderLayout.NORTH);
-		System.out.println("New width: " + width);
-		System.out.println("New height: " + height);
+
 		ccs.addRequest(new ImageRequest(), true);
 	}
 	
@@ -981,37 +680,11 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			bla.printStackTrace();
 		}
 	}
-
-	/**************************************************************************************************/
-
-	private byte[] encodeVectors() {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
-		try {
-			DataOutputStream dos = new DataOutputStream(baos);
-			if(typeOfSelection.equals("box")){
-				for(int x = 0; x<NUM_POINTS; x++){
-					dos.writeDouble(posVectors[x].x);
-					dos.writeDouble(posVectors[x].y);
-					dos.writeDouble(posVectors[x].z);
-				}
-			}else{
-				System.out.println("ENcoding sphere");
-				System.out.println("Radius: " + zSimNumbers[1]);
-				dos.writeDouble(posVectors[0].x);
-				dos.writeDouble(posVectors[0].y);
-				dos.writeDouble(posVectors[0].z);
-				dos.writeDouble(zSimNumbers[1]);
-			}
-		} catch(IOException e) {
-			System.err.println("Couldn't encode request!");
-			e.printStackTrace();
-		}
-		return baos.toByteArray();
-	}
-
+	
 	/**************************************************************************************************
 	 * byte[] encodeRequest
 	 */
+	
 	private byte[] encodeRequest() {
 		// for mapping System.out.println("ViewingPanel: encodeRequest");
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(128);
@@ -1056,29 +729,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		return baos.toByteArray();
 	}
 
-	
-	/**************************************************************************************************/
-
-	private class SpecifyBox extends CcsThread.request {
-
-		public SpecifyBox(byte[] data){
-			super("SpecifyBox", data);
-		}
-
-		public void handleReply(byte[] data){
-			//do something
-		}
-	}
-	
-	private class SpecifySphere extends CcsThread.request {
-	
-		public SpecifySphere(byte[] data){
-			super("SpecifySphere", data);
-		}
-		
-		public void handleReply(byte[] data){}
-	}
-
 	/**************************************************************************************************
 	 * class ImageRequest
 	 */
@@ -1096,30 +746,11 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			// for mapping System.out.println("ImageRequest: handleReply");
 			displayImage(data);
 
-			/* used in conjunction with CcsThread.startPoint for efficiency testing
+			/* used in conjunction with CcsThread.startPoint for efficiency testing */
 			Date end = new Date();
-			System.out.println("Image Gen took: " + ((double) (end.getTime() - CcsThread.startPoint.getTime())/1000) + " seconds");*/
+			System.out.println("Image Gen took: " + ((double) (end.getTime() - CcsThread.startPoint.getTime())/1000) + " seconds");
 
 		}
-	}
-	
-	//*************************************************************************************************
-
-	private class ClearBoxes extends CcsThread.request {
-	
-		public ClearBoxes(){
-			super("ClearBoxes", null);
-		}
-		
-		public void handleReply(byte[] data){}
-	}
-	
-	private class ClearSpheres extends CcsThread.request {
-		
-		public ClearSpheres(){
-			super("ClearSpheres", null);
-		}
-		public void handleReply(byte[] data){}
 	}
 
 	//*************************************************************************************************
@@ -1128,14 +759,14 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 	black - blue - magenta - red - yellow - white.
 	*/
 
-	private static ColorModel createWRBBColorModel() {
-		int cmap_size=254;
-		byte[] wrbb_red = new byte[256];
-		byte[] wrbb_green = new byte[256];
-		byte[] wrbb_blue = new byte[256];
+	private static ColorModel createWRBBColorModel(int num_colors) {
+		int cmap_size = num_colors;
+		byte[] wrbb_red = new byte[cmap_size];
+		byte[] wrbb_green = new byte[cmap_size];
+		byte[] wrbb_blue = new byte[cmap_size];
     		int i;
 		int nextColor = 0;
-    		int chunk_size = ((cmap_size - 1) / 5);
+    		int chunk_size = (cmap_size - 1) / 5;
 
 		for(i = 0; i < chunk_size; i++) {
         		wrbb_red[nextColor] = 0;
@@ -1173,16 +804,9 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 			wrbb_blue[nextColor++] = (byte) 255;
 		}
 
-		wrbb_red[254] = 0;
-		wrbb_green[254] = 0;
-		wrbb_blue[254] = 0;
-		wrbb_red[255] = 0;
-		wrbb_green[255] = (byte)255;
-		wrbb_blue[255] = 0;
-
-		return new IndexColorModel(8, 256, wrbb_red, wrbb_green, wrbb_blue);
+		return new IndexColorModel(8, cmap_size, wrbb_red, wrbb_green, wrbb_blue);
 	}
-
+	
 	/*************************************************************************************
 	 * dispaly vector lengths
 	 */
@@ -1199,11 +823,6 @@ public class ViewingPanel extends JPanel implements MouseListener, MouseMotionLi
 		System.out.println("x/width ratio: " + x.length() / width);
 		System.out.println("y/height ratio: " + y.length() / height);
 	}
-	
-	public Vector3D getXVector(){return x;}
-	public Vector3D getYVector(){return y;}
-	public Vector3D getZVector(){return z;}
-	public Vector3D getOriginVector(){return origin;}
 
 }//end ViewingPanel
 

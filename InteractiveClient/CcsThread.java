@@ -13,12 +13,14 @@ import java.io.*;
 import java.net.UnknownHostException;
 
 class CcsThread implements Runnable {
+	//public static Date startPoint;
 
 	//Thin wrapper around a block of data
 	public static class message {
 		private byte[] data;
-		
+
 		public message(byte[] data_) {
+			//startPoint = new Date();
 			data=data_;
 		}
 		
@@ -39,7 +41,7 @@ class CcsThread implements Runnable {
 	public static class request extends message {
 		int onPE = 0;
 		String handler;
-		
+
 		public request(String handler_, byte[] data_) {
 			super(data_);
 			handler=handler_;
@@ -74,7 +76,7 @@ class CcsThread implements Runnable {
 	private CcsServer ccs;
 	private Label status;//Place to show status info.
 	private Thread myThread;
-	
+
 	//Initialization just stashes info-- 
 	// real work starts when thread begins running.
 	private String hostName;
@@ -101,6 +103,7 @@ class CcsThread implements Runnable {
 			while (!requests.empty())
 				requests.pop();
 		requests.push(req);
+		//System.out.println("Ccs.Thread.java addRequest called");
 	}
 	
 	public void finish() {
@@ -160,6 +163,11 @@ class CcsThread implements Runnable {
 			status.setText("");
 		}
 	}
+	/*
+	private static void startTimer() {
+		startPoint = new Date();
+	}
+	*/
 }
 
 
