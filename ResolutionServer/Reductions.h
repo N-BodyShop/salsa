@@ -11,3 +11,8 @@ extern CkReduction::reducerType growOrientedBox_double;
 extern CkReduction::reducerType minmax_int;
 extern CkReduction::reducerType minmax_float;
 extern CkReduction::reducerType minmax_double;
+
+extern CkReduction::reducerType pairByteDoubleMin;
+extern CkReduction::reducerType pairByteDoubleMax;
+extern CkReduction::reducerType pairDoubleDoubleMin;
+extern CkReduction::reducerType pairDoubleDoubleMax;

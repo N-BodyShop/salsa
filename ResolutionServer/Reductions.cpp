@@ -1,6 +1,8 @@
 /** @file Reductions.cpp
  */
  
+#include <utility>
+
 #include "Reductions.h"
 
 #include "ParticleStatistics.h"
@@ -14,6 +16,15 @@ CkReduction::reducerType growOrientedBox_double;
 CkReduction::reducerType minmax_int;
 CkReduction::reducerType minmax_float;
 CkReduction::reducerType minmax_double;
+
+CkReduction::reducerType pairByteDoubleMin;
+CkReduction::reducerType pairByteDoubleMax;
+CkReduction::reducerType pairDoubleDoubleMin;
+CkReduction::reducerType pairDoubleDoubleMax;
+
+using namespace std;
+
+typedef unsigned char byte;
 
 /// Combine statistics about a collection of particles
 CkReductionMsg* mergeParticleStats(int nMsg, CkReductionMsg** msgs) {
@@ -63,6 +74,30 @@ CkReductionMsg* minmax(int nMsg, CkReductionMsg** msgs) {
 	return CkReductionMsg::buildNew(2 * sizeof(T), pminmax);
 }
 
+template <typename T, typename U>
+CkReductionMsg* pairMin(int nMsg, CkReductionMsg** msgs) {
+	pair<T, U>* ppair = static_cast<pair<T, U> *>(msgs[0]->getData());
+	pair<T, U>* msgppair;
+	for(int i = 1; i < nMsg; i++) {
+		msgppair = static_cast<pair<T, U> *>(msgs[i]->getData());
+		if(*msgppair < *ppair)
+			*ppair = *msgppair;
+	}
+	return CkReductionMsg::buildNew(sizeof(pair<T, U>), ppair);
+}
+
+template <typename T, typename U>
+CkReductionMsg* pairMax(int nMsg, CkReductionMsg** msgs) {
+	pair<T, U>* ppair = static_cast<pair<T, U> *>(msgs[0]->getData());
+	pair<T, U>* msgppair;
+	for(int i = 1; i < nMsg; i++) {
+		msgppair = static_cast<pair<T, U> *>(msgs[i]->getData());
+		if(*ppair < *msgppair)
+			*ppair = *msgppair;
+	}
+	return CkReductionMsg::buildNew(sizeof(pair<T, U>), ppair);
+}
+
 void registerReductions() {
 	mergeStatistics = CkReduction::addReducer(mergeParticleStats);
 	
@@ -72,6 +107,11 @@ void registerReductions() {
 	minmax_int = CkReduction::addReducer(minmax<int>);
 	minmax_float = CkReduction::addReducer(minmax<float>);
 	minmax_double = CkReduction::addReducer(minmax<double>);
+	
+	pairByteDoubleMin = CkReduction::addReducer(pairMin<byte, double>);
+	pairByteDoubleMax = CkReduction::addReducer(pairMax<byte, double>);
+	pairDoubleDoubleMin = CkReduction::addReducer(pairMin<double, double>);
+	pairDoubleDoubleMax = CkReduction::addReducer(pairMax<double, double>);
 }
 
 #include "Reductions.def.h"

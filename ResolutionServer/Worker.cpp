@@ -3,14 +3,18 @@
 
 #include <utility>
 #include <cstdlib>
+#include <vector>
 
 #include "tree_xdr.h"
 #include "SiXFormat.h"
+#include "TipsyFormat.h"
 
+#include "pup_network.h"
 #include "ResolutionServer.h"
 #include "Reductions.h"
 #include "Space.h"
 
+using namespace std;
 using namespace SimulationHandling;
 
 void Worker::loadSimulation(const std::string& simulationName, const CkCallback& cb) {
@@ -30,6 +34,14 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	delete sim;
 	
 	sim = new SiXFormatReader(simulationName);
+	if(sim->size() == 0) {
+		//try plain tipsy format
+		sim->release();
+		delete sim;
+		sim = new TipsyFormatReader(simulationName);
+		if(sim->size() == 0)
+			cerr << "Couldn't load simulation file (tried new format and plain tipsy)" << endl;
+	}
 	//cout << "Simulation " << sim->name << " contains " << sim->size() << " families" << endl;
 	
 	boundingBox = OrientedBox<float>();
@@ -66,42 +78,6 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
-
-class MyVizRequest {
-public:
-	int code;
-	int width;
-	int height;
-	Vector3D<double> x;
-	Vector3D<double> y;
-	Vector3D<double> z;
-	Vector3D<double> o;
-	double minZ;
-	double maxZ;
-	
-	MyVizRequest(const liveVizRequest3d& req) {
-		code = req.code;
-		width = req.wid;
-		height = req.ht;
-		x = switchVector<double>(req.x);
-		y = switchVector<double>(req.y);
-		z = switchVector<double>(req.z);
-		o = switchVector<double>(req.o);
-		minZ = req.minZ;
-		maxZ = req.maxZ;
-	}
-	
-	friend std::ostream& operator<< (std::ostream& os, const MyVizRequest& r) {
-		return os << "code: " << r.code
-				<< "\nwidth: " << r.width
-				<< "\nheight: " << r.height
-				<< "\nx axis: " << r.x
-				<< "\ny axis: " << r.y
-				<< "\nz axis: " << r.z
-				<< "\norigin: " << r.o
-				<< "\nz range: " << r.minZ << " <=> " << r.maxZ;
-	}
-};
 
 const byte lineColor = 1;
 
@@ -199,7 +175,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	
 	MyVizRequest req(m->req);
 	
-	cout << "Worker " << thisIndex << ": Image request: " << req << endl;
+	if(thisIndex == 0)
+		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
 		
 	if(imageSize < req.width * req.height) {
 		delete[] image;
@@ -215,15 +192,16 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	
 	float delta = 2 * req.x.length() / req.width;
-	cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
+	if(thisIndex == 0)
+		cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
 	float x, y;
 	unsigned int pixel;
 	
 	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-		Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
-		byte* colors = simIter->second.getAttribute<byte>("color");
+		Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
+		byte* colors = simIter->second.getAttribute("color", Type2Type<byte>());
 		for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
 			x = dot(req.x, positions[i] - req.o);
 			if(x > -1 && x < 1) {
@@ -241,7 +219,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	
 	//XXX removed active region drawing from here
 	
-	if(thisIndex == 0) {		
+	if(thisIndex == 0) {
 		if(meta->boxes.size() > 0) {
 			//draw boxes onto canvas
 			pair<int, int> vertices[8];
@@ -275,8 +253,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 
 	double stop = CkWallTimer();
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
-	cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
-	cout << "my part: " << (stop - start) << " seconds" << endl;
+	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
+	//cout << "my part: " << (stop - start) << " seconds" << endl;
 }
 
 void Worker::collectStats(const string& id, const CkCallback& cb) {
@@ -298,7 +276,7 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(activeRegion)) {
 		cout << "It's a sphere" << endl;
 		for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-			Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+			Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
 				if(Space::contains(*activeSphere, positions[i])) {
 					stats.numParticles++;
@@ -309,7 +287,7 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(activeRegion)) {
 		cout << "It's a box" << endl;
 		for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-			Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+			Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
 				if(Space::contains(*activeBox, positions[i])) {
 					stats.numParticles++;
@@ -320,7 +298,7 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 	} else {
 		cout << "It's everything" << endl;
 		for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-			Vector3D<float>* positions = simIter->second.getAttribute<Vector3D<float> >("position");
+			Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 			for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i)
 				stats.boundingBox.grow(positions[i]);
 			stats.numParticles += simIter->second.count.numParticles;
@@ -353,9 +331,9 @@ void Worker::valueRange(CkCcsRequestMsg* m) {
 	
 	double minMaxPair[2];
 	minMaxPair[0] = minValue;
-	minMaxPair[0] = swapEndianness(minMaxPair[0]);
 	minMaxPair[1] = maxValue;
-	minMaxPair[1] = swapEndianness(minMaxPair[1]);
+	PUP::toNetwork p;
+	p(minMaxPair, 2);
 	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
 	delete m;
 }
@@ -387,7 +365,7 @@ void Worker::assignColors(const unsigned int dimensions, byte* colors, void* val
 
 void Worker::chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb) {
 	currentAttribute = attributeName;
-	if(verbosity > 2) {
+	if(verbosity > 2 && thisIndex == 0) {
 		cout << "Re-coloring using " << currentAttribute << " from " << minVal << " to " << maxVal;
 		if(beLogarithmic)
 			cout << ", logarithmically" << endl;
@@ -399,7 +377,7 @@ void Worker::chooseColorValue(const std::string& attributeName, const int beLoga
 	
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
 		AttributeMap::iterator attrIter = iter->second.attributes.find(currentAttribute);
-		byte* colors = iter->second.getAttribute<byte>("color");
+		byte* colors = iter->second.getAttribute("color", Type2Type<byte>());
 		
 		if(attrIter != iter->second.attributes.end()) {	
 			if(attrIter->second.length == 0)
@@ -451,8 +429,92 @@ void Worker::chooseColorValue(const std::string& attributeName, const int beLoga
 		}
 	}
 	
-	if(verbosity > 3)
+	if(verbosity > 3 && thisIndex == 0)
 		cout << "Re-colored particles" << endl;
 	
 	contribute(0, 0, CkReduction::concat, cb);
+}
+
+void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
+	//z component of the viewing frame
+	double z = 0;
+	
+	if(thisIndex == 0)
+		cout << "Got request for centering: " << req << endl;
+	
+	req.z = cross(req.x, req.y);
+	req.z.normalize();
+	req.x /= req.x.lengthSquared();
+	req.y /= req.y.lengthSquared();
+	float x, y;
+	u_int64_t numParticlesInFrame = 0;
+	byte maxPixel = 0;
+	double minPotential = HUGE_VAL;
+	
+	switch(req.code) {
+		case 0: { //average of all pixels in frame	
+			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
+				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+					x = dot(req.x, positions[i] - req.o);
+					if(x > -1 && x < 1) {
+						y = dot(req.y, positions[i] - req.o);
+						if(y > -1 && y < 1) {
+							numParticlesInFrame++;
+							z += dot(req.z, positions[i] - req.o);
+						}
+					}
+				}
+			}
+			//send an extra unused number to differentiate the responses
+			double numbers[3];
+			numbers[0] = z;
+			numbers[1] = numParticlesInFrame;
+			numbers[2] = 0;
+			contribute(3 * sizeof(double), numbers, CkReduction::sum_double, cb);
+			break;
+		}
+		case 1: { //"mostest" particle in frame
+			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
+				byte* colors = simIter->second.getAttribute("color", Type2Type<byte>());
+				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+					x = dot(req.x, positions[i] - req.o);
+					if(x > -1 && x < 1) {
+						y = dot(req.y, positions[i] - req.o);
+						if(y > -1 && y < 1) {
+							if(colors[i] > maxPixel) {
+								maxPixel = colors[i];
+								z = dot(req.z, positions[i] - req.o);
+							}
+						}
+					}
+				}
+			}
+			pair<byte, double> mostest(maxPixel, z);
+			contribute(sizeof(pair<byte, double>), &mostest, pairByteDoubleMax, cb);
+			break;
+		}
+		case 2: { //particle with lowest potential in frame
+			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
+				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
+				float* potentials = simIter->second.getAttribute("potential", Type2Type<float>());
+				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
+					x = dot(req.x, positions[i] - req.o);
+					if(x > -1 && x < 1) {
+						y = dot(req.y, positions[i] - req.o);
+						if(y > -1 && y < 1) {
+							if(potentials[i] < minPotential) {
+								minPotential = potentials[i];
+								z = dot(req.z, positions[i] - req.o);
+							}
+						}
+					}
+				}
+			}
+			pair<double, double> lowest(minPotential, z);
+			contribute(sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
+			break;
+		}
+	}
 }

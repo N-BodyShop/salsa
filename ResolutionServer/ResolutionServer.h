@@ -18,6 +18,78 @@
 #include "Box.h"
 #include "Simulation.h"
 
+inline void operator|(PUP::er& p, liveVizRequest3d& req) {
+	p | req.code;
+	p | req.wid;
+	p | req.ht;
+	p | req.x;
+	p | req.y;
+	p | req.z;
+	p | req.o;
+	p | req.minZ;
+	p | req.maxZ;
+}
+
+template <typename T1>
+Vector3D<T1> switchVector(const CkVector3d& v) {
+	return Vector3D<T1>(static_cast<T1>(v.x), static_cast<T1>(v.y), static_cast<T1>(v.z));
+}
+
+template <typename T2>
+CkVector3d switchVector(const Vector3D<T2>& v) {
+	return CkVector3d(static_cast<double>(v.x), static_cast<double>(v.y), static_cast<double>(v.z));
+}
+
+class MyVizRequest {
+public:
+	int code;
+	int width;
+	int height;
+	Vector3D<double> x;
+	Vector3D<double> y;
+	Vector3D<double> z;
+	Vector3D<double> o;
+	double minZ;
+	double maxZ;
+	
+	MyVizRequest() : width(0), height(0) { }
+	
+	MyVizRequest(const liveVizRequest3d& req) {
+		code = req.code;
+		width = req.wid;
+		height = req.ht;
+		x = switchVector<double>(req.x);
+		y = switchVector<double>(req.y);
+		z = switchVector<double>(req.z);
+		o = switchVector<double>(req.o);
+		minZ = req.minZ;
+		maxZ = req.maxZ;
+	}
+	
+	friend std::ostream& operator<< (std::ostream& os, const MyVizRequest& r) {
+		return os << "code: " << r.code
+				<< "\nwidth: " << r.width
+				<< "\nheight: " << r.height
+				<< "\nx axis: " << r.x
+				<< "\ny axis: " << r.y
+				<< "\nz axis: " << r.z
+				<< "\norigin: " << r.o
+				<< "\nz range: " << r.minZ << " <=> " << r.maxZ;
+	}
+};
+
+inline void operator|(PUP::er& p, MyVizRequest& req) {
+	p | req.code;
+	p | req.width;
+	p | req.height;
+	p | req.x;
+	p | req.y;
+	p | req.z;
+	p | req.o;
+	p | req.minZ;
+	p | req.maxZ;
+}
+
 #include "ParticleStatistics.h"
 #include "ResolutionServer.decl.h"
 
@@ -60,6 +132,8 @@ public:
 	void activate(CkCcsRequestMsg* m);
 	void collectStats(CkCcsRequestMsg* m);
 	void statsCollected(CkReductionMsg* m);
+	void calculateDepth(CkCcsRequestMsg* m);
+	void depthCalculated(CkReductionMsg* m);
 	
 };
 
@@ -118,27 +192,7 @@ public:
 	void collectStats(const std::string& id, const CkCallback& cb);
 	
 	void chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb);
+	void calculateDepth(MyVizRequest req, const CkCallback& cb);
 };
-
-template <typename T1>
-Vector3D<T1> switchVector(const CkVector3d& v) {
-	return Vector3D<T1>(static_cast<T1>(v.x), static_cast<T1>(v.y), static_cast<T1>(v.z));
-}
-
-template <typename T2>
-CkVector3d switchVector(const Vector3D<T2>& v) {
-	return CkVector3d(static_cast<double>(v.x), static_cast<double>(v.y), static_cast<double>(v.z));
-}
-
-template <typename T>
-inline T swapEndianness(T val) {
-	static const unsigned int size = sizeof(T);
-	T swapped;
-	unsigned char* source = reinterpret_cast<unsigned char *>(&val);
-	unsigned char* dest = reinterpret_cast<unsigned char *>(&swapped);
-	for(unsigned int i = 0; i < size; ++i)
-		dest[i] = source[size - i - 1];
-	return swapped;
-}
 
 #endif //RESOLUTIONSERVER_H

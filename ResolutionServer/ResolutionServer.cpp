@@ -4,7 +4,11 @@
 #include <iostream>
 #include <fstream>
 #include <set>
+#include <iterator>
+
 #include <popt.h>
+
+#include "pup_network.h"
 
 #include "ResolutionServer.h"
 
@@ -77,6 +81,7 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("ValueRange", CkCallback(CkIndex_Worker::valueRange(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), thishandle));
 	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
+	CcsRegisterHandler("Center", CkCallback(CkIndex_Main::calculateDepth(0), thishandle));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -151,15 +156,11 @@ void Main::startVisualization(CkReductionMsg* m) {
 	if(w) {
 		ostringstream oss;
 		oss << static_cast<int>(w->startColor) << "," << w->sim->size() << ",";
-		set<string> attributeNames;
 		for(SimulationHandling::Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter) {
-			oss << iter->first << ",";
+			oss << iter->first << "," << iter->second.attributes.size() << ",";
 			for(SimulationHandling::AttributeMap::iterator attrIter = iter->second.attributes.begin(); attrIter != iter->second.attributes.end(); ++attrIter)
-				attributeNames.insert(attrIter->first);
+				oss << attrIter->first << ",";
 		}
-		attributeNames.erase("color");
-		attributeNames.insert("family");
-		copy(attributeNames.begin(), attributeNames.end(), ostream_iterator<string>(oss, ","));
 		const string& reply = oss.str();
 		CcsSendDelayedReply(delayedReply, reply.length(), reply.c_str());
 
@@ -169,9 +170,13 @@ void Main::startVisualization(CkReductionMsg* m) {
 }
 
 void Main::chooseColorValue(CkCcsRequestMsg* m) {
-	int beLogarithmic = swapEndianness(*reinterpret_cast<int *>(m->data));
-	double minVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int)));
-	double maxVal = swapEndianness(*reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double)));
+	PUP::fromNetwork p;
+	int beLogarithmic = *reinterpret_cast<int *>(m->data);
+	double minVal = *reinterpret_cast<double *>(m->data + sizeof(int));
+	double maxVal = *reinterpret_cast<double *>(m->data + sizeof(int) + sizeof(double));
+	p | beLogarithmic;
+	p | minVal;
+	p | maxVal;
 	string attributeName(m->data + sizeof(int) + 2 * sizeof(double), m->data + m->length);
 	cout << "You're choosing attribute \"" << attributeName << "\" to represent the color of particles" << endl;
 	unsigned char value = 0;
@@ -212,6 +217,43 @@ void Main::statsCollected(CkReductionMsg* m) {
 	oss << "Statistics for \"" << regionString << "\"\nNumber of particles: " << stats->numParticles << "\nBounding box: " << stats->boundingBox << "\n";
 	string output = oss.str();
 	CcsSendDelayedReply(delayedReply, output.length(), output.c_str());
+	delete m;
+}
+
+void Main::calculateDepth(CkCcsRequestMsg* m) {
+	delayedReply = m->reply;
+	MyVizRequest req = *reinterpret_cast<MyVizRequest *>(m->data + 4);
+	//get correct endianness
+	PUP::fromNetwork p;
+	p | req;
+	workers.calculateDepth(req, CkCallback(CkIndex_Main::depthCalculated(0), thishandle));
+	delete m;
+}
+
+void Main::depthCalculated(CkReductionMsg* m) {
+	double* z;
+	pair<byte, double>* mostPair;
+	pair<double, double>* potPair;
+	switch(m->getSize()) {
+		case 3 * sizeof(double):
+			z = static_cast<double *>(m->getData());
+			*z /= *(z + 1);
+			cout << "Depth calculated by average, z = " << *z << " with " << *(z + 1) << " particles in the frame" << endl;
+			break;
+		case sizeof(pair<byte, double>):
+			mostPair = static_cast<pair<byte, double> *>(m->getData());
+			cout << "Depth calculated by mostest, z = " << mostPair->second << " with value " << int(mostPair->first) << endl;
+			z = &(mostPair->second);
+			break;
+		case sizeof(pair<double, double>):
+			potPair = static_cast<pair<double, double> *>(m->getData());
+			cout << "Depth calculated by potential, z = " << potPair->second << " with potential " << potPair->first << endl;
+			z = &(potPair->second);
+			break;
+	}
+	PUP::toNetwork p;
+	p | *z;
+	CcsSendDelayedReply(delayedReply, sizeof(double), z);
 	delete m;
 }
 

@@ -1,19 +1,20 @@
 /** @file MetaInformationHandler.cpp
  */
 
+#include <sstream>
+
+#include "pup_network.h"
 #include "ResolutionServer.h"
+
+using namespace std;
 
 void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 	if(m->length != 8 * 3 * sizeof(double))
 		return;
 	Vector3D<double>* vertices = reinterpret_cast<Vector3D<double> *>(m->data);
 	//cout << "Got a box definition" << endl;
-	for(int i = 0; i < 8; ++i) {
-		vertices[i].x = swapEndianness(vertices[i].x);
-		vertices[i].y = swapEndianness(vertices[i].y);
-		vertices[i].z = swapEndianness(vertices[i].z);
-		//cout << "Vertex " << (i + 1) << ": " << vertices[i] << endl;
-	}
+	PUP::fromNetwork p;
+	p(vertices, 8);
 	
 	Box<double>* box = new Box<double>(vertices);
 	boxes.push_back(box);
@@ -47,10 +48,8 @@ void MetaInformationHandler::specifySphere(CkCcsRequestMsg* m) {
 	Sphere<double>* s = new Sphere<double>;
 	s->origin = *reinterpret_cast<Vector3D<double> *>(m->data);
 	s->radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
-	s->origin.x = swapEndianness(s->origin.x);
-	s->origin.y = swapEndianness(s->origin.y);
-	s->origin.z = swapEndianness(s->origin.z);
-	s->radius = swapEndianness(s->radius);
+	PUP::fromNetwork p;
+	p | *s;
 	cout << "Got a sphere definition: " << *s << endl;
 	spheres.push_back(s);
 	ostringstream oss;

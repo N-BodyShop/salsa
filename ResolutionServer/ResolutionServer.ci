@@ -18,6 +18,8 @@ mainmodule ResolutionServer {
 		entry [threaded] void activate(CkCcsRequestMsg* m);
 		entry void collectStats(CkCcsRequestMsg* m);
 		entry void statsCollected(CkReductionMsg* m);
+		entry void calculateDepth(CkCcsRequestMsg* m);
+		entry void depthCalculated(CkReductionMsg* m);
 		
 	};
 	
@@ -31,6 +33,8 @@ mainmodule ResolutionServer {
 		entry void valueRange(CkCcsRequestMsg* m);
 		entry void collectStats(const std::string& id, const CkCallback& cb);
 		entry void chooseColorValue(const std::string& attributeName, const int beLogarithmic, const double minVal, const double maxVal, const CkCallback& cb);
+		
+		entry void calculateDepth(MyVizRequest req, const CkCallback& cb);
 	};
 	
 	group MetaInformationHandler {

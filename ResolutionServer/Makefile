@@ -3,7 +3,7 @@ CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../Simulati
 LDFLAGS += -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib
 LDLIBS += -lTipsy -lpopt -module liveViz -lxerces-c
 
-CHARMC = $(HOME)/projects/charm/bin/charmc
+CHARMC = $(HOME)/projects/charm/net-linux/bin/charmc
 CXX = $(CHARMC)
 CC = $(CXX)
 
@@ -15,7 +15,7 @@ $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
 
 Reductions.o: Reductions.decl.h ParticleStatistics.h
 
-$(TARGET): Worker.o MetaInformationHandler.o Reductions.o ../SimulationHandler/SiXFormat.o
+$(TARGET): Worker.o MetaInformationHandler.o Reductions.o ../SimulationHandler/SiXFormat.o ../SimulationHandler/TipsyFormat.o
 
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h
 
