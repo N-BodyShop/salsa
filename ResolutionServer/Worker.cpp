@@ -100,62 +100,63 @@ void Worker::readParticles(const std::string& posfilename, const std::string& va
 		return;
 	}
 	
-	if(!seekField(valfh, &xdrs, startParticle)) {
-		cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
+	if(!xdr_template(&xdrs, &minValue) || !xdr_template(&xdrs, &maxValue)) {
+		cerr << "Worker " << thisIndex << ": Had problems reading min/max color values" << endl;
 		contribute(0, 0, CkReduction::concat, cb);
 		return;
 	}
-	values = readField<float>(&xdrs, numParticles);
-	if(!values) {
-		cerr << "Worker " << thisIndex << ": Couldn't read in all of my color values" << endl;
-		contribute(0, 0, CkReduction::concat, cb);
-		return;
+	
+	if(reverseColors) {
+		float temp = -minValue;
+		minValue = -maxValue;
+		maxValue = temp;
+	}
+	
+	if(minValue == maxValue) {
+		if(verbosity > 2)
+			cout << "Worker " << thisIndex << ": All particles have the same color" << endl;
+		for(u_int64_t i = 0; i < numParticles; ++i)
+			myParticles[i].color = 255;
+	} else {
+		if(!seekField(valfh, &xdrs, startParticle)) {
+			cerr << "Worker " << thisIndex << ": Couldn't seek to my part of the color value file" << endl;
+			contribute(0, 0, CkReduction::concat, cb);
+			return;
+		}
+		float value, delta, lower;
+		if(beLogarithmic) {			
+			if(minValue <= 0)
+				delta = log10(maxValue - minValue + 1.0);
+			else {
+				lower = log10(minValue);
+				delta = log10(maxValue) - lower;
+			}
+		} else
+			delta = maxValue - minValue;
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			if(!xdr_template(&xdrs, &value)) {
+				cerr << "Worker " << thisIndex << ": Couldn't read in all of my positions" << endl;
+				contribute(0, 0, CkReduction::concat, cb);
+				return;
+			}
+			if(reverseColors)
+				value *= -1;
+			if(beLogarithmic) {
+				if(minValue <= 0)
+					myParticles[i].color = static_cast<byte>(255.0 * log10(value - minValue + 1.0) / delta);
+				else
+					myParticles[i].color = static_cast<byte>(255.0 * (log10(value) - lower) / delta);
+			} else
+				myParticles[i].color = static_cast<byte>(255.0 * (value - minValue) / delta);
+		}
 	}
 	xdr_destroy(&xdrs);
 	fclose(infile);
 	
-	float minMax[] = {HUGE_VAL, -HUGE_VAL};
-	float x;
-	for(u_int64_t i = 0; i < numParticles; ++i) {
-		if(reverseColors)
-			values[i] *= -1;
-		x = values[i];
-		if(x < minMax[0])
-			minMax[0] = x;
-		if(minMax[1] < x)
-			minMax[1] = x;
-	}
-	callback = cb;
-	contribute(2 * sizeof(float), minMax, minmax_float, CkCallback(CkIndex_Worker::calculateColors(0), thisArrayID));
-}
-
-void Worker::calculateColors(CkReductionMsg* m) {
-	minValue = static_cast<float *>(m->getData())[0];
-	maxValue = static_cast<float *>(m->getData())[1];
-	delete m;
-	
-	if(beLogarithmic) {
-		float delta;
-		if(minValue <= 0) {
-			delta = log10(maxValue - minValue + 1.0);
-			for(u_int64_t i = 0; i < numParticles; ++i)
-				myParticles[i].color = static_cast<byte>(255.0 * log10(values[i] - minValue + 1.0) / delta);
-		} else {
-			float lower = log10(minValue);
-			delta = log10(maxValue) - lower;
-			for(u_int64_t i = 0; i < numParticles; ++i)
-				myParticles[i].color = static_cast<byte>(255.0 * (log10(values[i]) - lower) / delta);
-		}		
-	} else {
-		for(u_int64_t i = 0; i < numParticles; ++i)
-			myParticles[i].color = static_cast<byte>(255.0 * (values[i] - minValue) / (maxValue - minValue));
-	}
-	delete[] values;
-	
 	if(verbosity > 3)
 		cout << "Worker " << thisIndex << ": Colors set." << endl;
 		
-	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, callback);
+	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
 class MyVizRequest {
@@ -195,6 +196,8 @@ public:
 };
 
 void Worker::generateImage(liveVizRequestMsg* m) {
+	double start = CkWallTimer();
+	
 	MyVizRequest req(m->req);
 	
 	cout << "Worker " << thisIndex << ": Image request: " << req << endl;
@@ -249,4 +252,5 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	*/
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
+	cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
 }

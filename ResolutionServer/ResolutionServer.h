@@ -43,7 +43,6 @@ class Worker : public ArrayElement1D {
 	u_int64_t numParticles;
 	CkCallback callback;
 	float minValue, maxValue;
-	float* values;
 	bool beLogarithmic;
 	byte* image;
 	unsigned int imageSize;
@@ -57,7 +56,6 @@ public:
 	}
 	
 	void readParticles(const std::string& posfilename, const std::string& valuefilename, bool logarithmic, bool reversed, const CkCallback& cb);
-	void calculateColors(CkReductionMsg* m);
 	
 	void generateImage(liveVizRequestMsg* m);
 

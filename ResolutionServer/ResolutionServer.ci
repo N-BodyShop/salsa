@@ -15,7 +15,6 @@ mainmodule ResolutionServer {
 		entry Worker();
 		
 		entry void readParticles(const std::string& posfilename, const std::string& valuefilename, bool logarithmic, bool reversed, const CkCallback& cb);
-		entry void calculateColors(CkReductionMsg* m);
 		
 		entry void generateImage(liveVizRequestMsg* m);
 	};

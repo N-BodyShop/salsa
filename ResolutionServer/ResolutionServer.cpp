@@ -14,7 +14,7 @@ Main::Main(CkArgMsg* m) {
 	
 	verbosity = 0;
 	int logarithmic = 0;
-	int reversed;
+	int reversed = 0;
 	
 	poptOption optionsTable[] = {
 		{"verbose", 'v', POPT_ARG_NONE | POPT_ARGFLAG_ONEDASH | POPT_ARGFLAG_SHOW_DEFAULT, 0, 1, "be verbose about what's going on", "verbosity"},
@@ -72,6 +72,10 @@ Main::Main(CkArgMsg* m) {
 	
     workers = CProxy_Worker::ckNew(CkNumPes());
 	cout << "Created workers!" << endl;
+	if(logarithmic)
+		cout << "Color scale is logarithmic" << endl;
+	if(reversed)
+		cout << "Color scale is reversed" << endl;
 	workers.readParticles(posfilename, valuefilename, logarithmic, reversed, CkCallback(CkIndex_Main::nextPart(0), thishandle));
 	cout << "Workers reading!" << endl;
 }

@@ -1,2 +1,2 @@
 #!/bin/sh
-./charmrun ++server ++server-port 1235 $* ./ResolutionServer ../TreeDataFormat/test/particles_subsamp.x86.pos ../TreeDataFormat/test/particles_subsamp.x86.potential -v -v -v -l
+./charmrun ++server ++server-port 1235 $* ./ResolutionServer ../ParallelGravity/scaling/lambs.00200_subsamp_1M.pos ../ParallelGravity/scaling/lambs.00200_subsamp_1M.potential -v -v -v -r -l
