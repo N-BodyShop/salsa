@@ -44,7 +44,7 @@ public class RightClickMenu extends JPopupMenu
         ButtonGroup group = new ButtonGroup();
         for (int i=0; i < centerChoiceStrings.length; i++) {
             rbItem = new JRadioButtonMenuItem(centerChoiceStrings[i]);
-            if (i==0) rbItem.setSelected(true);
+            if (i==s.centerMethod) rbItem.setSelected(true);
             rbItem.addActionListener(this);
             rbItem.setActionCommand(centerChoiceStrings[i]);
             group.add(rbItem);
