@@ -3,6 +3,8 @@
 
 #include "Reductions.decl.h"
  
+extern CkReduction::reducerType mergeStatistics;
+
 extern CkReduction::reducerType growOrientedBox_float;
 extern CkReduction::reducerType growOrientedBox_double;
 

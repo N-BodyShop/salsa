@@ -8,10 +8,14 @@
 
 #include "ResolutionServer.h"
 #include "Reductions.h"
+#include "Space.h"
 
 void Worker::readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb) {		
-	boxes.clear();
-	spheres.clear();
+	if(MetaInformationHandler* meta = metaProxy.ckLocalBranch()) {
+		meta->boxes.clear();
+		meta->spheres.clear();
+		meta->regionMap.clear();
+	}
 	
 	FILE* infile = fopen(posfilename.c_str(), "rb");
 	if(!infile) {
@@ -232,74 +236,6 @@ public:
 	}
 };
 
-template <typename T>
-inline T swapEndianness(T val) {
-	static const unsigned int size = sizeof(T);
-	T swapped;
-	unsigned char* source = reinterpret_cast<unsigned char *>(&val);
-	unsigned char* dest = reinterpret_cast<unsigned char *>(&swapped);
-	for(unsigned int i = 0; i < size; ++i)
-		dest[i] = source[size - i - 1];
-	return swapped;
-}
-
-void Worker::specifyBox(CkCcsRequestMsg* m) {
-	if(m->length != 8 * 3 * sizeof(double))
-		return;
-	Vector3D<double>* vertices = reinterpret_cast<Vector3D<double> *>(m->data);
-	cout << "Got a box definition" << endl;
-	Box<float> box;
-	for(int i = 0; i < 8; ++i) {
-		vertices[i].x = swapEndianness(vertices[i].x);
-		vertices[i].y = swapEndianness(vertices[i].y);
-		vertices[i].z = swapEndianness(vertices[i].z);
-		box.vertices[i] = vertices[i];
-		cout << "Vertex " << (i + 1) << ": " << vertices[i] << endl;
-	}
-	
-	//save box somehow
-	boxes.push_back(box);
-	
-	//give it unique identifier
-	
-	//send identifier back to client
-	
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
-	delete m;
-}
-
-void Worker::clearBoxes(CkCcsRequestMsg* m) {
-	boxes.clear();
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
-	delete m;
-}
-
-void Worker::specifySphere(CkCcsRequestMsg* m) {
-	if(m->length != 4 * sizeof(double))
-		return;
-	Sphere<double> s;
-	s.origin = *reinterpret_cast<Vector3D<double> *>(m->data);
-	s.radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
-	s.origin.x = swapEndianness(s.origin.x);
-	s.origin.y = swapEndianness(s.origin.y);
-	s.origin.z = swapEndianness(s.origin.z);
-	s.radius = swapEndianness(s.radius);
-	cout << "Got a sphere definition: " << s << endl;
-	spheres.push_back(s);
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
-	delete m;
-}
-
-void Worker::clearSpheres(CkCcsRequestMsg* m) {
-	spheres.clear();
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
-	delete m;
-}
-
 void Worker::valueRange(CkCcsRequestMsg* m) {
 	double minMaxPair[2];
 	minMaxPair[0] = minValue;
@@ -345,8 +281,10 @@ void Worker::recolor(CkCcsRequestMsg* m) {
 			myParticles[i].color = 1 + static_cast<byte>(value);
 	}
 	
-	unsigned char success = 1;
-	CcsSendDelayedReply(m->reply, 1, &success);
+	if(thisIndex == 0) {
+		unsigned char success = 1;
+		CcsSendDelayedReply(m->reply, 1, &success);
+	}
 	delete m;
 	if(verbosity > 3)
 		cout << "Re-colored particles" << endl;
@@ -457,50 +395,95 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	}
 	memset(image, 0, imageSize);
 
+	MetaInformationHandler* meta = metaProxy.ckLocalBranch();
+	if(!meta) {
+		cerr << "Well this sucks!  Couldn't get local pointer to meta handler" << endl;
+		return;
+	}
+	
 	float delta = 2 * req.x.length() / req.width;
 	cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
 	float x, y;
 	unsigned int pixel;
-	for(u_int64_t i = 0; i < numParticles; ++i) {
-		x = dot(req.x, myParticles[i].position - req.o);
-		if(x > -1 && x < 1) {
-			y = dot(req.y, myParticles[i].position - req.o);
-			if(y > -1 && y < 1) {
-				pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-				if(pixel >= imageSize)
-					cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-				if(image[pixel] < myParticles[i].color)
-					image[pixel] = myParticles[i].color;
+	
+	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(meta->activeRegion)) {
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			if(Space::contains(*activeSphere, myParticles[i].position)) {
+				x = dot(req.x, myParticles[i].position - req.o);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, myParticles[i].position - req.o);
+					if(y > -1 && y < 1) {
+						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+						if(pixel >= imageSize)
+							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+						if(image[pixel] < myParticles[i].color)
+							image[pixel] = myParticles[i].color;
+					}
+				}
+			}
+		}
+	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(meta->activeRegion)) {
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			if(Space::contains(*activeBox, myParticles[i].position)) {
+				x = dot(req.x, myParticles[i].position - req.o);
+				if(x > -1 && x < 1) {
+					y = dot(req.y, myParticles[i].position - req.o);
+					if(y > -1 && y < 1) {
+						pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+						if(pixel >= imageSize)
+							cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+						if(image[pixel] < myParticles[i].color)
+							image[pixel] = myParticles[i].color;
+					}
+				}
+			}
+		}
+	} else {
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			x = dot(req.x, myParticles[i].position - req.o);
+			if(x > -1 && x < 1) {
+				y = dot(req.y, myParticles[i].position - req.o);
+				if(y > -1 && y < 1) {
+					pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
+					if(pixel >= imageSize)
+						cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+					if(image[pixel] < myParticles[i].color)
+						image[pixel] = myParticles[i].color;
+				}
 			}
 		}
 	}
-	if(boxes.size() > 0) {
-		//draw boxes onto canvas
-		pair<int, int> vertices[8];
-		for(vector<Box<float> >::iterator iter = boxes.begin(); iter != boxes.end(); ++iter) {
-			for(int i = 0; i < 8; ++i) {
-				vertices[i].first = static_cast<int>(floor(req.width * (dot(req.x, iter->vertices[i] - req.o) + 1) / 2));
-				vertices[i].second = static_cast<int>(floor(req.height * (1 - dot(req.y, iter->vertices[i] - req.o)) / 2));
-			}
-			
-			for(int i = 0; i < 4; ++i) {
-				drawLine(image, req.width, req.height, vertices[i].first, vertices[i].second, vertices[(i + 1) % 4].first, vertices[(i + 1) % 4].second);
-				drawLine(image, req.width, req.height, vertices[i + 4].first, vertices[i + 4].second, vertices[(i + 1) % 4 + 4].first, vertices[(i + 1) % 4 + 4].second);
-				drawLine(image, req.width, req.height, vertices[i].first, vertices[i].second, vertices[i + 4].first, vertices[i + 4].second);
+	if(thisIndex == 0) {		
+		if(meta->boxes.size() > 0) {
+			//draw boxes onto canvas
+			pair<int, int> vertices[8];
+			Vector3D<double> vertex;
+			for(vector<Box<double> >::iterator iter = meta->boxes.begin(); iter != meta->boxes.end(); ++iter) {
+				for(int i = 0; i < 8; ++i) {
+					vertex = iter->vertex(i);
+					vertices[i].first = static_cast<int>(floor(req.width * (dot(req.x, vertex - req.o) + 1) / 2));
+					vertices[i].second = static_cast<int>(floor(req.height * (1 - dot(req.y, vertex - req.o)) / 2));
+				}
+
+				for(int i = 0; i < 4; ++i) {
+					drawLine(image, req.width, req.height, vertices[i].first, vertices[i].second, vertices[(i + 1) % 4].first, vertices[(i + 1) % 4].second);
+					drawLine(image, req.width, req.height, vertices[i + 4].first, vertices[i + 4].second, vertices[(i + 1) % 4 + 4].first, vertices[(i + 1) % 4 + 4].second);
+					drawLine(image, req.width, req.height, vertices[i].first, vertices[i].second, vertices[i + 4].first, vertices[i + 4].second);
+				}
 			}
 		}
-	}
-	if(spheres.size() > 0) {
-		//draw spheres onto canvas
-		int x0, y0;
-		int radius;
-		for(vector<Sphere<double> >::iterator iter = spheres.begin(); iter != spheres.end(); ++iter) {
-			x0 = static_cast<int>(floor(req.width * (dot(req.x, iter->origin - req.o) + 1) / 2));
-			y0 = static_cast<int>(floor(req.height * (1 - dot(req.y, iter->origin - req.o)) / 2));
-			radius = static_cast<int>(iter->radius / delta);
-			drawCircle(image, req.width, req.height, x0, y0, radius);
+		if(meta->spheres.size() > 0) {
+			//draw spheres onto canvas
+			int x0, y0;
+			int radius;
+			for(vector<Sphere<double> >::iterator iter = meta->spheres.begin(); iter != meta->spheres.end(); ++iter) {
+				x0 = static_cast<int>(floor(req.width * (dot(req.x, iter->origin - req.o) + 1) / 2));
+				y0 = static_cast<int>(floor(req.height * (1 - dot(req.y, iter->origin - req.o)) / 2));
+				radius = static_cast<int>(iter->radius / delta);
+				drawCircle(image, req.width, req.height, x0, y0, radius);
+			}
 		}
 	}
 
@@ -508,4 +491,41 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	liveVizDeposit(m, 0, 0, req.width, req.height, image, this);
 	cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
 	cout << "my part: " << (stop - start) << " seconds" << endl;
+}
+
+void Worker::collectStats(const string& id, const CkCallback& cb) {
+	MetaInformationHandler* meta = metaProxy.ckLocalBranch();
+	if(!meta) {
+		cerr << "Well this sucks!  Couldn't get local pointer to meta handler" << endl;
+		return;
+	}
+	Shape<double>* activeRegion = 0;
+	MetaInformationHandler::RegionMap::iterator selectedRegion = meta->regionMap.find(id);
+	if(selectedRegion != meta->regionMap.end())
+		activeRegion = selectedRegion->second;
+	
+	GroupStatistics stats;
+	
+	if(Sphere<double>* activeSphere = dynamic_cast<Sphere<double> *>(meta->activeRegion)) {
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			if(Space::contains(*activeSphere, myParticles[i].position)) {
+				stats.numParticles++;
+				stats.boundingBox.grow(myParticles[i].position);
+			}
+		}
+	} else if(Box<double>* activeBox = dynamic_cast<Box<double> *>(meta->activeRegion)) {
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			if(Space::contains(*activeBox, myParticles[i].position)) {
+				stats.numParticles++;
+				stats.boundingBox.grow(myParticles[i].position);
+			}
+		}
+	} else {
+		for(u_int64_t i = 0; i < numParticles; ++i) {
+			stats.boundingBox.grow(myParticles[i].position);
+		}
+		stats.numParticles += numParticles;
+	}
+	
+	contribute(sizeof(GroupStatistics), &stats, mergeStatistics, cb);
 }

@@ -3,7 +3,10 @@
  
 #include "Reductions.h"
 
+#include "ParticleStatistics.h"
 #include "OrientedBox.h"
+
+CkReduction::reducerType mergeStatistics;
 
 CkReduction::reducerType growOrientedBox_float;
 CkReduction::reducerType growOrientedBox_double;
@@ -11,6 +14,19 @@ CkReduction::reducerType growOrientedBox_double;
 CkReduction::reducerType minmax_int;
 CkReduction::reducerType minmax_float;
 CkReduction::reducerType minmax_double;
+
+/// Combine statistics about a collection of particles
+CkReductionMsg* mergeParticleStats(int nMsg, CkReductionMsg** msgs) {
+	GroupStatistics* stats = static_cast<GroupStatistics *>(msgs[0]->getData());
+	GroupStatistics* otherStats;
+	for(int i = 1; i < nMsg; ++i) {
+		otherStats = static_cast<GroupStatistics *>(msgs[i]->getData());
+		stats->numParticles += otherStats->numParticles;
+		stats->boundingBox.grow(otherStats->boundingBox.lesser_corner);
+		stats->boundingBox.grow(otherStats->boundingBox.greater_corner);
+	}
+	return CkReductionMsg::buildNew(sizeof(GroupStatistics), stats);
+}
 
 /// Combine reduction messages to grow a box
 template <typename T>
@@ -43,6 +59,8 @@ CkReductionMsg* minmax(int nMsg, CkReductionMsg** msgs) {
 }
 
 void registerReductions() {
+	mergeStatistics = CkReduction::addReducer(mergeParticleStats);
+	
 	growOrientedBox_float = CkReduction::addReducer(boxGrowth<float>);
 	growOrientedBox_double = CkReduction::addReducer(boxGrowth<double>);
 	

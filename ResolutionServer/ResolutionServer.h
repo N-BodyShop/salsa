@@ -15,20 +15,10 @@
 #include "TipsyParticles.h"
 #include "OrientedBox.h"
 #include "Sphere.h"
+#include "Box.h"
 
-template <typename T>
-class Box {
-public:
-	Vector3D<T> vertices[8];
-};
-
+#include "ParticleStatistics.h"
 #include "ResolutionServer.decl.h"
-
-template <typename T>
-inline void operator|(PUP::er& p, Box<T>& b) {
-	for(int i = 0; i < 8; ++i)
-		p | b.vertices[i];
-}
 
 typedef unsigned char byte;
 
@@ -47,12 +37,14 @@ public:
 };
 
 class Main : public Chare {
+	CProxy_MetaInformationHandler metaProxy;
 	CProxy_Worker workers;
 	std::string simulationListFilename;
 	typedef std::map<std::string, std::pair<std::string, std::string> > simListType;
 	simListType simulationList;
 	bool authenticated;
 	CcsDelayedReply delayedReply;
+	std::string id;
 public:
 		
 	Main(CkArgMsg* m);
@@ -62,10 +54,34 @@ public:
 	void chooseSimulation(CkCcsRequestMsg* m);
 	void startVisualization(CkReductionMsg* m);
 	void shutdownServer(CkCcsRequestMsg* m);
+	void activate(CkCcsRequestMsg* m);
+	void collectStats(CkCcsRequestMsg* m);
+	void statsCollected(CkReductionMsg* m);
 	
 };
 
+class MetaInformationHandler : public Group {
+	
+	std::vector<Box<double> > boxes;
+	std::vector<Sphere<double> > spheres;
+	typedef std::map<std::string, Shape<double>* > RegionMap;
+	RegionMap regionMap;
+	Shape<double>* activeRegion;
+public:
+	
+	MetaInformationHandler() : activeRegion(0) { }
+
+	void specifyBox(CkCcsRequestMsg* m);
+	void clearBoxes(CkCcsRequestMsg* m);
+	void specifySphere(CkCcsRequestMsg* m);
+	void clearSpheres(CkCcsRequestMsg* m);
+	void activate(const std::string& id, const CkCallback& cb);
+	
+	friend class Worker;
+};
+
 class Worker : public ArrayElement1D {
+	CProxy_MetaInformationHandler metaProxy;
 	std::vector<colored_particle> myParticles;
 	u_int64_t numParticles;
 	CkCallback callback;
@@ -74,12 +90,10 @@ class Worker : public ArrayElement1D {
 	byte* image;
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
-	vector<Box<float> > boxes;
-	vector<Sphere<double> > spheres;
 	const static byte numColors = 254;
 public:
 	
-	Worker() : imageSize(0) { }
+	Worker(const CkGroupID& metaID) : metaProxy(metaID), imageSize(0) { }
 	Worker(CkMigrateMessage* m) { }
 	~Worker() {
 		delete[] image;
@@ -89,12 +103,10 @@ public:
 	
 	void generateImage(liveVizRequestMsg* m);
 	
-	void specifyBox(CkCcsRequestMsg* m);
-	void clearBoxes(CkCcsRequestMsg* m);
-	void specifySphere(CkCcsRequestMsg* m);
-	void clearSpheres(CkCcsRequestMsg* m);
 	void valueRange(CkCcsRequestMsg* m);
 	void recolor(CkCcsRequestMsg* m);
+	
+	void collectStats(const std::string& id, const CkCallback& cb);
 };
 
 template <typename T1>
@@ -105,6 +117,17 @@ Vector3D<T1> switchVector(const CkVector3d& v) {
 template <typename T2>
 CkVector3d switchVector(const Vector3D<T2>& v) {
 	return CkVector3d(static_cast<double>(v.x), static_cast<double>(v.y), static_cast<double>(v.z));
+}
+
+template <typename T>
+inline T swapEndianness(T val) {
+	static const unsigned int size = sizeof(T);
+	T swapped;
+	unsigned char* source = reinterpret_cast<unsigned char *>(&val);
+	unsigned char* dest = reinterpret_cast<unsigned char *>(&swapped);
+	for(unsigned int i = 0; i < size; ++i)
+		dest[i] = source[size - i - 1];
+	return swapped;
 }
 
 #endif //RESOLUTIONSERVER_H

@@ -59,20 +59,23 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;
 	
-    workers = CProxy_Worker::ckNew(CkNumPes());
-	cout << "Created workers!" << endl;
+	metaProxy = CProxy_MetaInformationHandler::ckNew();
+    workers = CProxy_Worker::ckNew(metaProxy, CkNumPes());
+	cout << "Created workers and meta handler" << endl;
 	
 	authenticated = false;
 	CcsRegisterHandler("AuthenticateNChilada", CkCallback(CkIndex_Main::authenticate(0), thishandle));
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
 	CcsRegisterHandler("ShutdownServer", CkCallback(CkIndex_Main::shutdownServer(0), thishandle));
-	CcsRegisterHandler("SpecifyBox", CkCallback(CkIndex_Worker::specifyBox(0), CkArrayIndex1D(0), workers));
-	CcsRegisterHandler("ClearBoxes", CkCallback(CkIndex_Worker::clearBoxes(0), CkArrayIndex1D(0), workers));
-	CcsRegisterHandler("SpecifySphere", CkCallback(CkIndex_Worker::specifySphere(0), CkArrayIndex1D(0), workers));
-	CcsRegisterHandler("ClearSpheres", CkCallback(CkIndex_Worker::clearSpheres(0), CkArrayIndex1D(0), workers));
+	CcsRegisterHandler("SpecifyBox", CkCallback(CkIndex_MetaInformationHandler::specifyBox(0), metaProxy));
+	CcsRegisterHandler("ClearBoxes", CkCallback(CkIndex_MetaInformationHandler::clearBoxes(0), metaProxy));
+	CcsRegisterHandler("SpecifySphere", CkCallback(CkIndex_MetaInformationHandler::specifySphere(0), metaProxy));
+	CcsRegisterHandler("ClearSpheres", CkCallback(CkIndex_MetaInformationHandler::clearSpheres(0), metaProxy));
 	CcsRegisterHandler("ValueRange", CkCallback(CkIndex_Worker::valueRange(0), CkArrayIndex1D(0), workers));
-	CcsRegisterHandler("Recolor", CkCallback(CkIndex_Worker::recolor(0), CkArrayIndex1D(0), workers));
+	CcsRegisterHandler("Recolor", CkCallback(CkIndex_Worker::recolor(0), workers));
+	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), metaProxy));
+	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
 	
 	cerr << "Waiting for ccs authentication" << endl;
 }
@@ -157,6 +160,29 @@ void Main::startVisualization(CkReductionMsg* m) {
 void Main::shutdownServer(CkCcsRequestMsg* m) {
 	delete m;
 	CkExit();
+}
+
+void Main::activate(CkCcsRequestMsg* m) {
+	string id(m->data, m->data + m->length);
+	metaProxy.activate(id, CkCallbackResumeThread());
+	unsigned char success = 1;
+	CcsSendDelayedReply(m->reply, 1, &success);
+	delete m;
+}
+
+void Main::collectStats(CkCcsRequestMsg* m) {
+	id = string(m->data, m->data + m->length);
+	delayedReply = m->reply;
+	workers.collectStats(id, CkCallback(CkIndex_Main::statsCollected(0), thishandle));
+}
+
+void Main::statsCollected(CkReductionMsg* m) {
+	GroupStatistics* stats = static_cast<GroupStatistics *>(m->getData());
+	ostringstream oss;
+	oss << "Statistics for \"" << id << "\"\nNumber of particles: " << stats->numParticles << "\nBounding box: " << stats->boundingBox << "\n";
+	string output = oss.str();
+	CcsSendDelayedReply(delayedReply, output.length(), output.c_str());
+	delete m;
 }
 
 #include "ResolutionServer.def.h"

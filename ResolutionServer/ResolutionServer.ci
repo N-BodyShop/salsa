@@ -14,21 +14,31 @@ mainmodule ResolutionServer {
 		entry void chooseSimulation(CkCcsRequestMsg* m);
 		entry void startVisualization(CkReductionMsg* m);
 		entry void shutdownServer(CkCcsRequestMsg* m);
+		entry [threaded] void activate(CkCcsRequestMsg* m);
+		entry void collectStats(CkCcsRequestMsg* m);
+		entry void statsCollected(CkReductionMsg* m);
 		
 	};
 	
 	array [1D] Worker {
-		entry Worker();
+		entry Worker(const CkGroupID& metaID);
 		
 		entry void readParticles(const std::string& posfilename, const std::string& valuefilename, const CkCallback& cb);
 		
 		entry void generateImage(liveVizRequestMsg* m);
 		
+		entry void valueRange(CkCcsRequestMsg* m);
+		entry void recolor(CkCcsRequestMsg* m);
+		entry void collectStats(const std::string& id, const CkCallback& cb);
+	};
+	
+	group MetaInformationHandler {
+		entry MetaInformationHandler();
+		
 		entry void specifyBox(CkCcsRequestMsg* m);
 		entry void clearBoxes(CkCcsRequestMsg* m);
 		entry void specifySphere(CkCcsRequestMsg* m);
 		entry void clearSpheres(CkCcsRequestMsg* m);
-		entry void valueRange(CkCcsRequestMsg* m);
-		entry void recolor(CkCcsRequestMsg* m);
+		entry void activate(const std::string& id, const CkCallback& cb);
 	};
 };

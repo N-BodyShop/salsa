@@ -13,11 +13,11 @@ all:: $(TARGET)
 
 $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
 
-Reductions.o: Reductions.decl.h
+Reductions.o: Reductions.decl.h ParticleStatistics.h
 
-$(TARGET): Worker.o Reductions.o
+$(TARGET): Worker.o MetaInformationHandler.o Reductions.o
 
-Worker.o ResolutionServer.o: ResolutionServer.h
+Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h
 
 %.decl.h %.def.h : %.ci
 	$(CHARMC) $<
