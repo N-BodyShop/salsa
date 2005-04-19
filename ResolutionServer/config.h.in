@@ -1,0 +1,9 @@
+/* Figure out where endian.h is */
+
+#undef HAVE_ENDIAN_H
+
+#undef HAVE_MACHINE_ENDIAN_H
+
+/* xdr_hyper and xdr_u_hyper functions */
+
+#undef HAVE_XDR_HYPER

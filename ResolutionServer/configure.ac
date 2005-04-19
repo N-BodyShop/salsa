@@ -65,7 +65,7 @@ AC_CHECK_LIB([Tipsy], [main])
 
 # find boost
 ax_boost_header=no
-for boost in $PWD/../boost $PWD/../boost_1_31_0 ; do
+for boost in $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost
@@ -74,13 +74,15 @@ for boost in $PWD/../boost $PWD/../boost_1_31_0 ; do
 done
 if test $ax_boost_header != yes; then
    echo Boost headers not found
+   echo Download boost from www.boost.org and unpack in $PWD/..
+   exit
 fi
 AC_MSG_RESULT([  results of the Boost check:])
 AC_MSG_RESULT([    Directory:      $boost])
 AC_SUBST(BOOST_PATH)
 
 # find xerces-c
-ax_xercesc=no
+ax_xercesc_header=no
 for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_5_0 $PWD/../xerces-c-src_2_6_0 ; do
    if test -f $xercesc/include/xercesc/sax2/DefaultHandler.hpp ; then
        ax_xercesc_header=yes
@@ -90,13 +92,15 @@ for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_
 done
 if test $ax_xercesc_header != yes; then
    echo xercesc headers not found
+   echo Download boost from www.apache.org and install in $PWD/..
+   exit
 fi
 AC_MSG_RESULT([  results of the xercesc check:])
 AC_MSG_RESULT([    Directory:      $xercesc])
 AC_SUBST(XERCESCROOT)
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdint.h])
+AC_CHECK_HEADERS([stdint.h endian.h machine/endian.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -106,7 +110,7 @@ AC_TYPE_SIZE_T
 
 # Checks for library functions.
 AC_HEADER_STDC
-AC_CHECK_FUNCS([floor memset sqrt])
+AC_CHECK_FUNCS([floor memset sqrt xdr_hyper])
 
 ln -s $PYTHON_INCLUDE_DIR python
 

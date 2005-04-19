@@ -3453,7 +3453,7 @@ fi
 
 # find boost
 ax_boost_header=no
-for boost in $PWD/../boost $PWD/../boost_1_31_0 ; do
+for boost in $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost
@@ -3462,6 +3462,8 @@ for boost in $PWD/../boost $PWD/../boost_1_31_0 ; do
 done
 if test $ax_boost_header != yes; then
    echo Boost headers not found
+   echo Download boost from www.boost.org and unpack in $PWD/..
+   exit
 fi
 echo "$as_me:$LINENO: result:   results of the Boost check:" >&5
 echo "${ECHO_T}  results of the Boost check:" >&6
@@ -3470,8 +3472,8 @@ echo "${ECHO_T}    Directory:      $boost" >&6
 
 
 # find xerces-c
-ax_xercesc=no
-for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_6_0 ; do
+ax_xercesc_header=no
+for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_5_0 $PWD/../xerces-c-src_2_6_0 ; do
    if test -f $xercesc/include/xercesc/sax2/DefaultHandler.hpp ; then
        ax_xercesc_header=yes
        XERCESCROOT=$xercesc
@@ -3480,6 +3482,8 @@ for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_
 done
 if test $ax_xercesc_header != yes; then
    echo xercesc headers not found
+   echo Download boost from www.apache.org and install in $PWD/..
+   exit
 fi
 echo "$as_me:$LINENO: result:   results of the xercesc check:" >&5
 echo "${ECHO_T}  results of the xercesc check:" >&6
@@ -3489,7 +3493,9 @@ echo "${ECHO_T}    Directory:      $xercesc" >&6
 
 # Checks for header files.
 
-for ac_header in stdint.h
+
+
+for ac_header in stdint.h endian.h machine/endian.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if eval "test \"\${$as_ac_Header+set}\" = set"; then
@@ -4150,7 +4156,8 @@ fi
 
 
 
-for ac_func in floor memset sqrt
+
+for ac_func in floor memset sqrt xdr_hyper
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 echo "$as_me:$LINENO: checking for $ac_func" >&5
