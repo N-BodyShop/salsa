@@ -2,6 +2,9 @@
 
 ck.printclient(str(charm.getAttributeSum('All', 'mass'))+'\n')
 
+# Number of particles:
+ck.printclient(str(charm.getNumParticles('dark'))+'\n')
+
 # "setsphere"
 charm.createGroupAttributeSphere("test2", "All", "position", 0, 0, 0, .1)
 
