@@ -62,6 +62,7 @@ void Main::getNumParticles(int handle) {
     
     if(iter == w->sim->end()) {
 	    cerr << "No such family!" << endl;
+	    pythonReturn(handle);
 	    return;
     }
     pythonReturn(handle,Py_BuildValue("i",
@@ -75,11 +76,15 @@ void Main::getAttributeRange(int handle) {
     Worker* w = this->workers[0].ckLocal();
     Simulation::iterator simIter = w->sim->find(familyName);
 
-    if(simIter == w->sim->end())
+    if(simIter == w->sim->end()) {
+	pythonReturn(handle);
 	return;
+	}
     AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
-    if(attrIter == simIter->second.attributes.end())
+    if(attrIter == simIter->second.attributes.end()) {
+	pythonReturn(handle);
 	return;
+	}
     pythonReturn(handle,Py_BuildValue("(dd)", getScalarMin(attrIter->second),
 				      getScalarMax(attrIter->second)));
     }
