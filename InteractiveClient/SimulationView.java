@@ -33,6 +33,7 @@ public class SimulationView extends JLabel
 	int selectState = 0;	// State of box selection
 	Vector3D selectCorner, selectEdge1, // Box vectors
 	         selectEdge2, selectEdge3;
+	double selectRadius;	// sphere radius
 	int selStartX, selStartY;
 	int oldCurrentX, oldCurrentY;
 	
@@ -111,8 +112,9 @@ public class SimulationView extends JLabel
 		}
 	    if(e.getModifiers()
 	       == (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK)) {
+		// box selection
 		    switch(selectState) {
-		    case 0:
+		    case 0:	// starting box selection
 			selectCorner = coordEvent(e);
 			selStartX = e.getX();
 			selStartY = e.getY();
@@ -136,6 +138,24 @@ public class SimulationView extends JLabel
 		    default:
 			System.out.println("Bad state in press: " + selectState);
 			}
+		return;
+		}
+	    if(e.getModifiers()
+	       == (MouseEvent.BUTTON1_MASK|InputEvent.CTRL_MASK)) {
+		// sphere selection
+		    switch(selectState) {
+		    case 0:
+			selectCorner = coordEvent(e);
+			selStartX = e.getX();
+			selStartY = e.getY();
+			oldCurrentX = selStartX;
+			oldCurrentY = selStartY;
+			selectState = 4;
+			System.out.println("Center: " + selectCorner.toString());
+			break;
+		    default:
+			System.out.println("Bad state in press: " + selectState);
+			}
 		}
 	}
 	
@@ -144,7 +164,7 @@ public class SimulationView extends JLabel
 		    case 0:
 			break;
 		
-		    case 1:
+		    case 1:	// end of X-Y box selection
 			selectEdge1 = coordEvent(e);
 			selectState = 2;
 			// Turn corners into direction vectors
@@ -164,14 +184,19 @@ public class SimulationView extends JLabel
 			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
 			oldCurrentY = -1;
 			break;
-		    case 3:
+		    case 3:	// end of Z box selection
 			selectEdge3 = y.scalarMultiply(y.dot(coordEvent(e).minus(selectEdge3))
 						      /y.lengthSquared());
-			selectState = 0;
 			System.out.println("Corner: " + selectCorner.toString());
 			System.out.println("Dir 1: " + selectEdge1.toString());
 			System.out.println("Dir 2: " + selectEdge2.toString());
 			System.out.println("Dir 3: " + selectEdge3.toString());
+			gquery.setVisible(true);
+			break;
+		    case 4:	// end of Sphere
+			selectRadius = (coordEvent(e).minus(selectCorner)).length();
+			System.out.println("Corner: " + selectCorner.toString());
+			System.out.println("Radius: " + selectRadius);
 			gquery.setVisible(true);
 			break;
 		    default:
@@ -204,7 +229,7 @@ public class SimulationView extends JLabel
 	    g.drawRect(rectX, rectY, deltaX, deltaY);
 	    oldCurrentY = currentY;
 	    }
-	else { // selecting x and y bounds
+	else if(selectState == 1) { // selecting x and y bounds
 	    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
 	    int deltaX = Math.abs(oldCurrentX - selStartX);
 	    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
@@ -218,6 +243,23 @@ public class SimulationView extends JLabel
 	    rectY = selStartY < currentY ? selStartY : currentY;
 	    deltaY = Math.abs(currentY - selStartY);
 	    g.drawRect(rectX, rectY, deltaX, deltaY);
+	    oldCurrentX = currentX;
+	    oldCurrentY = currentY;
+	    }
+	else { // selecting sphere
+	    int size = (int) Math.sqrt((selStartX - oldCurrentX)
+				 *(selStartX - oldCurrentX)
+				 + (selStartY - oldCurrentY)
+				 *(selStartY - oldCurrentY));
+	    
+	    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
+	    int currentX = e.getX();
+	    int currentY = e.getY();
+	    size = (int) Math.sqrt((selStartX - currentX)
+				 *(selStartX - currentX)
+				 + (selStartY - currentY)
+				 *(selStartY - currentY));
+	    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
 	    oldCurrentX = currentX;
 	    oldCurrentY = currentY;
 	    }
@@ -508,14 +550,25 @@ public class SimulationView extends JLabel
 	public void componentShown(ComponentEvent e) { }
     public void makeBox(String groupName) 
     {
-	PythonExecute code = new PythonExecute("charm.createGroupAttributeBox(\""
+	if(selectState == 3) {
+	    PythonExecute code = new PythonExecute("charm.createGroupAttributeBox(\""
 					   + groupName + "\", \"All\", \"position\","
 					   + selectCorner.toPyString() + ","
 					   + selectEdge1.toPyString() + ","
 					   + selectEdge2.toPyString() + ","
 					   + selectEdge3.toPyString() + ")\n",
+						   false, true, 0);
+	    windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+	    }
+	else if(selectState == 4) {
+	    PythonExecute code = new PythonExecute("charm.createGroupAttributeSphere(\""
+					   + groupName + "\", \"All\", \"position\","
+					   + selectCorner.toPyString() + ","
+					   + selectRadius + ")\n",
 					       false, true, 0);
-	windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+	    windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+	    }
+	selectState = 0;
     }
 	private class ExecutePythonCode extends CcsThread.request {
 		public ExecutePythonCode(byte[] s) {
