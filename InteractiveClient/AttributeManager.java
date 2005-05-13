@@ -1,5 +1,9 @@
 //AtttributeManager.java
 
+import charm.ccs.PythonAbstract;
+import charm.ccs.PythonExecute;
+import charm.ccs.PythonPrint;
+import charm.ccs.PythonFinished;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -9,9 +13,12 @@ import javax.swing.event.*;
 public class AttributeManager extends Manager implements ActionListener, TreeSelectionListener, KeyListener {
 	Simulation sim;
 	JTree tree;
+	DefaultTreeModel treeModel;
 	JPanel displayPanel;
 	JButton applyButton;
+	JButton refreshButton;
 	DefaultMutableTreeNode rootNode;
+	DefaultMutableTreeNode familyNode;
 	JLabel attributeNameLabel;
 	JLabel attributeTypeLabel;
 	JLabel attributeDimensionalityLabel;
@@ -27,7 +34,9 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		rootNode.add(new DefaultMutableTreeNode("Fake Family 1"));
 		rootNode.add(new DefaultMutableTreeNode("Fake Family 2"));
 		
-		tree = new JTree(rootNode);
+		treeModel = new DefaultTreeModel(rootNode);
+		tree = new JTree(treeModel);
+		tree.setEditable(true);
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.addTreeSelectionListener(this);
 		
@@ -43,9 +52,14 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		applyButton.setActionCommand("apply");
 		applyButton.addActionListener(this);
 		
+		refreshButton = new JButton("Refresh");
+		refreshButton.setActionCommand("refresh");
+		refreshButton.addActionListener(this);
+
 		JPanel buttonPanel = new JPanel();
 		buttonPanel.add(button);
 		buttonPanel.add(applyButton);
+		buttonPanel.add(refreshButton);
 		
 		JPanel rhs = new JPanel(new BorderLayout());
 		rhs.add(displayPanel, BorderLayout.CENTER);
@@ -63,6 +77,8 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		} else if(e.getActionCommand().equals("apply")) {
 			applyButton.setEnabled(false);
 			System.out.println("Applied!");
+		} else if(e.getActionCommand().equals("refresh")) {
+		    refreshData();
 		}
 	}
 	
@@ -94,8 +110,45 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 	
 	public void refreshData() {
 		System.out.println("AttributeManager refreshed!");
+		// Convert the Python list into a comma separated string
+		String getFamiliesCode
+		    = "ck.printclient(str(charm.getFamilies()).replace(\"', '\",\",\").strip(\"[]'\"))\n";
+		PythonExecute code = new PythonExecute(getFamiliesCode,
+						       false, true, 0);
+		HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetFamiliesHandler());
 	}
 	
 	public void keyTyped(KeyEvent e) { }
 	public void keyPressed(KeyEvent e) { }
+	public class GetFamiliesHandler extends PyPrintHandler {
+		public void handle(String result) {
+			System.out.println("Return from code execution: \"" + result + "\"");
+			rootNode.removeAllChildren();
+			treeModel.reload();
+			DelimitedStringEnumeration flist
+			    = new DelimitedStringEnumeration(result);
+			while(flist.hasMoreElements()) {
+			    String familyName = (String) flist.nextElement();
+			    familyNode = new DefaultMutableTreeNode(familyName);
+			    treeModel.insertNodeInto(familyNode, rootNode, rootNode.getChildCount());
+			    String getAttributesCode = "ck.printclient(str(charm.getAttributes('"
+				+ familyName
+				+ "')).replace(\"', '\",\",\").strip(\"[]'\"))\n";
+			    PythonExecute code = new PythonExecute(getAttributesCode,
+						       false, true, 0);
+			    HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetAttributesHandler());
+			    }
+		}
+	}
+	public class GetAttributesHandler extends PyPrintHandler {
+		public void handle(String result) {
+		    System.out.println("Return from code execution: \"" + result + "\"");
+		    DelimitedStringEnumeration alist
+			    = new DelimitedStringEnumeration(result);
+			while(alist.hasMoreElements()) {
+			    String aName = (String) alist.nextElement();
+			    treeModel.insertNodeInto(new DefaultMutableTreeNode(aName), familyNode, familyNode.getChildCount());
+			    }
+		}
+	    }
 }
