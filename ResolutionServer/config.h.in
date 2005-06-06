@@ -7,3 +7,5 @@
 /* xdr_hyper and xdr_u_hyper functions */
 
 #undef HAVE_XDR_HYPER
+
+#undef u_int64_t
