@@ -12,6 +12,8 @@
 #include <popt.h>
 #endif
 
+#include "config.h"
+
 #include "pup_network.h"
 
 #include "ResolutionServer.h"
@@ -299,7 +301,7 @@ void Main::depthCalculated(CkReductionMsg* m) {
 			//cout << "Depth calculated by mostest, z = " << mostPair->second << " with value " << int(mostPair->first) << endl;
 			z = &(mostPair->second);
 			break;
-		case sizeof(pair<double, double>):
+		case 1+sizeof(pair<double, double>):
 			potPair = static_cast<pair<double, double> *>(m->getData());
 			//cout << "Depth calculated by potential, z = " << potPair->second << " with potential " << potPair->first << endl;
 			z = &(potPair->second);

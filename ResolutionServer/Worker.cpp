@@ -14,6 +14,7 @@
 #include <boost/iterator/filter_iterator.hpp>
 #include <boost/iterator/counting_iterator.hpp>
 
+#include "config.h"
 #include "tree_xdr.h"
 #include "SiXFormat.h"
 #include "TipsyFormat.h"
@@ -104,7 +105,9 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		} else
 			startParticle += leftover;
 		
-		sim->loadAttribute(iter->first, "position", numParticles, startParticle);
+		if(!sim->loadAttribute(iter->first, "position", numParticles,
+				       startParticle))
+		    cerr << "Loading positions failed\n" ;
 		TypedArray& arr = iter->second.attributes["position"];
 		//grow the bounding box with this family's bounding box
 		boundingBox.grow(arr.getMinValue(Type2Type<Vector3D<float> >()));
@@ -503,12 +506,12 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		return;
 	}
 	
-	float delta = 2 * req.x.length() / req.width;
+	double delta = 2 * req.x.length() / req.width;
 	if(verbosity > 3 && thisIndex == 0)
 		cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
-	float x, y;
+	double x, y;
 	unsigned int pixel;
 	
 	if(verbosity > 2 && thisIndex == 0) {
@@ -641,9 +644,13 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 					y = dot(req.y, positions[*iter] - req.o);
 					if(y > -1 && y < 1) {
 						if(req.radius == 0) {
-							pixel = static_cast<unsigned int>(req.width * (x + 1) / 2) + req.width * static_cast<unsigned int>(req.height * (1 - y) / 2);
-							if(pixel >= imageSize)
-								cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+							pixel = (unsigned int) (floor(req.width * (x + 1) / 2) + req.width * floor(req.height * (1 - y) / 2));
+							if(pixel >= imageSize) {
+							    cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
+							    CkPrintf("should stop\n");
+							    assert(0 == 1);
+							    }
+							
 							if(image[pixel] < colors[*iter])
 								image[pixel] = colors[*iter];
 						} else
@@ -1060,7 +1067,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 				}
 			}
 			pair<double, double> lowest(minPotential, z);
-			contribute(sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
+			contribute(1+sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
 			break;
 		}
 	}

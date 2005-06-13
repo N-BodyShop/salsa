@@ -5,6 +5,7 @@
 
 #include <sstream>
 
+#include "config.h"
 #include "pup_network.h"
 #include "ResolutionServer.h"
 

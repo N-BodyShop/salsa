@@ -52,9 +52,9 @@ AC_CONFIG_SRCDIR([HighLevelPython.cpp])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
-AC_PROG_CXX
-AC_PROG_CC
 AC_PATH_PROG([CHARMC], [charmc], [../charm/bin], [$PATH:../charm/bin])
+AC_PROG_CXX (charmc)
+AC_PROG_CC (charmc)
 
 # Checks for libraries.
 AC_CHECK_LIB([popt], [poptGetContext])
