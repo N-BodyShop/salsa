@@ -26,12 +26,19 @@ mainmodule ResolutionServer {
 		entry [threaded] void localParticleCode(CkCcsRequestMsg* m);
 		
 		entry void executePythonCode(CkCcsRequestMsg* m);
-		entry [python] void getFamilies(int handle);
-		entry [python] void getAttributes(int handle);
-		entry [python] void getGroups(int handle);
-		entry [python] void getNumParticles(int);
+		entry [python "return position with a group of the minimum value of an attribute"]
+			void findAttributeMin(int handle);
+		entry [python "return list of families"]
+			void getFamilies(int handle);
+		entry [python "return list of attributes of a family"]
+			void getAttributes(int handle);
+		entry [python "return list of groups"]
+			void getGroups(int handle);
+		entry [python "return number of particles in a family"]
+			void getNumParticles(int);
 		entry [python] void getAttributeRange(int handle);
-		entry [python] void getAttributeSum(int handle);
+		entry [python "return sum within a group of an attribute"]
+			void getAttributeSum(int handle);
 		entry [python] void getDimensions(int handle);
 		entry [python] void getDataType(int handle);
 		entry [python] void getCenterOfMass(int handle);
@@ -61,6 +68,9 @@ mainmodule ResolutionServer {
 		entry void getAttributeInformation(CkCcsRequestMsg* m);
 		entry void getColoringInformation(CkCcsRequestMsg* m);
 	
+		entry void findAttributeMin(const std::string& groupName,
+			      const std::string& attributeName,
+			      const CkCallback& cb);
 		entry void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
 		entry void getCenterOfMass(std::string const& groupName, CkCallback const& cb);
 		entry void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);

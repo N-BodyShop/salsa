@@ -290,23 +290,9 @@ void Main::depthCalculated(CkReductionMsg* m) {
 	double* z = 0;
 	pair<byte, double>* mostPair;
 	pair<double, double>* potPair;
-	switch(m->getSize()) {
-		case 3 * sizeof(double):
-			z = static_cast<double *>(m->getData());
-			*z /= *(z + 1);
-			//cout << "Depth calculated by average, z = " << *z << " with " << *(z + 1) << " particles in the frame" << endl;
-			break;
-		case sizeof(pair<byte, double>):
-			mostPair = static_cast<pair<byte, double> *>(m->getData());
-			//cout << "Depth calculated by mostest, z = " << mostPair->second << " with value " << int(mostPair->first) << endl;
-			z = &(mostPair->second);
-			break;
-		case 1+sizeof(pair<double, double>):
 			potPair = static_cast<pair<double, double> *>(m->getData());
 			//cout << "Depth calculated by potential, z = " << potPair->second << " with potential " << potPair->first << endl;
 			z = &(potPair->second);
-			break;
-	}
 	ostringstream oss;
 	oss << *z;
 	string result = oss.str();

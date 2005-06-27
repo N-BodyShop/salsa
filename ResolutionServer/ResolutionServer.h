@@ -174,6 +174,7 @@ public:
 	void initializePython();
 	void executePythonCode(CkCcsRequestMsg* m);
 	void localParticleCode(CkCcsRequestMsg * m);
+	void findAttributeMin(int handle);
 	void getFamilies(int handle);
 	void getAttributes(int handle);
 	void getGroups(int handle);
@@ -275,6 +276,9 @@ public:
 	void setActiveGroup(const std::string& s, const CkCallback& cb);
 	void setDrawVectors(const std::string& s, const CkCallback& cb);
 
+	void findAttributeMin(const std::string& groupName,
+			      const std::string& attributeName,
+			      const CkCallback& cb);
 	void getAttributeInformation(CkCcsRequestMsg* m);
 	void getColoringInformation(CkCcsRequestMsg* m);
 	

@@ -107,7 +107,7 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		
 		if(!sim->loadAttribute(iter->first, "position", numParticles,
 				       startParticle))
-		    cerr << "Loading positions failed\n" ;
+		    cerr << CkMyPe() << ": Loading positions failed\n" ;
 		TypedArray& arr = iter->second.attributes["position"];
 		//grow the bounding box with this family's bounding box
 		boundingBox.grow(arr.getMinValue(Type2Type<Vector3D<float> >()));
@@ -1000,6 +1000,8 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	
 	//should only use active particles to calculate this!!!!
 	
+	req.centerFindingMethod = 2;  // potential only for now
+	
 	switch(req.centerFindingMethod) {
 		case 0: { //average of all pixels in frame	
 			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
@@ -1067,7 +1069,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 				}
 			}
 			pair<double, double> lowest(minPotential, z);
-			contribute(1+sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
+			contribute(sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
 			break;
 		}
 	}
@@ -1166,6 +1168,80 @@ string javaFormat(T x) {
 	else
 		oss << x;
 	return oss.str();
+}
+
+template <typename T, typename IteratorType>
+double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
+		    IteratorType &itMin) {
+	double min = HUGE;
+	itMin = begin;
+	
+	T const* array = arr.getArray(Type2Type<T>());
+	if(array == 0)
+		return min;
+	for(; begin != end; ++begin)
+	    if(array[*begin] < min) {
+		min = array[*begin];
+		itMin = begin;
+		}
+	return min;
+}
+
+void Worker::findAttributeMin(const string& groupName, const string& attributeName, const CkCallback& cb) {
+    double aMin = HUGE;
+    pair<double, Vector3D<double> > compair;
+    
+	GroupMap::iterator gIter = groups.find(groupName);
+	if(gIter != groups.end()) {
+		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		    double min;
+		    GroupIterator itGMin;
+		    
+			Simulation::iterator simIter = sim->find(*famIter);
+			TypedArray& arr = simIter->second.attributes[attributeName];
+			//only makes sense for scalar values
+			if(arr.dimensions != 1) {
+				cerr << "This isn't a scalar attribute" << endl;
+				continue;
+			}
+			if(arr.data == 0) //attribute not loaded
+				sim->loadAttribute(*famIter, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
+			GroupIterator iter = g->make_begin_iterator(*famIter);
+			GroupIterator end = g->make_end_iterator(*famIter);
+			switch(arr.code) {
+				case int8:
+					min = minAttribute<Code2Type<int8>::type>(arr, iter, end, itGMin); break;
+				case uint8:
+					min = minAttribute<Code2Type<uint8>::type>(arr, iter, end, itGMin); break;
+				case int16:
+					min = minAttribute<Code2Type<int16>::type>(arr, iter, end, itGMin); break;
+				case uint16:
+					min = minAttribute<Code2Type<uint16>::type>(arr, iter, end, itGMin); break;
+				case int32:
+					min = minAttribute<Code2Type<int32>::type>(arr, iter, end, itGMin); break;
+				case uint32:
+					min = minAttribute<Code2Type<uint32>::type>(arr, iter, end, itGMin); break;
+				case int64:
+					min = minAttribute<Code2Type<int64>::type>(arr, iter, end, itGMin); break;
+				case uint64:
+					min = minAttribute<Code2Type<uint64>::type>(arr, iter, end, itGMin); break;
+				case float32:
+					min = minAttribute<Code2Type<float32>::type>(arr, iter, end, itGMin); break;
+				case float64:
+					min = minAttribute<Code2Type<float64>::type>(arr, iter, end, itGMin); break;
+			}
+			if(min < aMin) {
+			    aMin = min;
+			    ParticleFamily& family = (*sim)[*famIter];
+			    Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+			    compair.first = min;
+			    compair.second = positions[*itGMin];
+			    }
+		}
+		
+	}
+	contribute(sizeof(compair), &compair, pairDoubleVector3DMin, cb);
 }
 
 void Worker::getAttributeInformation(CkCcsRequestMsg* m) {	

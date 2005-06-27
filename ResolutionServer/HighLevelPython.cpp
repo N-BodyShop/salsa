@@ -105,6 +105,23 @@ void Main::getAttributeSum(int handle)
     pythonReturn(handle,Py_BuildValue("d", sum));
     }
 
+void Main::findAttributeMin(int handle)
+{
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *groupName, *attributeName;
+    PyArg_ParseTuple(arg, "ss", &groupName, &attributeName);
+    CkReductionMsg* mesg;
+    pair<double, Vector3D<double> > compair;
+
+    pythonSleep(handle);
+    workers.findAttributeMin(groupName, attributeName,
+			     createCallbackResumeThread(mesg, compair));
+    delete mesg;
+    Vector3D<double> retval = compair.second;
+    pythonAwake(handle);
+    pythonReturn(handle,Py_BuildValue("(ddd)", retval.x, retval.y, retval.z));
+    }
+
 void Main::getDimensions(int handle)
 {
     char *familyName, *attributeName;
