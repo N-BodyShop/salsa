@@ -52,9 +52,9 @@ AC_CONFIG_SRCDIR([HighLevelPython.cpp])
 AC_CONFIG_HEADER([config.h])
 
 # Checks for programs.
-AC_PATH_PROG([CHARMC], [charmc], [../charm/bin], [$PATH:../charm/bin])
-AC_PROG_CXX (charmc)
-AC_PROG_CC (charmc)
+AC_PATH_PROG([CHARMC], [charmc], [$CHARM_DIR/bin/charmc], [$PATH:$CHARM_DIR/bin])
+AC_PROG_CXX ($CHARMC)
+AC_PROG_CC ($CHARMC)
 
 # Checks for libraries.
 AC_CHECK_LIB([popt], [poptGetContext])
@@ -65,7 +65,7 @@ AC_CHECK_LIB([Tipsy], [main])
 
 # find boost
 ax_boost_header=no
-for boost in $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 ; do
+for boost in $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost

@@ -1,0 +1,20 @@
+Build instructions:
+
+Make sure all the "salsa" modules are checked out.
+
+Install Charm (charm.cs.uiuc.edu) : after building "charm++", build the
+"liveViz" and the "pythonCCS" modules:
+cd src/libs/ck-libs/liveViz; make
+cd src/libs/ck-libs/pythonCCS; make
+
+Set the CHARM_DIR environment variable to point at the source directory
+for Charm.
+
+"cd ../InteractiveClient; make" to compile the Java client.
+
+Unpack (but no need to build) boost (www.boost.org) in the parent
+directory.
+
+Install and build the Apache Xerces C++ XML Parser (xml.apache.org) in
+the parent directory.  Set the XERCESROOT environment variable to point
+at this directory.

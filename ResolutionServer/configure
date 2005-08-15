@@ -1295,7 +1295,7 @@ else
   ;;
   *)
   as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-as_dummy="$PATH:../charm/bin"
+as_dummy="$PATH:$CHARM_DIR/bin"
 for as_dir in $as_dummy
 do
   IFS=$as_save_IFS
@@ -1309,7 +1309,7 @@ do
 done
 done
 
-  test -z "$ac_cv_path_CHARMC" && ac_cv_path_CHARMC="../charm/bin"
+  test -z "$ac_cv_path_CHARMC" && ac_cv_path_CHARMC="$CHARM_DIR/bin/charmc"
   ;;
 esac
 fi
@@ -1845,7 +1845,7 @@ ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
- (charmc)
+ ($CHARMC)
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -2510,7 +2510,7 @@ ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
- (charmc)
+ ($CHARMC)
 
 # Checks for libraries.
 
@@ -3453,7 +3453,7 @@ fi
 
 # find boost
 ax_boost_header=no
-for boost in $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 ; do
+for boost in $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost
