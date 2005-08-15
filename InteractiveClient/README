@@ -1,0 +1,8 @@
+Build instructions:
+
+Set the environment variable "CHARM_DIR" to point to the directory where
+the source of Charm++ is installed.  A recent version of Charm++ will be
+needed since this package is developed in concert with the Charm
+developers.
+
+Type: "make".

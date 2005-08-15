@@ -19,7 +19,7 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 #	ListSimulations.class ChooseSimulation.class AttributeManager.class \
 #	WindowManager.class
 
-CHARM_JAVA = $(HOME)/src/charm/java
+CHARM_JAVA = $(CHARM_DIR)/java
 
 TARGET = Salsa
 VERSION = 0.1
