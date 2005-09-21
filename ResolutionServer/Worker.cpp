@@ -537,7 +537,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		byte* colors = family.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
 		//if the color doesn't exist, use the family color
 		if(colors == 0)
-			colors = family.getAttribute(coloringPrefix + "familyColor", Type2Type<byte>());
+			colors = family.getAttribute(coloringPrefix + "Family Colors", Type2Type<byte>());
+		assert(colors != 0);
 		
 		bool drawVectorsThisFamily = drawVectors;
 		AttributeMap::iterator vectorIter;
