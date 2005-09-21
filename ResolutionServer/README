@@ -21,7 +21,7 @@ directory.
     wget http://puzzle.dl.sourceforge.net/sourceforge/boost/boost_1_33_0.tar.gz
 
 5) Install and build the Apache Xerces C++ XML Parser (xml.apache.org) in
-the parent directory.  Set the XERCESROOT environment variable to point
+the parent directory.  Set the XERCESCROOT environment variable to point
 at this directory.
 
     wget ftp://www.ibiblio.org/pub/mirrors/apache/xml/xerces-c/xerces-c-src_2_6_0.tar.gz
