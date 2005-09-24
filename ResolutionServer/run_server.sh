@@ -8,5 +8,5 @@ end
 
 set HOST = `hostname`
 #./charmrun ++server ++server-port $PORT ./wrapper $* simlist < /dev/null >& /dev/pts/2 &
-./charmrun ++server ++server-port $PORT ./wrapper $* simlist < /dev/null >& /dev/null &
+./charmrun ++server ++server-port $PORT ./ResolutionServer $* simlist
 echo "$HOST $PORT"
