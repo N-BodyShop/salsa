@@ -35,11 +35,7 @@ at this directory.
     runConfigure -plinux -cgcc -xg++ -minmem -nsocket -tnative -rpthread
     gmake
 
-6) Make the same link to the Python development files that you did for
-the pythonCCS module:
-	ln -s /usr/include/python2.?
-
-Type "configure". Type "make"
+6) Type "configure". Type "make"
 
 To run:
 
