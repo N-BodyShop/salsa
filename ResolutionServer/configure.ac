@@ -5,25 +5,18 @@ AC_DEFUN([AX_PYTHON],
 [AC_MSG_CHECKING(for python build information)
 AC_MSG_RESULT([])
 for python in python2.4 python2.3 python2.2 python2.1 python; do
-AC_CHECK_PROGS(PYTHON_BIN, [$python])
-ax_python_bin=$PYTHON_BIN
-if test x$ax_python_bin != x; then
+   AC_CHECK_HEADER([$python/Python.h],
+   	[[ax_python_header=/usr/include/$python]],
+   	ax_python_header=no)
    LDFLAGS="-L/usr/lib/$python/config -l$python"
-   AC_CHECK_LIB($ax_python_bin, main, ax_python_lib=$python, ax_python_lib=no)
-   AC_CHECK_HEADER([$ax_python_bin/Python.h],
-   [[ax_python_header=`locate $ax_python_bin/Python.h | sed -e s,/Python.h,,`]],
-   ax_python_header=no)
+   AC_CHECK_LIB($python, main, ax_python_lib=$python, ax_python_lib=no)
    if test $ax_python_lib != no; then
      if test $ax_python_header != no; then
 	ax_python_lib="-L/usr/lib/$python/config -l$python"
        break;
      fi
    fi
-fi
 done
-if test x$ax_python_bin = x; then
-   ax_python_bin=no
-fi
 if test x$ax_python_header = x; then
    ax_python_header=no
 fi
@@ -32,7 +25,6 @@ if test x"$ax_python_lib" = x; then
 fi
 
 AC_MSG_RESULT([  results of the Python check:])
-AC_MSG_RESULT([    Binary:      $ax_python_bin])
 AC_MSG_RESULT([    Library:     $ax_python_lib])
 AC_MSG_RESULT([    Include Dir: $ax_python_header])
 
@@ -113,6 +105,7 @@ AC_CHECK_TYPE(u_int64_t, unsigned long long)
 AC_HEADER_STDC
 AC_CHECK_FUNCS([floor memset sqrt xdr_hyper])
 
+rm -f python
 ln -s $PYTHON_INCLUDE_DIR python
 
 AC_CONFIG_SUBDIRS(../structures)
