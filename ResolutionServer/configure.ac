@@ -75,6 +75,11 @@ AC_SUBST(BOOST_PATH)
 
 # find xerces-c
 ax_xercesc_header=no
+if test "x$XERCESCROOT" != "x"; then
+  if test -f $XERCESCROOT/include/xercesc/sax2/DefaultHandler.hpp ; then
+       ax_xercesc_header=yes
+   fi
+else
 for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_5_0 $PWD/../xerces-c-src_2_6_0 $PWD/../xerces-c-src_2_7_0 ; do
    if test -f $xercesc/include/xercesc/sax2/DefaultHandler.hpp ; then
        ax_xercesc_header=yes
@@ -82,6 +87,7 @@ for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_
        break;
    fi
 done
+fi
 if test $ax_xercesc_header != yes; then
    echo xercesc headers not found
    echo Download boost from www.apache.org and install in $PWD/..
