@@ -184,6 +184,7 @@ public:
 	void getDimensions(int handle);
 	void getDataType(int handle);
 	void getCenterOfMass(int handle);
+	void createScalarAttribute(int handle);
 	void createGroup_Family(int handle);
 	void createGroup_AttributeRange(int handle);
 	void createGroupAttributeSphere(int handle);
@@ -284,7 +285,9 @@ public:
 	
 	void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
 	void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
-
+	void createScalarAttribute(std::string const& familyName,
+				   std::string const& attributeName,
+				   CkCallback const& cb);
 	void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
 	void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 	void createGroup_AttributeSphere(std::string const& groupName,

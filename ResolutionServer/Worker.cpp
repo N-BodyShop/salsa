@@ -1454,6 +1454,18 @@ void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
 	contribute(sizeof(compair), &compair, pairDoubleVector3DSum, cb);
 }
 
+void Worker::createScalarAttribute(std::string const& familyName, std::string const& attributeName, CkCallback const& cb) 
+{
+    int result = 1;
+    float* empty;
+    
+    Simulation::iterator simIter = sim->find(familyName);
+    empty = new float[simIter->second.count.numParticles];
+    
+    simIter->second.addAttribute(attributeName, TypedArray(empty, simIter->second.count.numParticles));
+    contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
 void Worker::createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb) {
 	int result = 0;
 	//parent group idiom: look up parent group by name

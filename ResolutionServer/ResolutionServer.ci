@@ -42,6 +42,8 @@ mainmodule ResolutionServer {
 		entry [python] void getDimensions(int handle);
 		entry [python] void getDataType(int handle);
 		entry [python] void getCenterOfMass(int handle);
+		entry [python "create a new scalar attribute in a family"]
+			void createScalarAttribute(int handle);
 		entry [python] void createGroup_Family(int handle);
 		entry [python] void createGroup_AttributeRange(int handle);
 		entry [python] void createGroupAttributeSphere(int handle);
@@ -73,6 +75,9 @@ mainmodule ResolutionServer {
 			      const CkCallback& cb);
 		entry void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
 		entry void getCenterOfMass(std::string const& groupName, CkCallback const& cb);
+		entry void createScalarAttribute(std::string const& familyName,
+					         std::string const& attributeName,
+					         CkCallback const& cb);
 		entry void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
 		entry void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 		entry void createGroup_AttributeSphere(const std::string& groupName, const std::string& parentName, const std::string& attributeName, Vector3D<double> center, double size, const CkCallback& cb);

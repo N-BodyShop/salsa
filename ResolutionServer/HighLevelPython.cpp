@@ -90,6 +90,20 @@ void Main::getAttributeRange(int handle) {
 				      getScalarMax(attrIter->second)));
     }
 
+void Main::createScalarAttribute(int handle) {
+    char *familyName, *attributeName;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    CkReductionMsg* mesg;
+    int result;
+
+    workers.createScalarAttribute(familyName, attributeName,
+			       createCallbackResumeThread(mesg, result));
+    delete mesg;
+
+    pythonReturn(handle);
+    }
+
 void Main::getAttributeSum(int handle)
 {
     PyObject *arg = PythonObject::pythonGetArg(handle);
