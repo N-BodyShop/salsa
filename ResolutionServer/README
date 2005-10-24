@@ -39,4 +39,7 @@ at this directory.
 
 To run:
 
-See "run_server.sh" for an example command line.
+See "run_server.sh" for an example command line for the server.
+
+To start the client, use "java -jar ../InteractiveClient/Salsa.jar
+HOSTNAME PORT_NUMBER" where these are printed out by the server.
