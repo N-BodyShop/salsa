@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include <sstream>
+#include <assert.h>
 
 #include "config.h"
 #include "pup_network.h"
@@ -16,6 +17,9 @@ void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 		return;
 	Vector3D<double>* vertices = reinterpret_cast<Vector3D<double> *>(m->data);
 	//cout << "Got a box definition" << endl;
+	// This is done in python now
+	assert(0);
+#if 0
 	PUP::fromNetwork p;
 	p(vertices, 8);
 	
@@ -30,6 +34,7 @@ void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 	if(CkMyNode() == 0)
 		CcsSendDelayedReply(m->reply, stringID.length(), stringID.c_str());
 	delete m;
+#endif
 }
 
 void MetaInformationHandler::clearBoxes(CkCcsRequestMsg* m) {
