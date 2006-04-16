@@ -6,3 +6,6 @@ needed since this package is developed in concert with the Charm
 developers.
 
 Type: "make".
+
+See the "ResolutionServer" module to build and run a server to connect
+to.
