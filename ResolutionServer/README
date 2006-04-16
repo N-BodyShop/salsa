@@ -13,8 +13,11 @@ Unpack files from ResolutionServer-xxx.tar.gz distribution.
 "liveViz" and the "pythonCCS" modules:
 cd tmp/libs/ck-libs/liveViz; make
 
-The python module needs to know where the python development files are:
-cd tmp/libs/ck-libs/pythonCCS; ln -s /usr/include/python2.? ./python; make
+A link to the include files for your Python developement is required
+before building pythonCCS.  For example on Fedora Core 4 you would
+need to type the following:
+
+cd tmp/libs/ck-libs/pythonCCS; ln -s /usr/include/python2.4 ./python; make
 
 Set the CHARM_DIR environment variable to point at the source directory
 for Charm.
