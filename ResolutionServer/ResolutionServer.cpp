@@ -14,8 +14,6 @@
 
 #include "config.h"
 
-#include "pup_network.h"
-
 #include "ResolutionServer.h"
 
 #include "SiXFormat.h"
@@ -135,11 +133,8 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
 	CcsRegisterHandler("CreateColoring", CkCallback(CkIndex_Main::makeColoring(0), thishandle));
 	CcsRegisterHandler("ShutdownServer", CkCallback(CkIndex_Main::shutdownServer(0), thishandle));
-	CcsRegisterHandler("SpecifyBox", CkCallback(CkIndex_MetaInformationHandler::specifyBox(0), metaProxy));
 	CcsRegisterHandler("ClearBoxes", CkCallback(CkIndex_MetaInformationHandler::clearBoxes(0), metaProxy));
-	CcsRegisterHandler("SpecifySphere", CkCallback(CkIndex_MetaInformationHandler::specifySphere(0), metaProxy));
 	CcsRegisterHandler("ClearSpheres", CkCallback(CkIndex_MetaInformationHandler::clearSpheres(0), metaProxy));
-	CcsRegisterHandler("ValueRange", CkCallback(CkIndex_Worker::valueRange(0), CkArrayIndex1D(0), workers));
 	CcsRegisterHandler("Activate", CkCallback(CkIndex_Main::activate(0), thishandle));
 	CcsRegisterHandler("Statistics", CkCallback(CkIndex_Main::collectStats(0), thishandle));
 	CcsRegisterHandler("Center", CkCallback(CkIndex_Main::calculateDepth(0), thishandle));

@@ -22,7 +22,6 @@
 #include "Interpolate.h"
 #include "Group.h"
 
-#include "pup_network.h"
 #include "ResolutionServer.h"
 #include "Reductions.h"
 #include "Space.h"
@@ -715,36 +714,6 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 	}
 	cout << "contributing stats" << endl;
 	contribute(sizeof(GroupStatistics), &stats, mergeStatistics, cb);
-}
-
-void Worker::valueRange(CkCcsRequestMsg* m) {
-	string attributeName(m->data, m->length);
-	
-	double minValue = HUGE_VAL;
-	double maxValue = -HUGE_VAL;
-	double newMinVal, newMaxVal;
-	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
-		AttributeMap::iterator attrIter = iter->second.attributes.find(attributeName);
-		if(attrIter != iter->second.attributes.end()) {
-			newMinVal = getScalarMin(attrIter->second);
-			newMaxVal = getScalarMax(attrIter->second);
-			if(newMinVal < minValue)
-				minValue = newMinVal;
-			if(newMaxVal > maxValue)
-				maxValue = newMaxVal;
-		} else if(attributeName == "family") {
-			minValue = 0;
-			maxValue = sim->size() - 1;
-		}
-	}
-	
-	double minMaxPair[2];
-	minMaxPair[0] = minValue;
-	minMaxPair[1] = maxValue;
-	PUP::toNetwork p;
-	p(minMaxPair, 2);
-	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
-	delete m;
 }
 
 template <typename T>

@@ -7,7 +7,6 @@
 #include <assert.h>
 
 #include "config.h"
-#include "pup_network.h"
 #include "ResolutionServer.h"
 
 using namespace std;
@@ -46,26 +45,6 @@ void MetaInformationHandler::clearBoxes(CkCcsRequestMsg* m) {
 		unsigned char success = 1;
 		CcsSendDelayedReply(m->reply, 1, &success);
 	}
-	delete m;
-}
-
-
-void MetaInformationHandler::specifySphere(CkCcsRequestMsg* m) {
-	if(m->length != 4 * sizeof(double))
-		return;
-	Sphere<double>* s = new Sphere<double>;
-	s->origin = *reinterpret_cast<Vector3D<double> *>(m->data);
-	s->radius = *reinterpret_cast<double *>(m->data + 3 * sizeof(double));
-	PUP::fromNetwork p;
-	p | *s;
-	cout << "Got a sphere definition: " << *s << endl;
-	spheres.push_back(s);
-	ostringstream oss;
-	oss << "Sphere " << spheres.size();
-	string stringID = oss.str();
-	regionMap[stringID] = s;
-	if(CkMyNode() == 0)
-		CcsSendDelayedReply(m->reply, stringID.length(), stringID.c_str());
 	delete m;
 }
 

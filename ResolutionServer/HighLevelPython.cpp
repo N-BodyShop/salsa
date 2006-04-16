@@ -1,10 +1,10 @@
 #include <stdint.h>
 #include "config.h"
-#include "ResolutionServer.h"
 
 #include <iostream>
 #include <string>
 
+#include "ResolutionServer.h"
 using namespace std;
 using namespace SimulationHandling;
 

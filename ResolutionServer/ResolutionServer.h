@@ -267,8 +267,6 @@ public:
 	
 	void generateImage(liveVizRequestMsg* m);
 	
-	void valueRange(CkCcsRequestMsg* m);
-	
 	void collectStats(const std::string& id, const CkCallback& cb);
 	
 	void makeColoring(const std::string& specification, const CkCallback& cb);
