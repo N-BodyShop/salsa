@@ -3,10 +3,9 @@
  
 #include <utility>
 
-#include "Reductions.h"
-
 #include "ParticleStatistics.h"
 #include "OrientedBox.h"
+#include "Reductions.h"
 
 CkReduction::reducerType mergeStatistics;
 
