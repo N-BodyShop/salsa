@@ -1,24 +1,36 @@
 STRUCTURES_PATH = ../structures
-BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I/usr/include/python2.2 -I/users/gwl/Projects/boost
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I.
-LDFLAGS += -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib -memory paranoid #-static
-LDLIBS += -lTipsy -lpopt -module liveViz -module PythonCCS -lxerces-c /usr/lib/python2.2/config/libpython2.2.a -lutil -lpthread
 
-CHARMC = $(HOME)/peak/src/charm/bin/charmc
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
+LDFLAGS +=  -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
+LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
+
+PYTHON_INCLUDE_DIR = /usr/include/python2.3
+PYTHON_LIB = -L/usr/lib/python2.3/config -lpython2.3
+
+BOOST_PATH = /users/trq/nchil/src/ResolutionServer/../boost
+BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I$(BOOST_PATH)
+XERCESCROOT = /users/trq/nchil/src/xerces-c-src_2_6_0
+
+LIBS = -lpthread -lpopt 
+CHARMC = /home/trq/peak/src/charm/bin/charmc
 CXX = $(CHARMC)
 CC = $(CXX)
 
 TARGET = ResolutionServer
-VERSION = 0.2-beta2
+VERSION = 0.3
 all: $(TARGET)
 
 $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
 
 Reductions.o: Reductions.decl.h ParticleStatistics.h
 
-$(TARGET): Worker.o MetaInformationHandler.o Reductions.o HighLevelPython.o ../SimulationHandler/SiXFormat.o ../SimulationHandler/TipsyFormat.o
+$(TARGET): ResolutionServer.o Worker.o MetaInformationHandler.o Reductions.o HighLevelPython.o ../SimulationHandler/SiXFormat.o ../SimulationHandler/TipsyFormat.o $(STRUCTURES_PATH)/libTipsy.a
+	$(CXX) -o $(TARGET) $(LDFLAGS) $+ $(LDLIBS)
 
-ResolutionServer.o: PythonInstance.h
+$(STRUCTURES_PATH)/libTipsy.a:
+	cd $(STRUCTURES_PATH); make
+
+ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
 Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h
 
@@ -31,8 +43,16 @@ docs:
 	doxygen $(TARGET).doxygen
 
 dist:
+	make clean
 	mkdir $(TARGET)-$(VERSION)
-	cp Makefile $(TARGET).doxygen *.h *.cpp *.ci $(TARGET)-$(VERSION)/
+	mkdir $(TARGET)-$(VERSION)/SimulationHandler
+	mkdir $(TARGET)-$(VERSION)/structures
+	mkdir $(TARGET)-$(VERSION)/InteractiveClient
+	mkdir $(TARGET)-$(VERSION)/ResolutionServer
+	cp README Makefile configure install-sh config.h.in Makefile.in Run_Salsa.sh run_server.sh run99.std *.h *.cpp *.ci $(TARGET)-$(VERSION)/ResolutionServer
+	cp ../SimulationHandler/Makefile ../SimulationHandler/*.h ../SimulationHandler/*.cpp $(TARGET)-$(VERSION)/SimulationHandler
+	cp ../structures/Makefile ../structures/config.h.in ../structures/configure ../structures/*.h ../structures/*.cpp ../structures/configure $(TARGET)-$(VERSION)/structures
+	cp ../InteractiveClient/Makefile ../InteractiveClient/Manifest ../InteractiveClient/*.java $(TARGET)-$(VERSION)/InteractiveClient
 	tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
 	rm -Rf $(TARGET)-$(VERSION)
 

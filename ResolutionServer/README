@@ -6,21 +6,23 @@ java development environment is required.
 
 1) Make sure all the "salsa" modules are checked out.  "cvs checkout
 salsa" should do this.
+OR
+Unpack files from ResolutionServer-xxx.tar.gz distribution.
 
 2) Install Charm (charm.cs.uiuc.edu) : after building "charm++", build the
 "liveViz" and the "pythonCCS" modules:
-cd src/libs/ck-libs/liveViz; make
+cd tmp/libs/ck-libs/liveViz; make
 
 The python module needs to know where the python development files are:
-cd src/libs/ck-libs/pythonCCS; ln -s /usr/include/python2.? ./python; make
+cd tmp/libs/ck-libs/pythonCCS; ln -s /usr/include/python2.? ./python; make
 
 Set the CHARM_DIR environment variable to point at the source directory
 for Charm.
 
 3) "cd ../InteractiveClient; make" to compile the Java client.
 
-4) Unpack (but no need to build) boost (www.boost.org) in the parent
-directory.
+4) If your linux distribution does not have boost installed, unpack (but no
+need to build) boost (www.boost.org) in the parent directory.
 
     wget http://puzzle.dl.sourceforge.net/sourceforge/boost/boost_1_33_0.tar.gz
 
@@ -28,8 +30,8 @@ directory.
 the parent directory.  Set the XERCESCROOT environment variable to point
 at this directory.
 
-    wget ftp://www.ibiblio.org/pub/mirrors/apache/xml/xerces-c/xerces-c-src_2_6_0.tar.gz
-    export XERCESCROOT=<full path to xerces-c-src2_6_0>
+    wget ftp://www.ibiblio.org/pub/mirrors/apache/xml/xerces-c/source/xerces-c-src_2_7_0.tar.gz
+    export XERCESCROOT=<full path to xerces-c-src2_7_0>
     cd $XERCESCROOT/src/xercesc
     autoconf
     runConfigure -plinux -cgcc -xg++ -minmem -nsocket -tnative -rpthread
@@ -39,7 +41,10 @@ at this directory.
 
 To run:
 
-See "run_server.sh" for an example command line for the server.
+"Run_Salsa.sh" will run a demonstration on the localhost
+
+See "run_server.sh" for an example command line for the server.  Note that
+the server can be run on a remote host.
 
 To start the client, use "java -jar ../InteractiveClient/Salsa.jar
 HOSTNAME PORT_NUMBER" where these are printed out by the server.

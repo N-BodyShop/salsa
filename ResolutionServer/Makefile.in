@@ -17,7 +17,7 @@ CXX = $(CHARMC)
 CC = $(CXX)
 
 TARGET = ResolutionServer
-VERSION = 0.2-beta2
+VERSION = 0.3
 all: $(TARGET)
 
 $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
@@ -43,8 +43,16 @@ docs:
 	doxygen $(TARGET).doxygen
 
 dist:
+	make clean
 	mkdir $(TARGET)-$(VERSION)
-	cp Makefile $(TARGET).doxygen *.h *.cpp *.ci $(TARGET)-$(VERSION)/
+	mkdir $(TARGET)-$(VERSION)/SimulationHandler
+	mkdir $(TARGET)-$(VERSION)/structures
+	mkdir $(TARGET)-$(VERSION)/InteractiveClient
+	mkdir $(TARGET)-$(VERSION)/ResolutionServer
+	cp README Makefile configure install-sh config.h.in Makefile.in Run_Salsa.sh run_server.sh run99.std *.h *.cpp *.ci $(TARGET)-$(VERSION)/ResolutionServer
+	cp ../SimulationHandler/Makefile ../SimulationHandler/*.h ../SimulationHandler/*.cpp $(TARGET)-$(VERSION)/SimulationHandler
+	cp ../structures/Makefile ../structures/config.h.in ../structures/configure ../structures/*.h ../structures/*.cpp ../structures/configure $(TARGET)-$(VERSION)/structures
+	cp ../InteractiveClient/Makefile ../InteractiveClient/Manifest ../InteractiveClient/*.java $(TARGET)-$(VERSION)/InteractiveClient
 	tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
 	rm -Rf $(TARGET)-$(VERSION)
 
