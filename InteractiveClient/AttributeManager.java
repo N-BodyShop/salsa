@@ -9,6 +9,7 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.tree.*;
 import javax.swing.event.*;
+import java.text.*;
 
 public class AttributeManager extends Manager implements ActionListener, TreeSelectionListener, KeyListener {
 	Simulation sim;
@@ -24,6 +25,11 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 	JLabel attributeDimensionalityLabel;
 	JLabel attributeDefinitionLabel;
 	JTextArea attributeCodeArea;
+	JFormattedTextField minValField;
+	JFormattedTextField maxValField;
+
+	JLabel attributeNameField;
+	Box infoPanel;
 	
 	public AttributeManager(WindowManager wm) {
 		super("Salsa: Attribute Manager", wm);
@@ -31,19 +37,54 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		sim = windowManager.sim;
 		
 		rootNode = new DefaultMutableTreeNode(sim.name);
-		rootNode.add(new DefaultMutableTreeNode("Fake Family 1"));
-		rootNode.add(new DefaultMutableTreeNode("Fake Family 2"));
 		
 		treeModel = new DefaultTreeModel(rootNode);
 		tree = new JTree(treeModel);
-		tree.setEditable(true);
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.addTreeSelectionListener(this);
+		refreshData();
 		
 		displayPanel = new JPanel();
 		displayPanel.setBorder(BorderFactory.createTitledBorder("Attribute properties"));
-		displayPanel.add(new JLabel("Stuff goes here"));
+		displayPanel.setLayout(new BoxLayout(displayPanel, BoxLayout.PAGE_AXIS));
 		
+		Box b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Attribute name: "));
+		attributeNameField = new JLabel("");
+		b.add(attributeNameField);
+		displayPanel.add(b);
+
+		infoPanel = new Box(BoxLayout.PAGE_AXIS);
+
+		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Dimension: "));
+		attributeDimensionalityLabel = new JLabel("");
+		b.add(attributeDimensionalityLabel);
+		infoPanel.add(b);
+
+		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Data Type: "));
+		attributeTypeLabel = new JLabel("");
+		b.add(attributeTypeLabel);
+		infoPanel.add(b);
+
+		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Minimum value: "));
+		DecimalFormat format = new DecimalFormat("0.######E0");
+		minValField = new JFormattedTextField(format);
+		minValField.setColumns(10);
+		b.add(minValField);
+		infoPanel.add(b);
+
+		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Maximum value: "));
+		maxValField = new JFormattedTextField(format);
+		maxValField.setColumns(10);
+		b.add(maxValField);
+		infoPanel.add(b);
+
+		displayPanel.add(infoPanel);
+
 		JButton button = new JButton("Create new attribute");
 		button.setActionCommand("new");
 		button.addActionListener(this);
@@ -100,8 +141,28 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			System.out.println("Null selection object!");
 			return;
 		} else {
-			if(node.isLeaf())
-				System.out.println("Selected node was: " + ((String) node.getUserObject()));
+		    if(node.isLeaf()) {
+			// Fire off a request:
+			// charm.getDimensions(family,attribute)
+			// charm.getDataType(family,attribute')
+			// charm.getAttributeRange(family,attribute)
+			System.out.println("Selected node was: "
+					   + ((String) node.getUserObject()));
+			DefaultMutableTreeNode parentNode
+			    = (DefaultMutableTreeNode) node.getParent();
+			String familyName = (String)parentNode.getUserObject();
+			String attrName = (String) node.getUserObject();
+			attributeNameField.setText(attrName);
+			String getRangeCode
+			    = "_family='" + familyName + "'\n"
+			    + "_attribute='" + attrName + "'\n"
+			    + "ck.printclient(str(charm.getDataType(_family,_attribute))+','+str(charm.getDimensions(_family,_attribute))+','+str(charm.getAttributeRange(_family,_attribute)).strip('()'))\n";
+			PythonExecute code = new PythonExecute(getRangeCode,
+							       false, true, 0);
+			HighLevelPython execute =
+			    new HighLevelPython(code, windowManager.ccs,
+						new GetRangeHandler());
+			}
 			else
 				System.out.println("Selected node wasn't a leaf!");
 		}
@@ -129,9 +190,9 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			    = new DelimitedStringEnumeration(result);
 			while(flist.hasMoreElements()) {
 			    String familyName = (String) flist.nextElement();
-			    familyNode = new DefaultMutableTreeNode(familyName);
-			    treeModel.insertNodeInto(familyNode, rootNode, rootNode.getChildCount());
-			    String getAttributesCode = "ck.printclient(str(charm.getAttributes('"
+			    String getAttributesCode = "ck.printclient("
+				+ "'" + familyName 
+				+ ",'+str(charm.getAttributes('"
 				+ familyName
 				+ "')).replace(\"', '\",\",\").strip(\"[]'\"))\n";
 			    PythonExecute code = new PythonExecute(getAttributesCode,
@@ -145,10 +206,34 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		    System.out.println("Return from code execution: \"" + result + "\"");
 		    DelimitedStringEnumeration alist
 			    = new DelimitedStringEnumeration(result);
-			while(alist.hasMoreElements()) {
-			    String aName = (String) alist.nextElement();
-			    treeModel.insertNodeInto(new DefaultMutableTreeNode(aName), familyNode, familyNode.getChildCount());
-			    }
+		    String familyName = (String) alist.nextElement();
+		    familyNode = new DefaultMutableTreeNode(familyName);
+		    treeModel.insertNodeInto(familyNode, rootNode, rootNode.getChildCount());
+		    while(alist.hasMoreElements()) {
+			String aName = (String) alist.nextElement();
+			treeModel.insertNodeInto(new DefaultMutableTreeNode(aName), familyNode, familyNode.getChildCount());
+			}
+		}
+	    }
+
+	public class GetRangeHandler extends PyPrintHandler {
+		public void handle(String result) {
+		    System.out.println("Return from code execution: \"" + result + "\"");
+		    try {
+			DelimitedStringEnumeration alist
+				= new DelimitedStringEnumeration(result);
+			String sValue = (String) alist.nextElement();
+			attributeTypeLabel.setText(sValue);
+			sValue = (String) alist.nextElement();
+			attributeDimensionalityLabel.setText(sValue);
+			sValue = (String) alist.nextElement();
+			minValField.setValue(new Double(sValue));
+			sValue = (String) alist.nextElement();
+			maxValField.setValue(new Double(sValue));
+			}
+		    catch(StringIndexOutOfBoundsException e) {
+			System.err.println("Problem parsing attributes\n");
+			}
 		}
 	    }
 }
