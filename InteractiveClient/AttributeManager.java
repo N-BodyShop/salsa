@@ -24,9 +24,11 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 	JLabel attributeTypeLabel;
 	JLabel attributeDimensionalityLabel;
 	JLabel attributeDefinitionLabel;
+	JLabel numberLabel;
 	JTextArea attributeCodeArea;
 	JFormattedTextField minValField;
 	JFormattedTextField maxValField;
+	JFormattedTextField sumField;
 
 	JLabel attributeNameField;
 	Box infoPanel;
@@ -69,6 +71,12 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		infoPanel.add(b);
 
 		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Number of Particles: "));
+		numberLabel = new JLabel("");
+		b.add(numberLabel);
+		infoPanel.add(b);
+
+		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Minimum value: "));
 		DecimalFormat format = new DecimalFormat("0.######E0");
 		minValField = new JFormattedTextField(format);
@@ -83,6 +91,12 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		b.add(maxValField);
 		infoPanel.add(b);
 
+		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Sum: "));
+		sumField = new JFormattedTextField(format);
+		sumField.setColumns(10);
+		b.add(sumField);
+		infoPanel.add(b);
 		displayPanel.add(infoPanel);
 
 		JButton button = new JButton("Create new attribute");
@@ -146,6 +160,7 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			// charm.getDimensions(family,attribute)
 			// charm.getDataType(family,attribute')
 			// charm.getAttributeRange(family,attribute)
+			// charm.getAttributeSum('All',family,attribute)
 			System.out.println("Selected node was: "
 					   + ((String) node.getUserObject()));
 			DefaultMutableTreeNode parentNode
@@ -156,7 +171,7 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			String getRangeCode
 			    = "_family='" + familyName + "'\n"
 			    + "_attribute='" + attrName + "'\n"
-			    + "ck.printclient(str(charm.getDataType(_family,_attribute))+','+str(charm.getDimensions(_family,_attribute))+','+str(charm.getAttributeRange(_family,_attribute)).strip('()'))\n";
+			    + "ck.printclient(str(charm.getDataType(_family,_attribute))+','+str(charm.getDimensions(_family,_attribute))+','+str(charm.getNumParticles(_family))+','+str(charm.getAttributeRange(_family,_attribute)).strip('()')+','+str(charm.getAttributeSum('All',_family,_attribute)))\n";
 			PythonExecute code = new PythonExecute(getRangeCode,
 							       false, true, 0);
 			HighLevelPython execute =
@@ -227,9 +242,13 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			sValue = (String) alist.nextElement();
 			attributeDimensionalityLabel.setText(sValue);
 			sValue = (String) alist.nextElement();
+			numberLabel.setText(sValue);
+			sValue = (String) alist.nextElement();
 			minValField.setValue(new Double(sValue));
 			sValue = (String) alist.nextElement();
 			maxValField.setValue(new Double(sValue));
+			sValue = (String) alist.nextElement();
+			sumField.setValue(new Double(sValue));
 			}
 		    catch(StringIndexOutOfBoundsException e) {
 			System.err.println("Problem parsing attributes\n");
