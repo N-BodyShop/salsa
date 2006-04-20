@@ -107,13 +107,13 @@ void Main::createScalarAttribute(int handle) {
 void Main::getAttributeSum(int handle)
 {
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    char *groupName, *attributeName;
-    PyArg_ParseTuple(arg, "ss", &groupName, &attributeName);
+    char *groupName, *familyName, *attributeName;
+    PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName);
     CkReductionMsg* mesg;
     double sum;
 
     pythonSleep(handle);
-    workers.getAttributeSum(groupName, attributeName, createCallbackResumeThread(mesg, sum));
+    workers.getAttributeSum(groupName, familyName, attributeName, createCallbackResumeThread(mesg, sum));
     delete mesg;
     pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("d", sum));

@@ -281,7 +281,10 @@ public:
 	void getAttributeInformation(CkCcsRequestMsg* m);
 	void getColoringInformation(CkCcsRequestMsg* m);
 	
-	void getAttributeSum(const std::string& groupName, const std::string& attributeName, const CkCallback& cb);
+	void getAttributeSum(const std::string& groupName,
+			     const std::string& familyName,
+			     const std::string& attributeName,
+			     const CkCallback& cb);
 	void getCenterOfMass(const std::string& groupName, const CkCallback& cb);
 	void createScalarAttribute(std::string const& familyName,
 				   std::string const& attributeName,

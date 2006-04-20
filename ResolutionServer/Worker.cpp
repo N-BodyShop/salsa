@@ -1292,77 +1292,30 @@ double sumAttribute(TypedArray const& arr, IteratorType begin, IteratorType end)
 		sum += array[*begin];
 	return sum;
 }
-/*
-void Worker::getAttributeSum(const string& groupName, const string& attributeName, const CkCallback& cb) {
-	double sum = 0;
-	SimplePredicate* pred = new SimplePredicate;
-	for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-		AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
-		if(attrIter == simIter->second.attributes.end())
-			continue;
-		
-		if(groupName != "All") {
-			ParticleGroup& activeGroup = simIter->second.groups[groupName];
-			delete pred;
-			pred = new IndexedPredicate(activeGroup.begin(), activeGroup.end());
-		}
-		counting_iterator<u_int64_t> beginIndex(0);
-		counting_iterator<u_int64_t> endIndex(simIter->second.count.numParticles);
-		FilterIteratorType iter(pred, beginIndex, endIndex);
-		FilterIteratorType end(pred, endIndex, endIndex);
-		
-		//only makes sense for scalar values
-		if(attrIter->second.dimensions != 1) {
-			cerr << "This isn't a scalar attribute" << endl;
-			continue;
-		}
-		if(attrIter->second.data == 0) //attribute not loaded
-			sim->loadAttribute(simIter->first, attrIter->first, simIter->second.count.numParticles, simIter->second.count.startParticle);
-		switch(attrIter->second.code) {
-			case int8:
-				sum += sumAttribute<Code2Type<int8>::type>(attrIter->second, iter, end); break;
-			case uint8:
-				sum += sumAttribute<Code2Type<uint8>::type>(attrIter->second, iter, end); break;
-			case int16:
-				sum += sumAttribute<Code2Type<int16>::type>(attrIter->second, iter, end); break;
-			case uint16:
-				sum += sumAttribute<Code2Type<uint16>::type>(attrIter->second, iter, end); break;
-			case int32:
-				sum += sumAttribute<Code2Type<int32>::type>(attrIter->second, iter, end); break;
-			case uint32:
-				sum += sumAttribute<Code2Type<uint32>::type>(attrIter->second, iter, end); break;
-			case int64:
-				sum += sumAttribute<Code2Type<int64>::type>(attrIter->second, iter, end); break;
-			case uint64:
-				sum += sumAttribute<Code2Type<uint64>::type>(attrIter->second, iter, end); break;
-			case float32:
-				sum += sumAttribute<Code2Type<float32>::type>(attrIter->second, iter, end); break;
-			case float64:
-				sum += sumAttribute<Code2Type<float64>::type>(attrIter->second, iter, end); break;
-		}
-	}
-	delete pred;
-	contribute(sizeof(double), &sum, CkReduction::sum_double, cb);
-}
-/*/
-void Worker::getAttributeSum(const string& groupName, const string& attributeName, const CkCallback& cb) {
+
+void Worker::getAttributeSum(const string& groupName,
+			     const string& familyName,
+			     const string& attributeName,
+			     const CkCallback& cb) {
 	double sum = 0;
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
-		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
-			Simulation::iterator simIter = sim->find(*famIter);
-			TypedArray& arr = simIter->second.attributes[attributeName];
-			//only makes sense for scalar values
-			if(arr.dimensions != 1) {
-				cerr << "This isn't a scalar attribute" << endl;
-				continue;
-			}
-			if(arr.data == 0) //attribute not loaded
-				sim->loadAttribute(*famIter, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
-			GroupIterator iter = g->make_begin_iterator(*famIter);
-			GroupIterator end = g->make_end_iterator(*famIter);
-			switch(arr.code) {
+		Simulation::iterator famIter = sim->find(familyName);
+		if(famIter != sim->end()) {
+		    TypedArray& arr = famIter->second.attributes[attributeName];
+		    //only makes sense for scalar values
+		    if(arr.dimensions != 1) {
+			cerr << "This isn't a scalar attribute" << endl;
+			contribute(sizeof(double), &sum, CkReduction::sum_double, cb);		return;
+		    }
+		    if(arr.data == 0) //attribute not loaded
+			sim->loadAttribute(familyName, attributeName,
+					   famIter->second.count.numParticles,
+					   famIter->second.count.startParticle);
+		    GroupIterator iter = g->make_begin_iterator(familyName);
+		    GroupIterator end = g->make_end_iterator(familyName);
+		    switch(arr.code) {
 				case int8:
 					sum += sumAttribute<Code2Type<int8>::type>(arr, iter, end); break;
 				case uint8:
