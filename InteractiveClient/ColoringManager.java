@@ -99,10 +99,15 @@ public class ColoringManager extends Manager
 		maxValField.setColumns(10);
 		b.add(maxValField);
 		infoPanel.add(b);
+
+		JButton button = new JButton("Swap Min and Max");
+		button.setActionCommand("swap");
+		button.addActionListener(this);
+		infoPanel.add(button);
 		
 		displayPanel.add(infoPanel);
 		
-		JButton button = new JButton("Create new coloring");
+		button = new JButton("Create new coloring");
 		button.setActionCommand("new");
 		button.addActionListener(this);
 		
@@ -179,6 +184,13 @@ public class ColoringManager extends Manager
 	
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
+		if(command.equals("swap")) {
+			double minValue = ((Number) minValField.getValue()).doubleValue();
+			double maxValue = ((Number) maxValField.getValue()).doubleValue();
+			minValField.setValue(new Double(maxValue));
+			maxValField.setValue(new Double(minValue));
+		    }
+		
 		if(command.equals("apply")) {
 			Simulation.Coloring c = (Simulation.Coloring) sim.colorings.get(coloringList.getSelectedValue());
 			String oldName = c.name;
