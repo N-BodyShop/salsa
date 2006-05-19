@@ -51,3 +51,10 @@ the server can be run on a remote host.
 
 To start the client, use "java -jar ../InteractiveClient/Salsa.jar
 HOSTNAME PORT_NUMBER" where these are printed out by the server.
+
+--------------------
+ISSUES:
+
+There seems to be a bug in gcc version 4.0 and later that causes problems
+with the image display.  The upshot is that only z-axis view are displayed
+correctly.
