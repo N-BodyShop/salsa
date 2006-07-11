@@ -79,13 +79,21 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		sim->release();
 	delete sim;
 	
-	sim = new SiXFormatReader(simulationName);
-	if(sim->size() == 0) {
+	try {
+	    sim = new SiXFormatReader(simulationName);
+	    }
+	catch (FileError &e) {
+	    cerr << "File Problem:" << e.getText() << endl;
+	    }
+	    
+	if(sim == NULL || sim->size() == 0) {
 		//try plain tipsy format
-		sim->release();
-		delete sim;
+		if(sim) {
+		    sim->release();
+		    delete sim;
+		    }
 		sim = new TipsyFormatReader(simulationName);
-		if(sim->size() == 0)
+		if(!sim || sim->size() == 0)
 			cerr << "Couldn't load simulation file (tried new format and plain tipsy)" << endl;
 	}
 	
@@ -103,9 +111,22 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		} else
 			startParticle += leftover;
 		
-		if(!sim->loadAttribute(iter->first, "position", numParticles,
-				       startParticle))
-		    cerr << CkMyPe() << ": Loading positions failed\n" ;
+		cerr << "loading " << totalNumParticles << endl;
+		
+		try {
+		    sim->loadAttribute(iter->first, "position", numParticles,
+				       startParticle);
+		    }
+		catch(NameError &e) {
+		    cerr << CkMyPe() << ": Loading positions failed for family: "
+			 << iter->second.familyName << ":" << e.getText() << endl;
+		    continue;
+		    }
+		catch(FileError &e) {
+		    cerr << CkMyPe() << ": Loading positions failed for family:"
+			 << iter->second.familyName << e.getText() << endl;
+		    continue;
+		    }
 		TypedArray& arr = iter->second.attributes["position"];
 		//grow the bounding box with this family's bounding box
 		boundingBox.grow(arr.getMinValue(Type2Type<Vector3D<float> >()));
@@ -533,6 +554,12 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		
 		ParticleFamily& family = (*sim)[*famIter];
 		Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+		if(positions == NULL) {
+		    CkError(family.familyName.c_str());
+		    CkError(":Family has no positions\n");
+		    continue;
+		    }
+		
 		byte* colors = family.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
 		//if the color doesn't exist, use the family color
 		if(colors == 0)
@@ -1020,8 +1047,13 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 				float* potentials = simIter->second.getAttribute("potential", Type2Type<float>());
 				if(potentials == 0) {
+				    try {
 					sim->loadAttribute(simIter->first, "potential", simIter->second.count.numParticles, simIter->second.count.startParticle);
 					potentials = simIter->second.getAttribute("potential", Type2Type<float>());
+					}
+				    catch(NameError &) {
+					cerr << "Warning no potentials" << endl;
+					}
 				}
 				//should only look at active particles here!
 				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
