@@ -14,6 +14,8 @@ using namespace std;
 void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 	if(m->length != 8 * 3 * sizeof(double))
 		return;
+	assert(0);
+#if 0
 	Vector3D<double>* vertices = reinterpret_cast<Vector3D<double> *>(m->data);
 	//cout << "Got a box definition" << endl;
 	// This is done in python now
@@ -32,6 +34,7 @@ void MetaInformationHandler::specifyBox(CkCcsRequestMsg* m) {
 	regionMap[stringID] = box;
 	if(CkMyNode() == 0)
 		CcsSendDelayedReply(m->reply, stringID.length(), stringID.c_str());
+#endif
 	delete m;
 #endif
 }
