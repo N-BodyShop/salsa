@@ -1,7 +1,7 @@
 /** @file Worker.cpp
  */
 
-#include <stdint.h>
+#include <inttypes.h>
 
 #include <utility>
 #include <cstdlib>
@@ -947,16 +947,16 @@ void Worker::makeColoring(const std::string& specification, const CkCallback& cb
 						case uint16:
 							assignColors<unsigned short>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
 							break;
-						case int32:
+						case TypeHandling::int32:
 							assignColors<int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
 							break;
-						case uint32:
+						case TypeHandling::uint32:
 							assignColors<unsigned int>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
 							break;
-						case int64:
+						case TypeHandling::int64:
 							assignColors<int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
 							break;
-						case uint64:
+						case TypeHandling::uint64:
 							assignColors<u_int64_t>(attrIter->second.dimensions, colors, values, iter->second.count.numParticles, c.minValue, c.maxValue, c.beLogarithmic, c.clip);
 							break;
 						case float32:
@@ -1174,7 +1174,7 @@ string javaFormat(T x) {
 template <typename T, typename IteratorType>
 double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
 		    IteratorType &itMin) {
-	double min = HUGE;
+	double min = HUGE_VAL;
 	itMin = begin;
 	
 	T const* array = arr.getArray(Type2Type<T>());
@@ -1189,7 +1189,7 @@ double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
 }
 
 void Worker::findAttributeMin(const string& groupName, const string& attributeName, const CkCallback& cb) {
-    double aMin = HUGE;
+    double aMin = HUGE_VAL;
     pair<double, Vector3D<double> > compair;
     
 	GroupMap::iterator gIter = groups.find(groupName);
@@ -1219,14 +1219,14 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
 					min = minAttribute<Code2Type<int16>::type>(arr, iter, end, itGMin); break;
 				case uint16:
 					min = minAttribute<Code2Type<uint16>::type>(arr, iter, end, itGMin); break;
-				case int32:
-					min = minAttribute<Code2Type<int32>::type>(arr, iter, end, itGMin); break;
-				case uint32:
-					min = minAttribute<Code2Type<uint32>::type>(arr, iter, end, itGMin); break;
-				case int64:
-					min = minAttribute<Code2Type<int64>::type>(arr, iter, end, itGMin); break;
-				case uint64:
-					min = minAttribute<Code2Type<uint64>::type>(arr, iter, end, itGMin); break;
+				case TypeHandling::int32:
+					min = minAttribute<Code2Type<TypeHandling::int32>::type>(arr, iter, end, itGMin); break;
+				case TypeHandling::uint32:
+					min = minAttribute<Code2Type<TypeHandling::uint32>::type>(arr, iter, end, itGMin); break;
+				case TypeHandling::int64:
+					min = minAttribute<Code2Type<TypeHandling::int64>::type>(arr, iter, end, itGMin); break;
+				case TypeHandling::uint64:
+					min = minAttribute<Code2Type<TypeHandling::uint64>::type>(arr, iter, end, itGMin); break;
 				case float32:
 					min = minAttribute<Code2Type<float32>::type>(arr, iter, end, itGMin); break;
 				case float64:
@@ -1356,14 +1356,14 @@ void Worker::getAttributeSum(const string& groupName,
 					sum += sumAttribute<Code2Type<int16>::type>(arr, iter, end); break;
 				case uint16:
 					sum += sumAttribute<Code2Type<uint16>::type>(arr, iter, end); break;
-				case int32:
-					sum += sumAttribute<Code2Type<int32>::type>(arr, iter, end); break;
-				case uint32:
-					sum += sumAttribute<Code2Type<uint32>::type>(arr, iter, end); break;
-				case int64:
-					sum += sumAttribute<Code2Type<int64>::type>(arr, iter, end); break;
-				case uint64:
-					sum += sumAttribute<Code2Type<uint64>::type>(arr, iter, end); break;
+				case TypeHandling::int32:
+					sum += sumAttribute<Code2Type<TypeHandling::int32>::type>(arr, iter, end); break;
+				case TypeHandling::uint32:
+					sum += sumAttribute<Code2Type<TypeHandling::uint32>::type>(arr, iter, end); break;
+				case TypeHandling::int64:
+					sum += sumAttribute<Code2Type<TypeHandling::int64>::type>(arr, iter, end); break;
+				case TypeHandling::uint64:
+					sum += sumAttribute<Code2Type<TypeHandling::uint64>::type>(arr, iter, end); break;
 				case float32:
 					sum += sumAttribute<Code2Type<float32>::type>(arr, iter, end); break;
 				case float64:
@@ -1522,7 +1522,7 @@ int Worker::buildIterator(PyObject *arg, void *iter) {
 	if(arr.data == 0) //attribute not loaded
 	    sim->loadAttribute(*localPartFamIter, attrIter->first, family.count.numParticles, family.count.startParticle);
 	switch(arr.code) {
-	case int32:
+	case TypeHandling::int32:
 	    pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
 	    break;
 	case float32:
@@ -1552,7 +1552,7 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
 	double dvalue;
 	
 	switch(arr.code) {
-	case int32:
+	case TypeHandling::int32:
 	    pythonGetInt(arg, (char *) attrIter->first.c_str(), &lvalue);
 	    arr.getArray(Type2Type<int>())[*localPartIter] = lvalue;
 	    break;
@@ -1587,7 +1587,7 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
 	if(arr.dimensions != 1)
 	    continue;
 	switch(arr.code) {
-	case int32:
+	case TypeHandling::int32:
 	    pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
 	    break;
 	case float32:
