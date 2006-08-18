@@ -9,8 +9,10 @@ salsa" should do this.
 OR
 Unpack files from ResolutionServer-xxx.tar.gz distribution.
 
-2) Install Charm (charm.cs.uiuc.edu) : after building "charm++", build the
-"liveViz" and the "pythonCCS" modules:
+2) Install Charm (charm.cs.uiuc.edu).  Note that you will need the "nightly
+build" or the CVS version.
+
+After building "charm++", build the "liveViz" and the "pythonCCS" modules:
 cd tmp/libs/ck-libs/liveViz; make
 
 A link to the include files for your Python developement is required
@@ -40,7 +42,14 @@ at this directory.
     runConfigure -plinux -cgcc -xg++ -minmem -nsocket -tnative -rpthread
     gmake
 
-6) Type "configure". Type "make"
+6) Type "configure" and "make" in the ../structures directory.  This will
+build libTipsy.a
+
+7) Type "configure".  Hopefully this will find everything.  One difficulty is
+finding the python include files.  If "python" isn't a symbolic link to the
+include files, see the directions under pythonCCS above.
+
+Type "make"
 
 To run:
 

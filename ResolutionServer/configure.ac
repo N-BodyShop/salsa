@@ -51,6 +51,7 @@ AC_PROG_CC ($CHARMC)
 # Checks for libraries.
 AC_CHECK_LIB([popt], [poptGetContext])
 AC_CHECK_LIB([pthread], [pthread_attr_destroy])
+AC_CHECK_LIB([rt], [sem_init])
 AX_PYTHON
 # FIXME: Replace `main' with a function in `-lTipsy':
 AC_CHECK_LIB([Tipsy], [main])
@@ -105,7 +106,7 @@ AC_HEADER_STDBOOL
 AC_C_CONST
 AC_C_INLINE
 AC_TYPE_SIZE_T
-AC_CHECK_TYPE(u_int64_t, unsigned long long)
+AC_CHECK_TYPE(u_int64_t, uint64_t)
 
 # Checks for library functions.
 AC_HEADER_STDC

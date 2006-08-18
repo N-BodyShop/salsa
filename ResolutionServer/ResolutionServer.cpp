@@ -1,7 +1,7 @@
 /** @file ResolutionServer.cpp
  */
  
-#include <stdint.h>
+#include <inttypes.h>
 
 #include <iostream>
 #include <fstream>

@@ -13,6 +13,10 @@
 
 #include "pup_stl.h"
 #include "liveViz.h"
+#ifdef _OSF_SOURCE
+typedef long blksize_t;
+typedef long blkcnt_t;
+#endif
 #include "PythonCCS.h"
 #include "ckcallback-ccs.h"
 

@@ -1,7 +1,7 @@
 /** @file MetaInformationHandler.cpp
  */
 
-#include <stdint.h>
+#include <inttypes.h>
 
 #include <sstream>
 #include <assert.h>
