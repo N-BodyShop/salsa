@@ -67,3 +67,23 @@ ISSUES:
 There seems to be a bug in gcc version 4.0 and later that causes problems
 with the image display.  The upshot is that only z-axis view are displayed
 correctly.
+
+On Tru64 machines xerces-c v. 2.7.0 has a memory allocation bug that
+causes segmentation faults.  Here is a patch:
+===================================================================
+RCS file: src/xercesc/util/Platforms/Tru64/RCS/Tru64PlatformUtils.cpp,v
+retrieving revision 1.1
+diff -u -r1.1 src/xercesc/util/Platforms/Tru64/Tru64PlatformUtils.cpp
+--- 1.1 2006/08/17 22:36:32
++++ src/xercesc/util/Platforms/Tru64/Tru64PlatformUtils.cpp
+2006/08/18 18:06:30
+@@ -418,7 +418,7 @@
+ //
+-----------------------------------------------------------------------
+ 
+ 
+-class  RecursiveMutex
++class  RecursiveMutex : public XMemory
+ {
+ public:
+   pthread_mutex_t   mutex;
