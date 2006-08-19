@@ -62,6 +62,23 @@ To start the client, use "java -jar ../InteractiveClient/Salsa.jar
 HOSTNAME PORT_NUMBER" where these are printed out by the server.
 
 --------------------
+Using Salsa on a batch queue system (eg. PBS):
+
+As an example here is how to get Salsa going on Lemieux at PSC.
+
+Running: "qsub -I -l rmsnodes=16:64 -l walltime=00:30:00" will get an
+interactive session.  When the session begins start up
+ResolutionServer with the usual charm command: "charmrun +p 64
+ResolutionServer ++server file".  Note the IP address and port number
+reported.  An ssh tunnel needs to be set up to this port through the
+lemieux front end.  "ssh -L<lport>:<IP>:<port> lemieux.psc.edu" on
+your desktop will set this up, where <IP>:<port> are what is reported
+by ResolutionServer and <lport> will be used locally.  Start the
+client with "java -jar Salsa.jar localhost <lport> filename" to
+connect to this tunnel.  The filename is relativ e to where charmrun
+is started on lemieux.
+
+--------------------
 ISSUES:
 
 There seems to be a bug in gcc version 4.0 and later that causes problems
