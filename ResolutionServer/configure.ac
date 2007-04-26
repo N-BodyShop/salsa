@@ -58,7 +58,7 @@ AC_CHECK_LIB([Tipsy], [main])
 
 # find boost
 ax_boost_header=no
-for boost in /usr/include $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 ; do
+for boost in /usr/include $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 $PWD/../boost_1_33_1 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost
