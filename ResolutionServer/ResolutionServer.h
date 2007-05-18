@@ -184,6 +184,7 @@ public:
 	void getGroups(int handle);
 	void getNumParticles(int);
 	void getAttributeRange(int handle);
+	void getAttributeRangeGroup(int handle);
 	void getAttributeSum(int handle);
 	void getDimensions(int handle);
 	void getDataType(int handle);
@@ -285,6 +286,10 @@ public:
 	void getAttributeInformation(CkCcsRequestMsg* m);
 	void getColoringInformation(CkCcsRequestMsg* m);
 	
+	void getAttributeRangeGroup(const std::string& groupName,
+				    const std::string& familyName,
+				    const std::string& attributeName,
+				    const CkCallback& cb);
 	void getAttributeSum(const std::string& groupName,
 			     const std::string& familyName,
 			     const std::string& attributeName,

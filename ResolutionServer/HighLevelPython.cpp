@@ -90,6 +90,22 @@ void Main::getAttributeRange(int handle) {
 				      getScalarMax(attrIter->second)));
     }
 
+void Main::getAttributeRangeGroup(int handle) {
+    char *familyName, *attributeName, *groupName;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName);
+    CkReductionMsg* mesg;
+    double *compair = new double[2];
+
+    pythonSleep(handle);
+    workers.getAttributeRangeGroup(groupName, familyName, attributeName,
+			     createCallbackResumeThread(mesg, compair));
+    delete mesg;
+    pythonAwake(handle);
+    pythonReturn(handle,Py_BuildValue("(dd)", compair[0], compair[1]));
+    delete[] compair;
+    }
+
 void Main::createScalarAttribute(int handle) {
     char *familyName, *attributeName;
     PyObject *arg = PythonObject::pythonGetArg(handle);

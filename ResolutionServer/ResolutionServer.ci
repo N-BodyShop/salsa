@@ -77,6 +77,10 @@ mainmodule ResolutionServer {
 					   const std::string& attributeName,
 					   const CkCallback& cb);
 		entry void getCenterOfMass(std::string const& groupName, CkCallback const& cb);
+		entry void getAttributeRangeGroup(const std::string& groupName,
+				    const std::string& familyName,
+				    const std::string& attributeName,
+				    const CkCallback& cb);
 		entry void createScalarAttribute(std::string const& familyName,
 					         std::string const& attributeName,
 					         CkCallback const& cb);
