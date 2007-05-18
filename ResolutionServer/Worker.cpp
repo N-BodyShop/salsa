@@ -1314,6 +1314,14 @@ void Worker::getGroupInformation(CkCcsRequestMsg* m) {
 }
 */
 
+void Worker::getAttributeRangeGroup(const std::string& groupName,
+				    const std::string& familyName,
+				    const std::string& attributeName,
+				    const CkCallback& cb)
+{
+    }
+
+
 template <typename T, typename IteratorType>
 double sumAttribute(TypedArray const& arr, IteratorType begin, IteratorType end) {
 	double sum = 0;
