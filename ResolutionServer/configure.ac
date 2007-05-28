@@ -91,7 +91,7 @@ done
 fi
 if test $ax_xercesc_header != yes; then
    echo xercesc headers not found
-   echo Download boost from www.apache.org and install in $PWD/..
+   echo Download xercesc from www.apache.org and install in $PWD/..
    exit
 fi
 AC_MSG_RESULT([  results of the xercesc check:])
