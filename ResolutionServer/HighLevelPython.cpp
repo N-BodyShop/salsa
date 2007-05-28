@@ -93,17 +93,24 @@ void Main::getAttributeRange(int handle) {
 void Main::getAttributeRangeGroup(int handle) {
     char *familyName, *attributeName, *groupName;
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName);
+    if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName)
+       == false) {
+	/*
+	 * Haven't thought too hard about errors
+	 */
+	pythonReturn(handle,Py_BuildValue("(dd)", HUGE, -HUGE));
+	return;
+	}
+    
     CkReductionMsg* mesg;
-    double *compair = new double[2];
+    pair<double,double> minmax;
 
     pythonSleep(handle);
     workers.getAttributeRangeGroup(groupName, familyName, attributeName,
-			     createCallbackResumeThread(mesg, compair));
+			     createCallbackResumeThread(mesg, minmax));
     delete mesg;
     pythonAwake(handle);
-    pythonReturn(handle,Py_BuildValue("(dd)", compair[0], compair[1]));
-    delete[] compair;
+    pythonReturn(handle,Py_BuildValue("(dd)", minmax.first, minmax.second));
     }
 
 void Main::createScalarAttribute(int handle) {

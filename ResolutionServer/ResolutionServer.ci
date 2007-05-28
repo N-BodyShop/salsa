@@ -37,6 +37,8 @@ mainmodule ResolutionServer {
 		entry [python "return number of particles in a family"]
 			void getNumParticles(int);
 		entry [python] void getAttributeRange(int handle);
+		entry [python "return range of attribute with a group"]
+			void getAttributeRangeGroup(int handle);
 		entry [python "return sum within a group of an attribute"]
 			void getAttributeSum(int handle);
 		entry [python] void getDimensions(int handle);

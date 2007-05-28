@@ -1196,7 +1196,7 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
 	if(gIter != groups.end()) {
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
-		    double min;
+		    double min = HUGE;
 		    GroupIterator itGMin;
 		    
 			Simulation::iterator simIter = sim->find(*famIter);
@@ -1306,19 +1306,83 @@ void Worker::getColoringInformation(CkCcsRequestMsg* m) {
 	CcsSendDelayedReply(m->reply, result.length(), result.c_str());
 	delete m;
 }
-/*
-void Worker::getGroupInformation(CkCcsRequestMsg* m) {	
 
-	CcsSendDelayedReply(m->reply, 2 * sizeof(double), minMaxPair);
-	delete m;
+template <typename T, typename IteratorType>
+void minmaxAttribute(TypedArray const& arr, IteratorType begin,
+		     IteratorType end, double* minmax) {
+	T const* array = arr.getArray(Type2Type<T>());
+	if(array == 0)
+	    return;
+	for(; *begin != *end; ++begin) {
+	    if(array[*begin] < minmax[0])
+		minmax[0] = array[*begin];
+	    if(array[*begin] > minmax[1])
+		minmax[1] = array[*begin];
+	    }
+	return;
 }
-*/
 
 void Worker::getAttributeRangeGroup(const std::string& groupName,
 				    const std::string& familyName,
 				    const std::string& attributeName,
 				    const CkCallback& cb)
 {
+    double minmax[2] = {HUGE, -HUGE};
+    GroupMap::iterator gIter = groups.find(groupName);
+    if(gIter != groups.end()) {
+	shared_ptr<SimulationHandling::Group>& g = gIter->second;
+	Simulation::iterator famIter = sim->find(familyName);
+	if(famIter != sim->end()) {
+	    TypedArray& arr = famIter->second.attributes[attributeName];
+	    //only makes sense for scalar values
+	    if(arr.dimensions != 1) {
+		cerr << "This isn't a scalar attribute" << endl;
+		contribute(2*sizeof(double), &minmax[0], minmax_double, cb);
+		return;
+		}
+	    if(arr.data == 0) //attribute not loaded
+		sim->loadAttribute(familyName, attributeName,
+				   famIter->second.count.numParticles,
+				   famIter->second.count.startParticle);
+	    GroupIterator iter = g->make_begin_iterator(familyName);
+	    GroupIterator end = g->make_end_iterator(familyName);
+	    switch(arr.code) {
+	    case int8:
+		minmaxAttribute<Code2Type<int8>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case uint8:
+		minmaxAttribute<Code2Type<uint8>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case int16:
+		minmaxAttribute<Code2Type<int16>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case uint16:
+		minmaxAttribute<Code2Type<uint16>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case TypeHandling::int32:
+		minmaxAttribute<Code2Type<TypeHandling::int32>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case TypeHandling::uint32:
+		minmaxAttribute<Code2Type<TypeHandling::uint32>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case TypeHandling::int64:
+		minmaxAttribute<Code2Type<TypeHandling::int64>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case TypeHandling::uint64:
+		minmaxAttribute<Code2Type<TypeHandling::uint64>::type>(arr, iter, end, &minmax[0]);
+		break;
+	    case float32:
+		minmaxAttribute<Code2Type<float32>::type>(arr, iter, end,
+							  &minmax[0]);
+		break;
+	    case float64:
+		minmaxAttribute<Code2Type<float64>::type>(arr, iter, end,
+							  &minmax[0]);
+		break;
+		}
+	    }
+	}
+	contribute(2*sizeof(double), &minmax[0], minmax_double, cb);
     }
 
 
@@ -1328,7 +1392,7 @@ double sumAttribute(TypedArray const& arr, IteratorType begin, IteratorType end)
 	T const* array = arr.getArray(Type2Type<T>());
 	if(array == 0)
 		return 0;
-	for(; begin != end; ++begin)
+	for(; *begin != *end; ++begin)
 		sum += array[*begin];
 	return sum;
 }
