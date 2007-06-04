@@ -5,8 +5,12 @@ echo host localhost >> nodelist
 
 charmrun ++server ResolutionServer run99.std >& /tmp/Resolution.out &
 
-sleep 4
+PORT=""
+while test -z "$PORT" ; do
 PORT=`awk '/port/ {print $9}' < /tmp/Resolution.out`
+sleep 1
+echo trying $PORT
+done
 
 echo PORT is $PORT
 
