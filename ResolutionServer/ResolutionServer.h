@@ -25,6 +25,7 @@ typedef long blkcnt_t;
 #include "Sphere.h"
 #include "Box.h"
 #include "Simulation.h"
+#include "SiXFormat.h"
 
 template <typename MessageType, typename ResultType>
 class CkCallbackResumeThreadResult : public CkCallback {
@@ -178,6 +179,7 @@ public:
 	void initializePython();
 	void executePythonCode(CkCcsRequestMsg* m);
 	void localParticleCode(CkCcsRequestMsg * m);
+	void saveSimulation(int handle);
 	void findAttributeMin(int handle);
 	void getFamilies(int handle);
 	void getAttributes(int handle);
@@ -269,6 +271,7 @@ public:
 	}
 	
 	void loadSimulation(const std::string& simulationName, const CkCallback& cb);
+	void saveSimulation(const std::string& simulationName, const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
 	

@@ -42,6 +42,7 @@ mainmodule ResolutionServer {
 		entry [python "return sum within a group of an attribute"]
 			void getAttributeSum(int handle);
 		entry [python] void getDimensions(int handle);
+		entry [python] void saveSimulation(int handle);
 		entry [python] void getDataType(int handle);
 		entry [python] void getCenterOfMass(int handle);
 		entry [python "create a new scalar attribute in a family"]
@@ -57,6 +58,7 @@ mainmodule ResolutionServer {
 		entry Worker(const CkGroupID& metaID);
 		
 		entry void loadSimulation(const std::string& simulationName, const CkCallback& cb);
+		entry void saveSimulation(const std::string& path, const CkCallback& cb);
 		
 		entry void generateImage(liveVizRequestMsg* m);
 		

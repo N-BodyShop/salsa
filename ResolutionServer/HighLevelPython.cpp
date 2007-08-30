@@ -53,6 +53,30 @@ void Main::getGroups(int handle) {
     pythonReturn(handle, lGroup);
     }
 
+/* usage: saveSimulation('savepath') */
+void Main::saveSimulation(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *path;
+    int result;
+    Worker* w = this->workers[0].ckLocal();
+    CkReductionMsg* mesg;
+    SiXFormatWriter simwriter;
+    
+    // If you don't get a path argument, then save 
+    if(PyArg_ParseTuple(arg, "s", &path)== false) {
+      path = (char *) malloc(256*sizeof(char));
+      path[0] = NULL;
+      //      strcpy(path, w->sim->name.c_str());
+    }
+    // The writing is done as a domino scheme.  Call the head node
+    // and it calls all the other workers in sequence.
+    this->workers[0].saveSimulation(path,
+			       createCallbackResumeThread(mesg, result));
+    delete mesg;
+
+    pythonReturn(handle, Py_BuildValue("i",result));
+    }
+
 /* usage: getNumParticles('family') */
 void Main::getNumParticles(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);

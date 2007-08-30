@@ -1327,6 +1327,15 @@ void minmaxAttribute(TypedArray const& arr, IteratorType begin,
 	return;
 }
 
+void Worker::saveSimulation(const std::string& path, const CkCallback& cb)
+{
+  CProxy_Worker workers(thisArrayID);
+  SiXFormatWriter simwriter;
+  int result = simwriter.save(sim,path,thisIndex);
+  if(thisIndex < CkNumPes()) workers[thisIndex+1].saveSimulation(path, cb);
+  contribute(sizeof(result),&result,CkReduction::logical_and,cb);
+}
+
 void Worker::getAttributeRangeGroup(const std::string& groupName,
 				    const std::string& familyName,
 				    const std::string& attributeName,
