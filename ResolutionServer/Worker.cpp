@@ -1046,7 +1046,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
 				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
 				if(positions == NULL) {
-				    CkError(family.familyName.c_str());
+				    CkError(simIter->second.familyName.c_str());
 				    CkError(":Family has no positions or a bad type\n");
 				    continue;
 				    }
