@@ -29,6 +29,7 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 	JFormattedTextField minValField;
 	JFormattedTextField maxValField;
 	JFormattedTextField sumField;
+	JFormattedTextField meanField;
 
 	JLabel attributeNameField;
 	Box infoPanel;
@@ -96,6 +97,14 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		sumField = new JFormattedTextField(format);
 		sumField.setColumns(10);
 		b.add(sumField);
+		infoPanel.add(b);
+		displayPanel.add(infoPanel);
+
+		b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel("Mean: "));
+		meanField = new JFormattedTextField(format);
+		meanField.setColumns(10);
+		b.add(meanField);
 		infoPanel.add(b);
 		displayPanel.add(infoPanel);
 
@@ -192,19 +201,28 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		PythonExecute code = new PythonExecute(getFamiliesCode,
 						       false, true, 0);
 		HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetFamiliesHandler());
+		// This is double work; sim.Families should be merged
+		// with the above
+		windowManager.refreshAttributes();
 	}
 	
 	public void keyTyped(KeyEvent e) { }
 	public void keyPressed(KeyEvent e) { }
+
 	public class GetFamiliesHandler extends PyPrintHandler {
 		public void handle(String result) {
 			System.out.println("Return from code execution: \"" + result + "\"");
 			rootNode.removeAllChildren();
 			treeModel.reload();
+			
 			DelimitedStringEnumeration flist
 			    = new DelimitedStringEnumeration(result);
+			int i = 0;
 			while(flist.hasMoreElements()) {
 			    String familyName = (String) flist.nextElement();
+
+			    // Python code to produce comma delimited
+			    // list of a family and its attributes.
 			    String getAttributesCode = "ck.printclient("
 				+ "'" + familyName 
 				+ ",'+str(charm.getAttributes('"
@@ -233,7 +251,6 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 
 	public class GetRangeHandler extends PyPrintHandler {
 		public void handle(String result) {
-		    System.out.println("Return from code execution: \"" + result + "\"");
 		    try {
 			DelimitedStringEnumeration alist
 				= new DelimitedStringEnumeration(result);
@@ -243,15 +260,21 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			attributeDimensionalityLabel.setText(sValue);
 			sValue = (String) alist.nextElement();
 			numberLabel.setText(sValue);
+			double np = Double.valueOf(sValue).doubleValue();
 			sValue = (String) alist.nextElement();
 			minValField.setValue(new Double(sValue));
 			sValue = (String) alist.nextElement();
 			maxValField.setValue(new Double(sValue));
 			sValue = (String) alist.nextElement();
 			sumField.setValue(new Double(sValue));
+			double sum = Double.valueOf(sValue).doubleValue();
+			meanField.setValue(new Double(sum/np));
 			}
 		    catch(StringIndexOutOfBoundsException e) {
-			System.err.println("Problem parsing attributes\n");
+			System.err.println("Problem parsing attributes: bad index\n");
+			}
+		    catch(NumberFormatException e) {
+			System.err.println("Problem parsing attributes: bad format\n");
 			}
 		}
 	    }
