@@ -144,4 +144,8 @@ public class WindowManager extends WindowAdapter {
 		System.exit(1);
 	}
 	
+    public void refreshAttributes() {
+	ccs.doBlockingRequest(new GetAttributeInformation());
+    }
+    
 }

@@ -21,6 +21,7 @@ public class Simulation {
     NotifyingHashtable families = new NotifyingHashtable();
 	NotifyingHashtable colorings = new NotifyingHashtable();
 	NotifyingHashtable groups = new NotifyingHashtable();
+    NotifyingHashtable attributes = new NotifyingHashtable();
 	
 	/// The original origin of the simulation
 	Vector3D origin;
@@ -47,7 +48,9 @@ public class Simulation {
 	}
 	
 	/// Get family information out of a Properties
+	/// XXX This should be replaced by a python call
 	public void fill(Properties props) {
+	    System.err.println("Fill Called");
 		name = props.getProperty("simulationName");
 		try {
 			int numFamilies = Integer.parseInt(props.getProperty("numFamilies"));
@@ -224,16 +227,39 @@ public class Simulation {
 		}
 	}
 	
-	public Vector getAttributeNames() {
-		Vector attributeNames = new Vector();
+	static public class AttributeModel extends DefaultComboBoxModel
+	    implements ChangeListener {
+	    Vector attributeNames = new Vector();
+	    Hashtable families = null;
+		
+	    public AttributeModel(NotifyingHashtable cf) {
+		families = cf;
+		stateChanged(null);
+		cf.addChangeListener(this);
+	    }
+		
+	    public int getSize() {
+		return attributeNames.size();
+	    }
+		
+	    public Object getElementAt(int index) {
+		return attributeNames.get(index);
+	    }
+		
+	    public void stateChanged(ChangeEvent ev) {
+		attributeNames.clear();
 		for(Enumeration e = families.elements(); e.hasMoreElements(); ) {
-			for(Enumeration e2 = ((Family) e.nextElement()).attributes.keys(); e2.hasMoreElements(); ) {
-				String name = ((String) e2.nextElement());
-				if(!attributeNames.contains(name))
-					attributeNames.add(name);
+		    for(Enumeration e2 = ((Family) e.nextElement()).attributes.keys(); e2.hasMoreElements(); ) {
+			String name = ((String) e2.nextElement());
+			if(!attributeNames.contains(name))
+			    attributeNames.add(name);
 			}
-		}
-		return attributeNames;
+		    }
+		fireContentsChanged(this, -1, -1);
+	    }
+	    }
+    
+	public AttributeModel createAttributeModel() {
+	    return new AttributeModel(families);
 	}
-	
 }

@@ -1,0 +1,7 @@
+2007-09-07  Tom Quinn  <trq@raclette>
+
+	* WindowManager.java: Changed attributes to be a notifying hash
+	table so that attribute lists in GroupManager and ColoringManager
+	can be updated when new attributes get created.
+	
+

@@ -57,7 +57,7 @@ public class GroupManager extends Manager
 				
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Attribute: "));
-		attributeNameBox = new JComboBox(sim.getAttributeNames());
+		attributeNameBox = new JComboBox(sim.createAttributeModel());
 		attributeNameBox.setActionCommand("chooseAttribute");
 		attributeNameBox.addActionListener(this);
 		b.add(attributeNameBox);
@@ -170,6 +170,9 @@ public class GroupManager extends Manager
 		    HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetGroupsHandler());
 		} else if(command.equals("chooseAttribute")) {
 			String attribute = (String) attributeNameBox.getSelectedItem();
+			if(attribute == null)
+			    return;
+			
 			double minVal = 1E200;
 			double maxVal = -1E200;
 			for(Enumeration en = sim.families.elements(); en.hasMoreElements(); ) {
