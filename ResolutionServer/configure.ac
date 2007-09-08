@@ -4,7 +4,7 @@
 AC_DEFUN([AX_PYTHON],
 [AC_MSG_CHECKING(for python build information)
 AC_MSG_RESULT([])
-for python in python2.4 python2.3 python2.2 python2.1 python; do
+for python in python2.5 python2.4 python2.3 python2.2 python2.1 python; do
    AC_CHECK_HEADER([$python/Python.h],
    	[[ax_python_header=/usr/include/$python]],
    	ax_python_header=no)
@@ -51,8 +51,9 @@ AC_INIT(FULL-PACKAGE-NAME, VERSION, BUG-REPORT-ADDRESS)
 AC_CONFIG_SRCDIR([HighLevelPython.cpp])
 AC_CONFIG_HEADER([config.h])
 
+AC_ARG_VAR([CHARMC], "Charm compiler")
 # Checks for programs.
-AC_PATH_PROG([CHARMC], [charmc], [$CHARM_DIR/bin/charmc], [$PATH:$CHARM_DIR/bin])
+AC_PATH_PROG([CHARMC], [charmc], [no], [$PATH:$CHARM_DIR/bin:../charm/bin:../../charm/bin])
 AC_PROG_CXX ($CHARMC)
 AC_PROG_CC ($CHARMC)
 
