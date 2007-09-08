@@ -59,16 +59,9 @@ Main::Main(CkArgMsg* m) {
 	//std::string valuefilename;
 	const char* fname = poptGetArg(context);
 	
-	if(fname == 0) {
-		cerr << "You must provide a simulation list file" << endl;
-		poptPrintUsage(context, stderr, 0);
-		CkExit();
-		return;
-	}
-
 	poptFreeContext(context);
 	delete m;
-#else /*MACOSX*/
+#else
 	const char *optstring = "v";
 	int c;
 	while((c=getopt(m->argc,m->argv,optstring))>0){
@@ -85,10 +78,9 @@ Main::Main(CkArgMsg* m) {
 	if(optind  < m->argc){
 		fname = m->argv[optind];
 	}else{
-		cerr << "You must provide a simulation list file" << endl;
-		CkExit();
+		fname = NULL;
 	}
-#endif /*MACOSX*/
+#endif
 	
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;
