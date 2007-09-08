@@ -36,6 +36,14 @@ if test x"$ax_python_lib" != xno; then
   PYTHON_LIB="$ax_python_lib"
   AC_SUBST(PYTHON_LIB)
 fi
+if test x"$ax_python_header" == xno; then
+   echo Python headers not found
+   exit
+fi
+if test x"$ax_python_lib" == xno; then
+   echo Python library not found
+   exit
+fi
 ])dnl
 
 AC_PREREQ(2.57)
