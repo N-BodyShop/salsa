@@ -191,7 +191,11 @@ public:
 	void getDimensions(int handle);
 	void getDataType(int handle);
 	void getCenterOfMass(int handle);
+	void importData(int handle); //CC 6/29/07
+	void divvyVector(std::string const& familyName, std::string const&attributeName, int length, Vector3D<float> c_data[]); //CC 9/3/07
+	void divvyScalar(std::string const& familyName, std::string const& attributeName, int length, double c_data[]); //CC 9/3/07
 	void createScalarAttribute(int handle);
+	void createVectorAttribute(int handle); //CC 4/1/07
 	void createGroup_Family(int handle);
 	void createGroup_AttributeRange(int handle);
 	void createGroupAttributeSphere(int handle);
@@ -301,6 +305,11 @@ public:
 	void createScalarAttribute(std::string const& familyName,
 				   std::string const& attributeName,
 				   CkCallback const& cb);
+	void createVectorAttribute(std::string const& familyName,
+				   std::string const& attributeName,
+				   CkCallback const& cb);//CC 4/1/07
+	void importScalarData( std::string const& familyName, std::string const& attributeName, int length, double c_data[], CkCallback const&cb); //CC 7/19/07
+	void importVectorData( std::string const& familyName, std::string const&attributeName, int length, Vector3D<float> c_data[], CkCallback const&cb);
 	void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
 	void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 	void createGroup_AttributeSphere(std::string const& groupName,

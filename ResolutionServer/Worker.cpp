@@ -1506,6 +1506,62 @@ void Worker::createScalarAttribute(std::string const& familyName, std::string co
     contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
+//CC 4/1/07
+void Worker::createVectorAttribute(std::string const& familyName, std::string const& attributeName, CkCallback const& cb) 
+{
+    int result = 1;
+    Vector3D<double>* empty;
+    
+    Simulation::iterator simIter = sim->find(familyName);
+    empty = new Vector3D<double>[simIter->second.count.numParticles]; //an empty float array with length the number of particles
+    
+    simIter->second.addAttribute(attributeName, TypedArray(empty, simIter->second.count.numParticles));
+    contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
+// CC 7/19/07
+void Worker::importScalarData( std::string const& familyName, std::string const& attributeName, int length, double c_data[], CkCallback const&cb)
+{
+  int result = 1;
+  
+  Simulation::iterator simIter = sim->find(familyName); //Now find the family or create a new one
+  if(simIter == sim->end()) {
+    ParticleFamily family;
+    family.familyName = familyName;
+    family.count.numParticles = 0;
+    family.count.startParticle = 0;
+    family.count.totalNumParticles = length;
+    sim->insert(make_pair(familyName, family)); //Is this correct?
+    simIter = sim->find(familyName);
+  }
+  cout<<"AttributeName: "<<attributeName<<" Length: "<<length<<"\n";
+  //  TypedArray& arr = simIter->second.attributes[attributeName]; //Add on an attribute
+  simIter->second.addAttribute(attributeName, TypedArray(c_data, length)); //I want to load the attribute with my data
+  contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
+// CC 7/19/07
+void Worker::importVectorData( std::string const& familyName, std::string const&attributeName, int length, Vector3D<float> c_data[], CkCallback const&cb)
+{
+  int result = 1;
+  cout<<"In importVectorData\n";
+  Simulation::iterator simIter = sim->find(familyName); //Now find the family or create a new one
+  if(simIter == sim->end()) {
+    ParticleFamily family;
+    family.familyName = familyName;
+    family.count.numParticles = length;
+    family.count.startParticle = 0;
+    family.count.totalNumParticles = length;
+    sim->insert(make_pair(familyName, family)); //Is this correct
+    simIter = sim->find(familyName);
+  }
+  // TypedArray& arr = simIter->second.attributes[attributeName]; //Add on an attribute
+  cout<<"Attribute: "<<attributeName<<" Length: "<<length<<"Number of particles: "<<simIter->second.count.numParticles<<"\n";
+  simIter->second.addAttribute(attributeName, TypedArray(c_data, length)); //I want to load the attribute with my data. 
+  contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+  cout<<"done\n";
+}
+
 void Worker::createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb) {
 	int result = 0;
 	//parent group idiom: look up parent group by name

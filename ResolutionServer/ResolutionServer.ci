@@ -47,11 +47,15 @@ mainmodule ResolutionServer {
 		entry [python] void getCenterOfMass(int handle);
 		entry [python "create a new scalar attribute in a family"]
 			void createScalarAttribute(int handle);
+		entry [python "create a new vector attribute in a family"]
+			void createVectorAttribute(int handle);
 		entry [python] void createGroup_Family(int handle);
 		entry [python] void createGroup_AttributeRange(int handle);
 		entry [python] void createGroupAttributeSphere(int handle);
 		entry [python] void createGroupAttributeBox(int handle);
 		entry [python] void runLocalParticleCode(int handle);
+		entry [python "import data from python"] 
+			void importData(int handle);
 	};
 	
 	array [1D] [python] Worker {
@@ -88,6 +92,11 @@ mainmodule ResolutionServer {
 		entry void createScalarAttribute(std::string const& familyName,
 					         std::string const& attributeName,
 					         CkCallback const& cb);
+		entry void createVectorAttribute(std::string const& familyName,
+					         std::string const& attributeName,
+					         CkCallback const& cb);
+		entry void importScalarData( std::string const& familyName, std::string const& attributeName, int length, double c_data[length], CkCallback const&cb);
+		entry void importVectorData( std::string const& familyName, std::string const&attributeName, int length, Vector3D<float> c_data[length], CkCallback const&cb);
 		entry void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
 		entry void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 		entry void createGroup_AttributeSphere(const std::string& groupName, const std::string& parentName, const std::string& attributeName, Vector3D<double> center, double size, const CkCallback& cb);

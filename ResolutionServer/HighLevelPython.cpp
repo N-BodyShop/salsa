@@ -112,7 +112,186 @@ void Main::getAttributeRange(int handle) {
 	}
     pythonReturn(handle,Py_BuildValue("(dd)", getScalarMin(attrIter->second),
 				      getScalarMax(attrIter->second)));
+}
+
+
+//CC 9/03
+//This divides the data into equal size pieces and sends them out to the different workers 
+void Main::divvyScalar (std::string const& familyName, std::string const& attributeName, int length, double c_data[]) {
+  int numWorkers = 2;
+  int i = 0, i1;
+  int section = length/numWorkers; 
+  int remainder = length%numWorkers;
+  CkReductionMsg* mesg; // Used when sending stuff to Workers
+  int result;
+  double section0[section+1];
+  double section1[section];
+  int i2 = 0;
+  for (i=0; i < numWorkers; i++){
+    cout<<"Calling Workers"<<endl;
+    if (i < remainder) {
+      for (i1 = 0; i1 < section+1; i1++) {
+	cout<<"First For"<<endl;
+	section0[i1] = c_data[i1 + i2];
+      }  
+      i2 = i2 + section + 1;
+      workers[i].importScalarData(familyName, attributeName, section+1, section0, createCallbackResumeThread(mesg, result));
     }
+    else {
+      for (i1 = 0; i1 < section; i1++) {
+	cout<<"Second For"<<endl;
+	section1[i1] = c_data[i1 + i2];
+      }  
+      i2 = i2 + section;
+      workers[i].importScalarData(familyName, attributeName, section, section1, createCallbackResumeThread(mesg, result));
+    }
+  }
+  delete mesg;
+}
+
+//CC 9/03
+//This divides the data into equal size pieces and sends them out to the different workers
+void Main::divvyVector(std::string const& familyName, std::string const&attributeName, int length, Vector3D<float> c_data[]) {
+  int numWorkers = 2;
+  //  workers[0].importVectorData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+  int i, i1;
+  int section = length/numWorkers; 
+  int remainder = length%numWorkers;      	
+  CkReductionMsg* mesg; // Used when sending stuff to Workers
+  int result;
+  Vector3D<float> *section0;
+  section0 = new Vector3D<float>[section+1];
+  Vector3D<float> *section1;
+  section1 = new Vector3D<float>[section];
+  int i2 = 0;
+  for (i=0; i < numWorkers; i++){
+    cout<<"Calling Worker"<<i<< " (Vector)"<<endl;
+    if (i < remainder) {
+      cout<<i<<" (i) < "<<remainder<<" (remainder)"<<endl;
+      for (i1 = 0; i1 < section+1; i1++) {
+	section0[i1].x = c_data[i1 + i2].x;
+	section0[i1].y = c_data[i1 + i2].y;
+	section0[i1].z = c_data[i1 + i2].z;	
+	cout<<"Section0, i"<<i<<", i1: "<<i1<<", i2: "<<i2<<endl;
+      }  
+      i2 = i2 + section + 1;
+      workers[i].importVectorData(familyName, attributeName, section+1, section0, createCallbackResumeThread(mesg, result));
+    }
+    else {
+      cout<<i<<" (i) >= "<<remainder<<" (remainder)"<<endl;
+      for (i1 = 0; i1 < section; i1++) {
+	section1[i1].x = c_data[i1 + i2].x;
+	section1[i1].y = c_data[i1 + i2].y;
+	section1[i1].z = c_data[i1 + i2].z;
+	cout<<"Section1, i"<<i<<", i1: "<<i1<<", i2: "<<i2<<endl;
+      }  
+      i2 = i2 + section;
+      workers[i].importVectorData(familyName, attributeName, section, section1, createCallbackResumeThread(mesg, result));
+    }
+  }
+  delete mesg;
+} 
+
+
+//CC 6/28
+void Main::importData(int handle) {
+    char *familyName, *attributeName;
+    int length;
+    int errorCheck;
+    int dummy = 0; //Tag for whether the list is 3D
+
+  CkReductionMsg* mesg; // Used when sending stuff to Workers
+  int result;
+
+    PyObject *data, *testelement;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    cout << "Importing Data\n";
+    errorCheck = PyArg_ParseTuple(arg, "ssO", &familyName, &attributeName, &data); //Read in the groupName, familyName, attributeName and an object that contains the list of data elements.
+    cout<< "Data is read into an object\n"<<errorCheck<<"\n";
+    if(PyList_Check(data)) { //Check to see if the data sent is in a list          
+      //    	CkReductionMsg* mesg; // Used when sending stuff to Workers
+      //	int result;
+	length = PyList_Size(data); //Find the length of the data array
+	testelement = PyList_GetItem(data,0);
+       	if(PyList_Check(testelement)){
+	  testelement = PyList_GetItem(data,0);
+	  cout<<"2D array\n";
+	  cout<<PyList_Size(testelement)<<"\n";
+	  if (3 == PyList_Size(testelement)) //List of 3D Vecotrs
+	    { 
+	    cout<<"Vector\n";  
+	    PyObject *lowerArray;
+	    lowerArray = PyList_GetItem(data,0);
+	    testelement = PyList_GetItem(lowerArray,0);
+	    if(PyInt_Check(testelement)){
+	      Vector3D<float> *c_data;
+	      c_data = new Vector3D<float>[length];
+	      for(int ct = 0; ct < length; ct++){
+		lowerArray = PyList_GetItem(data,ct);
+		c_data[ct].x = PyInt_AsLong(PyList_GetItem(lowerArray,0)); //Type casting here from integer to double -- done for simplicity of code
+		c_data[ct].y = PyInt_AsLong(PyList_GetItem(lowerArray,1));
+		c_data[ct].z = PyInt_AsLong(PyList_GetItem(lowerArray,2));	
+	      }
+	        workers[0].importVectorData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+		//divvyVector(familyName, attributeName, length, c_data);
+	    }
+	    else if(PyLong_Check(testelement)){
+	      Vector3D<float> *c_data;
+	      c_data = new Vector3D<float>[length];
+	      for(int ct = 0; ct < length; ct++){
+		lowerArray = PyList_GetItem(data,ct);
+		c_data[ct].x = PyLong_AsLong(PyList_GetItem(lowerArray,0)); //More type casting from long to double
+		c_data[ct].y = PyLong_AsLong(PyList_GetItem(lowerArray,1));
+		c_data[ct].z = PyLong_AsLong(PyList_GetItem(lowerArray,2));
+	      }
+	        workers[0].importVectorData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+		//divvyVector(familyName, attributeName, length, c_data);
+	    }
+	    else if(PyFloat_Check(testelement)){
+	      cout<<"Float Data\n";
+	      Vector3D<float> *c_data;
+	      c_data = new Vector3D<float>[length];
+	      for(int ct = 0; ct < length; ct++){
+		lowerArray = PyList_GetItem(data,ct);
+		c_data[ct].x = PyFloat_AsDouble(PyList_GetItem(lowerArray,0));
+		c_data[ct].y = PyFloat_AsDouble(PyList_GetItem(lowerArray,1));
+		c_data[ct].z = PyFloat_AsDouble(PyList_GetItem(lowerArray,2));
+	      }
+	      cout<<"c_data[0].x: "<<c_data[0].x<<" c_data[0].y: "<<c_data[0].y<<"c_data[0].z: "<<c_data[0].z<<"\n";
+	      workers[0].importVectorData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+	      //divvyVector(familyName, attributeName, length, c_data);
+	    }
+	    else if(PyString_Check(testelement)) dummy = 1; //Exit gracefuly, eventualy, add in strings
+	    else dummy = 1; //Exit gracefuly if it is a type we have not checked for  
+	  }
+	else dummy = 1; //Exit gracefuly -- Some from of non-3D-but-multidimensional array
+      }
+      else { //Scalar List
+	if(PyInt_Check(testelement)){
+	  double c_data[length];
+	  for(int ct = 0; ct < length; ct++) c_data[ct] = PyInt_AsLong(PyList_GetItem(data,ct)); //Type casting here from integer to double -- done for simplicity of code
+	    workers[0].importScalarData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+	    //divvyScalar(familyName, attributeName, length, c_data);
+	}
+	else if(PyLong_Check(testelement)){
+	  double c_data[length];
+	  for(int ct = 0; ct < length; ct++) c_data[ct] = PyLong_AsLong(PyList_GetItem(data,ct)); //More type casting from long to double
+	  workers[0].importScalarData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+	  //divvyScalar(familyName, attributeName, length, c_data);
+	}
+	else if(PyFloat_Check(testelement)){
+	  double c_data[length];
+	  for(int ct = 0; ct < length; ct++) c_data[ct] = PyFloat_AsDouble(PyList_GetItem(data,ct));
+	  workers[0].importScalarData(familyName, attributeName, length, c_data, createCallbackResumeThread(mesg, result));
+	  //divvyScalar(familyName, attributeName, length, c_data);
+	}
+	else if(PyString_Check(testelement)) dummy = 1; //Exit gracefuly, eventualy, add in strings
+	else dummy = 1; //Exit gracefuly if it is a type we have not checked for  
+	}
+	//    delete mesg;
+      }
+    pythonReturn(handle);
+}
 
 void Main::getAttributeRangeGroup(int handle) {
     char *familyName, *attributeName, *groupName;
@@ -150,6 +329,22 @@ void Main::createScalarAttribute(int handle) {
 
     pythonReturn(handle);
     }
+
+//CC 4/1/07
+void Main::createVectorAttribute(int handle) {
+    char *familyName, *attributeName;
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    CkReductionMsg* mesg;
+    int result;
+
+    workers.createVectorAttribute(familyName, attributeName,
+			       createCallbackResumeThread(mesg, result));
+    delete mesg;
+
+    pythonReturn(handle);
+    }
+
 
 void Main::getAttributeSum(int handle)
 {
