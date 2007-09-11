@@ -27,12 +27,19 @@ void Main::getFamilies(int handle) {
     pythonReturn(handle, lFamily);
     }
 
+// usage: charm.getAttributes('family')
+// returns list of attributes of the family
+ 
 void Main::getAttributes(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *familyName;
     Worker* w = this->workers[0].ckLocal();
     PyObject *lAttributes = PyList_New(0);
-    PyArg_ParseTuple(arg, "s", &familyName);
+    if(PyArg_ParseTuple(arg, "s", &familyName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+	
     Simulation::iterator simIter = w->sim->find(familyName);
 
     if(simIter != w->sim->end()) {
