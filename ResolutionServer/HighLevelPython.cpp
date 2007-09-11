@@ -89,13 +89,16 @@ void Main::getNumParticles(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *familyName;
     Worker* w = this->workers[0].ckLocal();
-    PyArg_ParseTuple(arg, "s", &familyName);
+    if(PyArg_ParseTuple(arg, "s", &familyName) == false) {
+    	pythonReturn(handle);
+    	return;
+	}
     Simulation::iterator iter = w->sim->find(familyName);
     
     if(iter == w->sim->end()) {
-	    cerr << "No such family!" << endl;
-	    pythonReturn(handle);
-	    return;
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
     }
     pythonReturn(handle,Py_BuildValue("i",
 				      iter->second.count.totalNumParticles));
