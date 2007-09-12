@@ -13,3 +13,7 @@ charm.createGroupAttributeBox("test3", "All", "position", 0, 0, 0, .1, 0, 0, 0, 
 
 # Some info
 ck.printclient(str(charm.getCenterOfMass("test2")))
+
+# testing importing data
+tstdat = [1,2,3,4,5,6,7,8,9,10]
+charm.importData('testf', 'data', tstdat)
