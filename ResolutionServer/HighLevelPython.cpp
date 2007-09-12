@@ -15,7 +15,6 @@ void Main::executePythonCode(CkCcsRequestMsg* m) {
 	m->data[m->length-1] = 0;  // guarantee null termination.
 	Main::pyRequest(m);
 	
-	unsigned char success = 1;
 	CcsSendDelayedReply(d, 3, "ok\n");
 }
 
@@ -65,7 +64,6 @@ void Main::saveSimulation(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *path;
     int result;
-    Worker* w = this->workers[0].ckLocal();
     CkReductionMsg* mesg;
     SiXFormatWriter simwriter;
     
@@ -395,15 +393,24 @@ void Main::getDimensions(int handle)
     PyObject *arg = PythonObject::pythonGetArg(handle);
     int iDim;
     
-    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
     Simulation::iterator simIter = w->sim->find(familyName);
-    if(simIter == w->sim->end())
-	iDim = 0;
-    AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
-    if(attrIter == simIter->second.attributes.end())
-	iDim = 0;
-    else
-	iDim =  attrIter->second.dimensions;
+    if(simIter == w->sim->end()) {
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    AttributeMap::iterator attrIter
+	= simIter->second.attributes.find(attributeName);
+    if(attrIter == simIter->second.attributes.end()) {
+	PyErr_SetString(PyExc_NameError, "No such attribute");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    iDim =  attrIter->second.dimensions;
     pythonReturn(handle,Py_BuildValue("i", iDim));
     }
 
@@ -414,16 +421,25 @@ void Main::getDataType(int handle)
     Worker* w = this->workers[0].ckLocal();
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
-    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
-    Simulation::iterator simIter = w->sim->find(familyName);
-    if(simIter == w->sim->end())
-	retcode = 0;
+    if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
     
-    AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
-    if(attrIter == simIter->second.attributes.end())
-	retcode = 0;
-    else
-	retcode =  attrIter->second.code;
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end()) {
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    AttributeMap::iterator attrIter =
+	simIter->second.attributes.find(attributeName);
+    if(attrIter == simIter->second.attributes.end()) {
+	PyErr_SetString(PyExc_NameError, "No such attribute");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    retcode =  attrIter->second.code;
     pythonReturn(handle,Py_BuildValue("i", retcode));
     }
 
