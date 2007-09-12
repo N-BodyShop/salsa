@@ -57,7 +57,7 @@ public class ColoringManager extends Manager
 		
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Active families: "));
-		activeFamilyList = new JList(sim.new FamilyListModel());
+		activeFamilyList = new JList(sim.createFamilyListModel());
 		b.add(activeFamilyList);
 		infoPanel.add(b);
 		

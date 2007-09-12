@@ -211,12 +211,23 @@ public class Simulation {
 		return new GroupModel(groups);
 	}
 
-	public class FamilyListModel extends AbstractListModel {
-		Vector familyNames = new Vector();
-		public FamilyListModel() {
-			for(Enumeration e = families.keys(); e.hasMoreElements(); )
+	static public class FamilyListModel extends AbstractListModel
+	    implements ChangeListener {
+	    Vector familyNames = new Vector();
+	    Hashtable families = null;
+	    public FamilyListModel(NotifyingHashtable cf) 
+	    {
+		families = cf;
+		stateChanged(null);
+		cf.addChangeListener(this);
+	    }
+	    
+	    public void stateChanged(ChangeEvent ev) {
+		familyNames.clear();
+		for(Enumeration e = families.keys(); e.hasMoreElements(); )
 				familyNames.add(e.nextElement());
-		}
+		fireContentsChanged(this, -1, -1);
+	    }
 		
 		public int getSize() {
 			return familyNames.size();
@@ -227,6 +238,10 @@ public class Simulation {
 		}
 	}
 	
+	public FamilyListModel createFamilyListModel() {
+	    return new FamilyListModel(families);
+	}
+
 	static public class AttributeModel extends DefaultComboBoxModel
 	    implements ChangeListener {
 	    Vector attributeNames = new Vector();
