@@ -119,8 +119,6 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cout << "Created workers and meta handler" << endl;
 	
-	// initializePython();
-	
 	CcsRegisterHandler("ListSimulations", CkCallback(CkIndex_Main::listSimulations(0), thishandle));
 	CcsRegisterHandler("ChooseSimulation", CkCallback(CkIndex_Main::chooseSimulation(0), thishandle));
 	CcsRegisterHandler("CreateColoring", CkCallback(CkIndex_Main::makeColoring(0), thishandle));
@@ -142,14 +140,6 @@ Main::Main(CkArgMsg* m) {
 	CcsRegisterHandler("LocalParticleCode",
 			   CkCallback(CkIndex_Main::localParticleCode(0), thishandle));
 	cerr << "Waiting for ccs authentication" << endl;
-	/*
-	workers.loadSimulation("/home/gwl/Projects/data/lambs.00200_subsamp_10000.data", CkCallbackResumeThread());
-	cerr << "Made it past the load" << endl;
-	string s = "print system.getCenterOfMass('All')\n";
-	PyRun_String(const_cast<char *>(s.c_str()), Py_file_input, pythonInterpreter->main_namespace.ptr(), pythonInterpreter->main_namespace.ptr());
-	string result = pythonInterpreter->my_stdout.getOutput();
-	cerr << result << endl;
-	*/
 }
 
 void Main::listSimulations(CkCcsRequestMsg* m) {
@@ -275,7 +265,6 @@ void Main::calculateDepth(CkCcsRequestMsg* m) {
 
 void Main::depthCalculated(CkReductionMsg* m) {
 	double* z = 0;
-	pair<byte, double>* mostPair;
 	pair<double, double>* potPair;
 			potPair = static_cast<pair<double, double> *>(m->getData());
 			//cout << "Depth calculated by potential, z = " << potPair->second << " with potential " << potPair->first << endl;
@@ -318,5 +307,7 @@ void Main::localParticleCode(CkCcsRequestMsg * m)
     CcsSendDelayedReply(m->reply, 1, &success);
     delete m;
 }
+  
+
 
 #include "ResolutionServer.def.h"
