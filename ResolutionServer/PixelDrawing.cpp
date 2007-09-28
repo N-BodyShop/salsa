@@ -158,7 +158,7 @@ inline void splatParticle(byte* image, const int width, const int height, const 
 		unsigned int maxxpix = min(width - 1, partxpix + 2 * hint);
 		unsigned int minypix = max(0, partypix - 2 * hint);
 		unsigned int maxypix = min(height - 1, partypix + 2 * hint);
-		float dAOverhsq = delta * delta / h / h;
+		// float dAOverhsq = delta * delta / h / h;
 		for(unsigned int ypix = minypix; ypix <= maxypix; ++ypix) {
 			for(unsigned int xpix = minxpix; xpix <= maxxpix; ++xpix) {
 				float r = delta * sqrt(static_cast<double>((ypix - partypix) * (ypix - partypix) + (xpix - partxpix) * (xpix - partxpix)));
