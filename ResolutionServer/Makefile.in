@@ -32,7 +32,8 @@ $(STRUCTURES_PATH)/libTipsy.a:
 
 ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
-Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h
+Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h \
+	../structures/TypeHandling.h ../structures/TypedArray.h
 ../SimulationHandler/SiXFormat.o: ../SimulationHandler/Simulation.h
 ../SimulationHandler/TipsyFormat.o: ../SimulationHandler/Simulation.h
 
