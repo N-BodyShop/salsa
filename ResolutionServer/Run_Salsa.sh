@@ -3,6 +3,8 @@
 echo "group main ++shell /usr/bin/ssh -X" > nodelist
 echo host localhost >> nodelist
 
+rm -f /tmp/Resolution.out
+
 charmrun ++server ResolutionServer run99.std >& /tmp/Resolution.out &
 
 PORT=""
