@@ -8,16 +8,6 @@
 using namespace std;
 using namespace SimulationHandling;
 
-void Main::executePythonCode(CkCcsRequestMsg* m) {
-	string s(m->data, m->length);
-	cout << "Got code to execute: \"" << s << "\"" << endl;
-	CcsDelayedReply d = m->reply;
-	m->data[m->length-1] = 0;  // guarantee null termination.
-	Main::pyRequest(m);
-	
-	CcsSendDelayedReply(d, 3, "ok\n");
-}
-
 void Main::getFamilies(int handle) {
     Worker* w = this->workers[0].ckLocal();
     PyObject *lFamily = PyList_New(0);
@@ -70,7 +60,7 @@ void Main::saveSimulation(int handle) {
     // If you don't get a path argument, then save 
     if(PyArg_ParseTuple(arg, "s", &path)== false) {
       path = (char *) malloc(256*sizeof(char));
-      path[0] = NULL;
+      path[0] = '\0';
       //      strcpy(path, w->sim->name.c_str());
     }
     // The writing is done as a domino scheme.  Call the head node
@@ -82,15 +72,21 @@ void Main::saveSimulation(int handle) {
     pythonReturn(handle, Py_BuildValue("i",result));
     }
 
-/* usage: getNumParticles('family') */
+/* usage: getNumParticles('family')  XXX deprecated
+   or getNumParticles('group', 'family') */
 void Main::getNumParticles(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *familyName;
+    char *groupName = NULL;
     Worker* w = this->workers[0].ckLocal();
-    if(PyArg_ParseTuple(arg, "s", &familyName) == false) {
-    	pythonReturn(handle);
-    	return;
+    if(PyArg_ParseTuple(arg, "ss", &groupName, &familyName) == false) {
+	PyErr_Clear();
+	if(PyArg_ParseTuple(arg, "s", &familyName) == false) {
+	    pythonReturn(handle, NULL);
+	    return;
+	    }
 	}
+    
     Simulation::iterator iter = w->sim->find(familyName);
     
     if(iter == w->sim->end()) {
@@ -98,8 +94,25 @@ void Main::getNumParticles(int handle) {
 	pythonReturn(handle, NULL);
 	return;
     }
-    pythonReturn(handle,Py_BuildValue("i",
+    if(groupName == NULL) {	// Single argument version
+	pythonReturn(handle,Py_BuildValue("i",
 				      iter->second.count.totalNumParticles));
+	}
+    else 
+	{
+	    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+	    if(giter == w->groups.end()) {
+		PyErr_SetString(PyExc_NameError, "No such group");
+		pythonReturn(handle, NULL);
+		return;
+		}
+	    CkReductionMsg* mesg;
+	    int result;
+	    workers.getNumParticlesGroup(groupName, familyName,
+					 createCallbackResumeThread(mesg, result));
+	    pythonReturn(handle, Py_BuildValue("i", result));
+	    delete mesg;
+	    }
 }
 
 void Main::getAttributeRange(int handle) {
@@ -303,25 +316,67 @@ void Main::importData(int handle) {
 
 void Main::getAttributeRangeGroup(int handle) {
     char *familyName, *attributeName, *groupName;
+    Worker* w = workers[0].ckLocal();
     PyObject *arg = PythonObject::pythonGetArg(handle);
     if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName)
        == false) {
-	/*
-	 * Haven't thought too hard about errors
-	 */
-	pythonReturn(handle,Py_BuildValue("(dd)", HUGE, -HUGE));
+	pythonReturn(handle,NULL);
 	return;
 	}
     
-    CkReductionMsg* mesg;
-    pair<double,double> minmax;
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end()) {
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    AttributeMap::iterator attrIter
+	= simIter->second.attributes.find(attributeName);
+    if(attrIter == simIter->second.attributes.end()) {
+	PyErr_SetString(PyExc_NameError, "No such attribute");
+	pythonReturn(handle, NULL);
+	return;
+	}
 
-    pythonSleep(handle);
-    workers.getAttributeRangeGroup(groupName, familyName, attributeName,
-			     createCallbackResumeThread(mesg, minmax));
-    delete mesg;
-    pythonAwake(handle);
-    pythonReturn(handle,Py_BuildValue("(dd)", minmax.first, minmax.second));
+    int iDim =  attrIter->second.dimensions;
+    CkReductionMsg* mesg;
+    if(iDim == 1) {
+	pair<double,double> minmax;
+
+	pythonSleep(handle);
+	workers.getAttributeRangeGroup(groupName, familyName, attributeName,
+				 createCallbackResumeThread(mesg, minmax));
+	pythonAwake(handle);
+	pythonReturn(handle,Py_BuildValue("(dd)", minmax.first, minmax.second));
+	delete mesg;
+	}
+    else if(iDim == 3) {
+	OrientedBox<double> bounds;
+
+	pythonSleep(handle);
+	workers.getVecAttributeRangeGroup(groupName, familyName, attributeName,
+				 createCallbackResumeThread(mesg, bounds));
+	pythonAwake(handle);
+	pythonReturn(handle,Py_BuildValue("((ddd)(ddd))", bounds.lesser_corner.x,
+					  bounds.lesser_corner.y,
+					  bounds.lesser_corner.z,
+					  bounds.greater_corner.x,
+					  bounds.greater_corner.y,
+					  bounds.greater_corner.z));
+	delete mesg;
+	}
+    else {
+	PyErr_SetString(PyExc_ValueError, "Dimension is not 1 or 3");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    
     }
 
 void Main::createScalarAttribute(int handle) {
@@ -548,10 +603,81 @@ void Main::createGroupAttributeBox(int handle) {
 void Main::runLocalParticleCode(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *achCode;
-    PyArg_ParseTuple(arg, "s", &achCode);
+    if(PyArg_ParseTuple(arg, "s", &achCode) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
 
     string s = string(achCode);
     
     workers.localParticleCode(s, CkCallbackResumeThread());
     pythonReturn(handle);
 }
+
+// Fancier group version of above.
+void Main::runLocalParticleCodeGroup(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *achGroup;
+    char *achCode;
+    PyObject *global;		// data available to all particles
+    
+    if(PyArg_ParseTuple(arg, "ssO", &achGroup, &achCode, &global) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    string g(achGroup);
+    string s(achCode);
+    
+    Worker* w = workers[0].ckLocal();
+    Worker::GroupMap::iterator giter = w->groups.find(achGroup);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    workers.localParticleCodeGroup(g, s, CkCallbackResumeThread());
+    pythonReturn(handle);
+}
+
+#if 0
+Think about this some more.
+This probably can be deleted.
+
+// Create a sum of attribute 1 summed in attribute 2
+// Usage reduceSumAttribute(Group, Attribute1, Attribute2, min, max binsize)
+
+void Main::histSumAttribute(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *achCode;
+    char *achAttr1; // Attribute to be summed
+    char *achAttr2; // Attribute to determine bin
+    double dMin, dMax;
+    int nBin;
+    double *result;
+
+    if(PyArg_ParseTuple(arg, "sssddi", &sGroupName, &achAttr1, &achAttr2,
+			&dMin, &dMax, &nBin) == false) {
+	    
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    result = new[nBin] double;
+    
+    workers.histSumAttribute(sGroupName, &achAttr1, &achAttr2, dMin, dMax, nBin
+			     createCallbackResumeThread(mesg, result));
+
+    PyObject *lResult = PyList_New(0);
+    for(int i = 0; i < nBin; i++) 
+	{
+	    PyList_Append(lResult, Py_BuildValue("d", result[i]));
+	    }
+		
+
+    pythonReturn(handle, lResult);
+    delete result;
+    delete mesg;
+}
+#endif

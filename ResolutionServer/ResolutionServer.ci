@@ -25,7 +25,6 @@ mainmodule ResolutionServer {
 		entry [threaded] void drawVectors(CkCcsRequestMsg* m);
 		entry [threaded] void localParticleCode(CkCcsRequestMsg* m);
 		
-		entry void executePythonCode(CkCcsRequestMsg* m);
 		entry [python "return position with a group of the minimum value of an attribute"]
 			void findAttributeMin(int handle);
 		entry [python "return list of families"]
@@ -54,6 +53,8 @@ mainmodule ResolutionServer {
 		entry [python] void createGroupAttributeSphere(int handle);
 		entry [python] void createGroupAttributeBox(int handle);
 		entry [python] void runLocalParticleCode(int handle);
+		entry [python "run code over all particles in a group"]
+		      	      void runLocalParticleCodeGroup(int handle);
 		entry [python "import data from python"] 
 			void importData(int handle);
 	};
@@ -77,6 +78,9 @@ mainmodule ResolutionServer {
 		entry void getAttributeInformation(CkCcsRequestMsg* m);
 		entry void getColoringInformation(CkCcsRequestMsg* m);
 	
+		entry void getNumParticlesGroup(const std::string& groupName,
+				  const std::string& familyName,
+				  const CkCallback& cb);
 		entry void findAttributeMin(const std::string& groupName,
 			      const std::string& attributeName,
 			      const CkCallback& cb);
@@ -89,6 +93,10 @@ mainmodule ResolutionServer {
 				    const std::string& familyName,
 				    const std::string& attributeName,
 				    const CkCallback& cb);
+	        entry void getVecAttributeRangeGroup(const std::string& groupName,
+				    const std::string& familyName,
+				    const std::string& attributeName,
+				       const CkCallback& cb);
 		entry void createScalarAttribute(std::string const& familyName,
 					         std::string const& attributeName,
 					         CkCallback const& cb);
@@ -109,6 +117,7 @@ mainmodule ResolutionServer {
 				      Vector3D<double> edge3,
 				      CkCallback const& cb);
 		entry void localParticleCode(std::string s, const CkCallback &cb);
+		entry void localParticleCodeGroup(std::string g, std::string s, const CkCallback &cb);
 	};
 	
 	group MetaInformationHandler {

@@ -175,10 +175,8 @@ public:
 	void makeGroup(CkCcsRequestMsg* m);
 	void activateGroup(CkCcsRequestMsg* m);
 	void drawVectors(CkCcsRequestMsg* m);
+	void localParticleCode(CkCcsRequestMsg* m);
 	
-	void initializePython();
-	void executePythonCode(CkCcsRequestMsg* m);
-	void localParticleCode(CkCcsRequestMsg * m);
 	void saveSimulation(int handle);
 	void findAttributeMin(int handle);
 	void getFamilies(int handle);
@@ -201,6 +199,7 @@ public:
 	void createGroupAttributeSphere(int handle);
 	void createGroupAttributeBox(int handle);
 	void runLocalParticleCode(int handle);
+	void runLocalParticleCodeGroup(int handle);
 };
 
 class MetaInformationHandler : public Group {
@@ -287,6 +286,9 @@ public:
 	void setActiveGroup(const std::string& s, const CkCallback& cb);
 	void setDrawVectors(const std::string& s, const CkCallback& cb);
 
+	void getNumParticlesGroup(const std::string &groupName,
+				  const std::string &familyName,
+				  const CkCallback &cb);
 	void findAttributeMin(const std::string& groupName,
 			      const std::string& attributeName,
 			      const CkCallback& cb);
@@ -297,6 +299,10 @@ public:
 				    const std::string& familyName,
 				    const std::string& attributeName,
 				    const CkCallback& cb);
+	void getVecAttributeRangeGroup(const std::string& groupName,
+				    const std::string& familyName,
+				    const std::string& attributeName,
+				       const CkCallback& cb);
 	void getAttributeSum(const std::string& groupName,
 			     const std::string& familyName,
 			     const std::string& attributeName,
@@ -327,6 +333,8 @@ public:
 				      CkCallback const& cb);
 	
 	void localParticleCode(std::string s, const CkCallback &cb);
+	void localParticleCodeGroup(std::string g, std::string s,
+				    const CkCallback &cb);
 	int buildIterator(PyObject*, void*); // for localParticle
 	int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
 };

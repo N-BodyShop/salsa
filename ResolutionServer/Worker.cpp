@@ -184,6 +184,7 @@ const byte lineColor = 1;
 
 #include "PixelDrawing.cpp"
 
+#if 0
 class SimplePredicate {
 public:
 	//the SimplePredicate defines the "All" group, always returning true
@@ -250,6 +251,8 @@ public:
 };
 
 typedef filter_iterator<FilterPredicate, counting_iterator<u_int64_t> > FilterIteratorType;
+
+#endif
 
 template <typename T>
 struct DecimalLogarithmOp {
@@ -960,6 +963,26 @@ string javaFormat(T x) {
 	return oss.str();
 }
 
+// count particles in a given group
+
+void Worker::getNumParticlesGroup(const std::string &groupName,
+			  const std::string &familyName,
+				  const CkCallback &cb)
+{
+    GroupMap::iterator gIter = groups.find(groupName);
+    int i = 0;
+
+    if(gIter != groups.end()) {
+	shared_ptr<SimulationHandling::Group>& g = gIter->second;
+	GroupIterator iter = g->make_begin_iterator(familyName);
+	GroupIterator end = g->make_end_iterator(familyName);
+	for(i = 0; *iter < *end; iter++)
+	    i++;
+	}
+    contribute(sizeof(int), &i, CkReduction::sum_int, cb);
+    }
+		
+
 template <typename T, typename IteratorType>
 double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
 		    IteratorType &itMin) {
@@ -1123,6 +1146,27 @@ void Worker::saveSimulation(const std::string& path, const CkCallback& cb)
   contribute(sizeof(result),&result,CkReduction::logical_and,cb);
 }
 
+/*
+ * fancy double macro to do the switch amoung types.  It gives us a
+ * constant to use for the template instantiation.
+ * To use, first define a caseCode2Type macro whose first argument is
+ * a variable of type TypeHandling::DataTypeCode, the second is the
+ * actual type it maps to.
+ */
+#define casesCode2Types \
+    caseCode2Type(int8, char)	\
+    caseCode2Type(uint8, unsigned char)	\
+    caseCode2Type(int16, short)	\
+    caseCode2Type(uint16, unsigned short)	\
+    caseCode2Type(int32, int)	\
+    caseCode2Type(uint32, unsigned int)	\
+    caseCode2Type(int64, int64_t)	\
+    caseCode2Type(uint64, u_int64_t)	\
+    caseCode2Type(float32, float)	\
+    caseCode2Type(float64, double)	\
+    default: assert(0);
+    
+    
 void Worker::getAttributeRangeGroup(const std::string& groupName,
 				    const std::string& familyName,
 				    const std::string& attributeName,
@@ -1148,44 +1192,71 @@ void Worker::getAttributeRangeGroup(const std::string& groupName,
 	    GroupIterator iter = g->make_begin_iterator(familyName);
 	    GroupIterator end = g->make_end_iterator(familyName);
 	    switch(arr.code) {
-	    case int8:
-		minmaxAttribute<Code2Type<int8>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case uint8:
-		minmaxAttribute<Code2Type<uint8>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case int16:
-		minmaxAttribute<Code2Type<int16>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case uint16:
-		minmaxAttribute<Code2Type<uint16>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case TypeHandling::int32:
-		minmaxAttribute<Code2Type<TypeHandling::int32>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case TypeHandling::uint32:
-		minmaxAttribute<Code2Type<TypeHandling::uint32>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case TypeHandling::int64:
-		minmaxAttribute<Code2Type<TypeHandling::int64>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case TypeHandling::uint64:
-		minmaxAttribute<Code2Type<TypeHandling::uint64>::type>(arr, iter, end, &minmax[0]);
-		break;
-	    case float32:
-		minmaxAttribute<Code2Type<float32>::type>(arr, iter, end,
-							  &minmax[0]);
-		break;
-	    case float64:
-		minmaxAttribute<Code2Type<float64>::type>(arr, iter, end,
-							  &minmax[0]);
-		break;
+#define caseCode2Type(enumName,typeName) \
+	    case enumName: \
+		minmaxAttribute<typeName>(arr, iter, end, &minmax[0]); \
+	    break;
+	    
+	    casesCode2Types
 		}
 	    }
 	}
 	contribute(2*sizeof(double), &minmax[0], minmax_double, cb);
     }
 
+// Useful template for below
+template <typename T, typename IteratorType>
+void boundboxAttribute(TypedArray const& arr, IteratorType begin,
+		    IteratorType end, OrientedBox<double> *bound) {
+
+    Vector3D<T> const* array = arr.getArray(Type2Type<Vector3D<T> >());
+    if(array == 0)
+	return;
+    for(; *begin != *end; ++begin) {
+	bound->grow(array[*begin]);
+	}
+    return;
+}
+
+// find bounding box of a vector attribute
+
+void Worker::getVecAttributeRangeGroup(const std::string& groupName,
+				    const std::string& familyName,
+				    const std::string& attributeName,
+				    const CkCallback& cb)
+{
+    OrientedBox<double> bounds = OrientedBox<double>();
+    GroupMap::iterator gIter = groups.find(groupName);
+    if(gIter != groups.end()) {
+	shared_ptr<SimulationHandling::Group>& g = gIter->second;
+	Simulation::iterator famIter = sim->find(familyName);
+	if(famIter != sim->end()) {
+	    TypedArray& arr = famIter->second.attributes[attributeName];
+	    //only makes sense for scalar values
+	    if(arr.dimensions != 3) {
+		cerr << "This isn't a vector attribute" << endl;
+		contribute(sizeof(bounds), &bounds, growOrientedBox_double, cb);
+		return;
+		}
+	    if(arr.data == 0) //attribute not loaded
+		sim->loadAttribute(familyName, attributeName,
+				   famIter->second.count.numParticles,
+				   famIter->second.count.startParticle);
+	    GroupIterator iter = g->make_begin_iterator(familyName);
+	    GroupIterator end = g->make_end_iterator(familyName);
+	    switch(arr.code) {
+#undef caseCode2Type
+#define caseCode2Type(enumName,typeName) \
+	    case enumName: \
+		boundboxAttribute<typeName>(arr, iter, end, &bounds); \
+	    break;
+	    
+	    casesCode2Types
+		}
+	    }
+	}
+	contribute(sizeof(bounds), &bounds, growOrientedBox_double, cb);
+    }
 
 template <typename T, typename IteratorType>
 double sumAttribute(TypedArray const& arr, IteratorType begin, IteratorType end) {
@@ -1405,40 +1476,55 @@ void Worker::createGroup_AttributeBox(std::string const& groupName,
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
-// Below is a test of Filippo's python iterator
-
+// Run python code over all particles in a group
+// Deprecated in favor of the next function
+//
 void Worker::localParticleCode(std::string s, const CkCallback &cb) 
 {
-    // CkCcsRequestMsg *msg=new (s.length(),0) CkCcsRequestMsg;
-
-    // msg->length=s.length()+1; // make sure final NULL gets copied
-    // memcpy(msg->data, s.c_str(), s.length()+1);
-
-    // iterate(msg);
     
-    PythonIterator info;
-    PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
-    CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
-    memcpy(msg->data, wrapper.pack(), wrapper.size());
-    msg->reply.attr.auth = 0;
+    GroupMap::iterator gIter = groups.find("All");
+
+    if(gIter != groups.end()) {
+	localPartG = gIter->second;
+
+	PythonIterator info;
+	PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
+	CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
+	memcpy(msg->data, wrapper.pack(), wrapper.size());
+	msg->reply.attr.auth = 0;
+
+	PythonObject::pyRequest(msg);
+	}
     
-    PythonObject::pyRequest(msg);
     
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
 
-int Worker::buildIterator(PyObject *arg, void *iter) {
-    GroupMap::iterator gIter = groups.find("All");
+void Worker::localParticleCodeGroup(std::string g, std::string s,
+				    const CkCallback &cb)
+{
+    GroupMap::iterator gIter = groups.find(g);
 
-    if(gIter == groups.end())
-	return 0;
-    localPartG = gIter->second;
+    if(gIter != groups.end()) {
+	localPartG = gIter->second;
+	PythonIterator info;	// XXX should this be initialized?
+	PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
+	CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
+	memcpy(msg->data, wrapper.pack(), wrapper.size());
+	msg->reply.attr.auth = 0;
+
+	PythonObject::pyRequest(msg);
+	}
+    contribute(0, 0, CkReduction::concat, cb); // barrier
+    }
+
+int Worker::buildIterator(PyObject *arg, void *iter) {
     localPartFamIter = localPartG->families.begin();
     if(localPartFamIter == localPartG->families.end())
 	return 0;
     localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
     localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
-    if(localPartIter == localPartEnd)
+    if(*localPartIter == *localPartEnd)
 	return 0;
 
     ParticleFamily& family = (*sim)[*localPartFamIter];
@@ -1446,22 +1532,48 @@ int Worker::buildIterator(PyObject *arg, void *iter) {
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
-	if(arr.dimensions != 1)
-	    continue;
 	if(arr.data == 0) //attribute not loaded
-	    sim->loadAttribute(*localPartFamIter, attrIter->first, family.count.numParticles, family.count.startParticle);
-	switch(arr.code) {
-	case TypeHandling::int32:
-	    pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
-	    break;
-	case float32:
-	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
-	    break;
-	case float64:
-	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
-	    break;
-	default:
-	    assert(0);
+	    sim->loadAttribute(*localPartFamIter, attrIter->first,
+			       family.count.numParticles,
+			       family.count.startParticle);
+	if(arr.dimensions == 1) {
+	    switch(arr.code) {
+	    case TypeHandling::int32:
+		pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
+		break;
+	    case float32:
+		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
+		break;
+	    case float64:
+		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
+		break;
+	    default:
+		assert(0);
+		}
+	    }
+	if(arr.dimensions == 3) {
+	    Vector3D<int> vl;
+	    Vector3D<float> vf;
+	    Vector3D<double> vd;
+	    switch(arr.code) {
+	    case TypeHandling::int32:
+		vl = arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter];
+		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+				       Py_BuildValue("(iii)", vl.x, vl.y, vl.z));
+		break;
+	    case float32:
+		vf = arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter];
+		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+				       Py_BuildValue("(ddd)", vf.x, vf.y, vf.z));
+		break;
+	    case float64:
+		vd = arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter];
+		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+				       Py_BuildValue("(ddd)", vd.x, vd.y, vd.z));
+		break;
+	    default:
+		assert(0);
+		}
 	    }
 	}
     return 1;
@@ -1470,38 +1582,76 @@ int Worker::buildIterator(PyObject *arg, void *iter) {
 int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
     // Copy out from Python object
 
-    ParticleFamily& family = (*sim)[*localPartFamIter];
+    ParticleFamily family = (*sim)[*localPartFamIter];
     
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
-	if(arr.dimensions != 1)
-	    continue;
-	long lvalue; // Python only does longs
-	double dvalue;
-	
-	switch(arr.code) {
-	case TypeHandling::int32:
-	    pythonGetInt(arg, (char *) attrIter->first.c_str(), &lvalue);
-	    arr.getArray(Type2Type<int>())[*localPartIter] = lvalue;
-	    break;
-	case float32:
-	    pythonGetFloat(arg, (char *) attrIter->first.c_str(), &dvalue);
-	    arr.getArray(Type2Type<float>())[*localPartIter] = dvalue;
-	    break;
-	case float64:
-	    pythonGetFloat(arg, (char *) attrIter->first.c_str(), &arr.getArray(Type2Type<double>())[*localPartIter]);
-	    break;
-	default:
-	    assert(0);
+	if(arr.dimensions == 1) {
+	    long lvalue; // Python only does longs
+	    double dvalue;
+
+	    switch(arr.code) {
+	    case TypeHandling::int32:
+		pythonGetInt(arg, (char *) attrIter->first.c_str(), &lvalue);
+		arr.getArray(Type2Type<int>())[*localPartIter] = lvalue;
+		break;
+	    case float32:
+		pythonGetFloat(arg, (char *) attrIter->first.c_str(), &dvalue);
+		arr.getArray(Type2Type<float>())[*localPartIter] = dvalue;
+		break;
+	    case float64:
+		pythonGetFloat(arg, (char *) attrIter->first.c_str(), &arr.getArray(Type2Type<double>())[*localPartIter]);
+		break;
+	    default:
+		assert(0);
+		}
+	    }
+	if(arr.dimensions == 3) {
+	    PyObject *tmp = PyObject_GetAttrString(arg, attrIter->first.c_str());
+	    CkAssert(PyTuple_Check(tmp));
+	    PyObject *tmpItemX = PyTuple_GetItem(tmp, 0);
+	    PyObject *tmpItemY = PyTuple_GetItem(tmp, 1);
+	    PyObject *tmpItemZ = PyTuple_GetItem(tmp, 2);
+	    
+	    Vector3D<int> lvalue;
+	    Vector3D<float> fvalue;
+	    Vector3D<double> dvalue;
+
+	    switch(arr.code) {
+	    case TypeHandling::int32:
+		lvalue.x = PyInt_AsLong(tmpItemX);
+		lvalue.y = PyInt_AsLong(tmpItemY);
+		lvalue.z = PyInt_AsLong(tmpItemZ);
+		arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter]
+		    = lvalue;
+		break;
+	    case float32:
+		fvalue.x = PyFloat_AsDouble(tmpItemX);
+		fvalue.y = PyFloat_AsDouble(tmpItemY);
+		fvalue.z = PyFloat_AsDouble(tmpItemZ);
+		arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter]
+		    = fvalue;
+		break;
+	    case float64:
+		dvalue.x = PyFloat_AsDouble(tmpItemX);
+		dvalue.y = PyFloat_AsDouble(tmpItemY);
+		dvalue.z = PyFloat_AsDouble(tmpItemZ);
+		arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter]
+		    = dvalue;
+		break;
+	    default:
+		assert(0);
+		}
+	    Py_DECREF(tmp);
 	    }
 	}
     // Increment
     localPartIter++;
-    if(localPartIter == localPartEnd) {
+    if(*localPartIter == *localPartEnd) { // End of particles in family
 	localPartFamIter++;
 	if(localPartFamIter == localPartG->families.end()) {
-	    return 0;
+	    return 0;		// Done!
 	    }
 	localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
 	localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
@@ -1513,20 +1663,44 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
-	if(arr.dimensions != 1)
-	    continue;
-	switch(arr.code) {
-	case TypeHandling::int32:
-	    pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
-	    break;
-	case float32:
-	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
-	    break;
-	case float64:
-	    pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
-	    break;
-	default:
-	    assert(0);
+	if(arr.dimensions == 1) {
+	    switch(arr.code) {
+	    case TypeHandling::int32:
+		pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
+		break;
+	    case float32:
+		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
+		break;
+	    case float64:
+		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
+		break;
+	    default:
+		assert(0);
+		}
+	    }
+	if(arr.dimensions == 3) {
+	    Vector3D<int> vl;
+	    Vector3D<float> vf;
+	    Vector3D<double> vd;
+	    switch(arr.code) {
+	    case TypeHandling::int32:
+		vl = arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter];
+		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+				       Py_BuildValue("(iii)", vl.x, vl.y, vl.z));
+		break;
+	    case float32:
+		vf = arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter];
+		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+				       Py_BuildValue("(ddd)", vf.x, vf.y, vf.z));
+		break;
+	    case float64:
+		vd = arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter];
+		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+				       Py_BuildValue("(ddd)", vd.x, vd.y, vd.z));
+		break;
+	    default:
+		assert(0);
+		}
 	    }
 	}
     return 1;
