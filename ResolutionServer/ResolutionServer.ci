@@ -117,7 +117,9 @@ mainmodule ResolutionServer {
 				      Vector3D<double> edge3,
 				      CkCallback const& cb);
 		entry void localParticleCode(std::string s, const CkCallback &cb);
-		entry void localParticleCodeGroup(std::string g, std::string s, const CkCallback &cb);
+		entry void localParticleCodeGroup(std::string g, std::string s,
+		      	   		          PyObjectMarshal obj,
+						  const CkCallback &cb);
 	};
 	
 	group MetaInformationHandler {

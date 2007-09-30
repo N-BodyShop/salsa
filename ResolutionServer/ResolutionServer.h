@@ -121,6 +121,44 @@ inline void operator|(PUP::er& p, MyVizRequest& req) {
 	p | req.doSplatter;
 }
 
+#include "marshal.h"
+
+// Class just to handle marshalling of Python Objects
+class PyObjectMarshal {
+ public:
+    PyObject *obj;
+    PyObjectMarshal(PyObject *_obj) {obj = _obj;}
+    PyObjectMarshal() {}
+    };
+
+inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
+    char *buf;
+    int nBytes;
+    PyObject *pyStr;
+    
+    if(!p.isUnpacking()) {
+	pyStr = PyMarshal_WriteObjectToString(objM.obj, Py_MARSHAL_VERSION);
+	if(pyStr != NULL) {
+	    buf = PyString_AsString(pyStr);
+	    nBytes = PyString_Size(pyStr);
+	    }
+	else {
+	    PyErr_Print();
+	    nBytes = 0;
+	    }
+	}
+
+    p|nBytes;
+    p(buf, nBytes);
+    
+    if(p.isUnpacking()) {
+	objM.obj = PyMarshal_ReadObjectFromString(buf, nBytes);
+	}
+    else {
+	Py_DECREF(pyStr);
+	}
+    }
+
 #include "ParticleStatistics.h"
 #include "ResolutionServer.decl.h"
 
@@ -258,6 +296,7 @@ class Worker : public CBase_Worker {
 	SimulationHandling::Group::GroupFamilies::iterator localPartFamIter;
 	SimulationHandling::GroupIterator localPartIter;
 	SimulationHandling::GroupIterator localPartEnd;
+	PyObject *localPartPyGlob;
 	
 	template <typename T>
 	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip);
@@ -334,7 +373,7 @@ public:
 	
 	void localParticleCode(std::string s, const CkCallback &cb);
 	void localParticleCodeGroup(std::string g, std::string s,
-				    const CkCallback &cb);
+				    PyObjectMarshal obj, const CkCallback &cb);
 	int buildIterator(PyObject*, void*); // for localParticle
 	int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
 };

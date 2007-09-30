@@ -1319,11 +1319,9 @@ void Worker::getAttributeSum(const string& groupName,
 }
 
 void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
-	cerr << "Worker " << thisIndex << ": Trying to get com" << endl;
 	pair<double, Vector3D<double> > compair;
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		cerr << "Worker " << thisIndex << ": Found group" << endl;
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 			ParticleFamily& family = (*sim)[*famIter];
@@ -1486,6 +1484,7 @@ void Worker::localParticleCode(std::string s, const CkCallback &cb)
 
     if(gIter != groups.end()) {
 	localPartG = gIter->second;
+	localPartPyGlob = NULL;
 
 	PythonIterator info;
 	PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
@@ -1501,12 +1500,15 @@ void Worker::localParticleCode(std::string s, const CkCallback &cb)
     }
 
 void Worker::localParticleCodeGroup(std::string g, std::string s,
+				    PyObjectMarshal global,
 				    const CkCallback &cb)
 {
     GroupMap::iterator gIter = groups.find(g);
 
     if(gIter != groups.end()) {
 	localPartG = gIter->second;
+	localPartPyGlob = global.obj;
+	
 	PythonIterator info;	// XXX should this be initialized?
 	PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
 	CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
@@ -1514,11 +1516,17 @@ void Worker::localParticleCodeGroup(std::string g, std::string s,
 	msg->reply.attr.auth = 0;
 
 	PythonObject::pyRequest(msg);
+	Py_DECREF(localPartPyGlob);
 	}
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
 
 int Worker::buildIterator(PyObject *arg, void *iter) {
+
+    if(localPartPyGlob != NULL) {
+	PyObject_SetAttrString(arg, "_param", localPartPyGlob);
+	}
+    
     localPartFamIter = localPartG->families.begin();
     if(localPartFamIter == localPartG->families.end())
 	return 0;
@@ -1658,8 +1666,6 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
 	family = (*sim)[*localPartFamIter];
 	}
 
-    // Stuff new values in
-    
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;

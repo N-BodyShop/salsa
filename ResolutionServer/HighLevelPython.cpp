@@ -382,9 +382,13 @@ void Main::getAttributeRangeGroup(int handle) {
 void Main::createScalarAttribute(int handle) {
     char *familyName, *attributeName;
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
     CkReductionMsg* mesg;
     int result;
+
+    if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
+	pythonReturn(handle,NULL);
+	return;
+	}
 
     workers.createScalarAttribute(familyName, attributeName,
 			       createCallbackResumeThread(mesg, result));
@@ -502,16 +506,27 @@ void Main::getCenterOfMass(int handle)
 {
     char *groupName;
     CkReductionMsg* mesg;
-    PyObject *arg = PythonObject::pythonGetArg(handle);
-    PyArg_ParseTuple(arg, "s", &groupName);
-    pair<double, Vector3D<double> > compair;
+    Worker* w = workers[0].ckLocal();
 
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    if(PyArg_ParseTuple(arg, "s", &groupName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    pair<double, Vector3D<double> > compair;
     pythonSleep(handle);
     workers.getCenterOfMass(groupName, createCallbackResumeThread(mesg, compair));
-    delete mesg;
     Vector3D<double> retval = compair.second / compair.first;
+    delete mesg;
     pythonAwake(handle);
-    pythonReturn(handle,Py_BuildValue("(ddd)", retval.x, retval.y, retval.z));
+    pythonReturn(handle,Py_BuildValue("ddd", retval.x, retval.y, retval.z));
     }
 	
 void Main::createGroup_Family(int handle)
@@ -610,9 +625,13 @@ void Main::runLocalParticleCode(int handle) {
 
     string s = string(achCode);
     
+    pythonSleep(handle);
     workers.localParticleCode(s, CkCallbackResumeThread());
+    pythonAwake(handle);
     pythonReturn(handle);
 }
+
+#include "marshal.h"
 
 // Fancier group version of above.
 void Main::runLocalParticleCodeGroup(int handle) {
@@ -636,8 +655,10 @@ void Main::runLocalParticleCodeGroup(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-
-    workers.localParticleCodeGroup(g, s, CkCallbackResumeThread());
+    pythonSleep(handle);
+    workers.localParticleCodeGroup(g, s, PyObjectMarshal(global),
+				   CkCallbackResumeThread());
+    pythonAwake(handle);
     pythonReturn(handle);
 }
 
