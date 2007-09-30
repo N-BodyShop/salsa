@@ -34,6 +34,17 @@ ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
 Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h \
 	../structures/TypeHandling.h ../structures/TypedArray.h
+HighLevelPython.o: HighLevelPython.cpp config.h ResolutionServer.h \
+  ../structures/TipsyParticles.h ../structures/Vector3D.h \
+  ../structures/TypeSelection.h ../structures/OrientedBox.h \
+  ../structures/Shape.h ../structures/Sphere.h ../structures/Box.h \
+  ../SimulationHandler/Simulation.h ../structures/tree_xdr.h \
+  ../structures/OrientedBox.h ../structures/xdr_template.h \
+  ../structures/config.h ../structures/TypedArray.h \
+  ../structures/TypeHandling.h ../SimulationHandler/SiXFormat.h \
+  ../SimulationHandler/Simulation.h \
+  ParticleStatistics.h ResolutionServer.decl.h \
+  Reductions.decl.h ../SimulationHandler/Group.h
 ../SimulationHandler/SiXFormat.o: ../SimulationHandler/Simulation.h
 ../SimulationHandler/TipsyFormat.o: ../SimulationHandler/Simulation.h
 
