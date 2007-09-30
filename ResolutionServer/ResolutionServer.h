@@ -147,12 +147,14 @@ inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
 	    nBytes = 0;
 	    }
 	}
-
     p|nBytes;
+    if(p.isUnpacking())
+	buf = new char[nBytes];
     p(buf, nBytes);
     
     if(p.isUnpacking()) {
 	objM.obj = PyMarshal_ReadObjectFromString(buf, nBytes);
+	delete [] buf;
 	}
     else {
 	Py_DECREF(pyStr);
