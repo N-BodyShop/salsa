@@ -5,7 +5,7 @@ echo host localhost >> nodelist
 
 rm -f /tmp/Resolution.out
 
-charmrun ++server ResolutionServer run99.std >& /tmp/Resolution.out &
+charmrun ++server ResolutionServer +stacksize 65536 run99.std >& /tmp/Resolution.out &
 
 PORT=""
 while test -z "$PORT" ; do
