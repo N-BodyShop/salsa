@@ -1566,17 +1566,17 @@ int Worker::buildIterator(PyObject *arg, void *iter) {
 	    switch(arr.code) {
 	    case TypeHandling::int32:
 		vl = arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter];
-		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
 				       Py_BuildValue("(iii)", vl.x, vl.y, vl.z));
 		break;
 	    case float32:
 		vf = arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter];
-		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
 				       Py_BuildValue("(ddd)", vf.x, vf.y, vf.z));
 		break;
 	    case float64:
 		vd = arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter];
-		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
 				       Py_BuildValue("(ddd)", vd.x, vd.y, vd.z));
 		break;
 	    default:
@@ -1616,7 +1616,8 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
 		}
 	    }
 	if(arr.dimensions == 3) {
-	    PyObject *tmp = PyObject_GetAttrString(arg, attrIter->first.c_str());
+	    PyObject *tmp = PyObject_GetAttrString(arg,
+					(char *) attrIter->first.c_str());
 	    CkAssert(PyTuple_Check(tmp));
 	    PyObject *tmpItemX = PyTuple_GetItem(tmp, 0);
 	    PyObject *tmpItemY = PyTuple_GetItem(tmp, 1);
@@ -1691,17 +1692,17 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
 	    switch(arr.code) {
 	    case TypeHandling::int32:
 		vl = arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter];
-		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
 				       Py_BuildValue("(iii)", vl.x, vl.y, vl.z));
 		break;
 	    case float32:
 		vf = arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter];
-		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
 				       Py_BuildValue("(ddd)", vf.x, vf.y, vf.z));
 		break;
 	    case float64:
 		vd = arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter];
-		PyObject_SetAttrString(arg, attrIter->first.c_str(),
+		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
 				       Py_BuildValue("(ddd)", vd.x, vd.y, vd.z));
 		break;
 	    default:

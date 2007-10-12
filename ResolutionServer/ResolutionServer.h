@@ -137,7 +137,11 @@ inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
     PyObject *pyStr;
     
     if(!p.isUnpacking()) {
+#if PY_MINOR_VERSION > 3
 	pyStr = PyMarshal_WriteObjectToString(objM.obj, Py_MARSHAL_VERSION);
+#else
+	pyStr = PyMarshal_WriteObjectToString(objM.obj);
+#endif
 	if(pyStr != NULL) {
 	    buf = PyString_AsString(pyStr);
 	    nBytes = PyString_Size(pyStr);
