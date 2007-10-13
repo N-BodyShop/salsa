@@ -432,10 +432,21 @@ void Main::findAttributeMin(int handle)
 {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *groupName, *attributeName;
-    PyArg_ParseTuple(arg, "ss", &groupName, &attributeName);
     CkReductionMsg* mesg;
     pair<double, Vector3D<double> > compair;
+    Worker* w = workers[0].ckLocal();
 
+    if(PyArg_ParseTuple(arg, "ss", &groupName, &attributeName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+	
     pythonSleep(handle);
     workers.findAttributeMin(groupName, attributeName,
 			     createCallbackResumeThread(mesg, compair));
