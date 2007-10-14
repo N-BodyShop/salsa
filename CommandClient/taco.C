@@ -11,8 +11,8 @@
 
 int main (int argc, char** argv) {
 
-  if (argc<4) {
-      std::cerr << "Usage: taco host port simulation" << std::endl;
+  if (argc<3) {
+      std::cerr << "Usage: taco host port [simulation]" << std::endl;
       return 1;
       }
 
@@ -22,8 +22,10 @@ int main (int argc, char** argv) {
 
   int ret = CcsConnect (&server, host, port, NULL);
   assert(ret != -1);
-  CcsSendRequest (&server, "ChooseSimulation", 0, strlen(argv[3]), argv[3]);
-  CcsRecvResponse (&server, 4, &ret, 1000);
+  if(argc > 3) {
+      CcsSendRequest (&server, "ChooseSimulation", 0, strlen(argv[3]), argv[3]);
+      CcsRecvResponse (&server, 4, &ret, 1000);
+      }
 
   int interpreterHandle = 0;
   
@@ -59,6 +61,7 @@ int main (int argc, char** argv) {
       // Possible bug in pack() method.
       // PythonPrint request(interpreterHandle);
       PythonPrint request(htonl(interpreterHandle));
+      request.setWait(false);
       CcsSendRequest (&server, "ExecutePythonCode", 0, request.size(), request.pack());
       char buffer[1001];
       int len = CcsRecvResponse (&server, 1000, buffer, 1000);
