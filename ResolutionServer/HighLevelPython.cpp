@@ -673,6 +673,53 @@ void Main::runLocalParticleCodeGroup(int handle) {
     pythonReturn(handle);
 }
 
+// Perform a reduction of particle data
+// Two pieces of code are required:
+// 1) a particle function that returns a list of tuples, the first
+// item of each tuple is an index.
+// 2) a reducer that takes a list of tuples and combines common
+// indices and returns a new list
+// XXX show stopper: how to get reduction code to the reducer?
+// One idea: workers produce tuples of (code, globals, list) to send
+// to the reducer.  The reducer first concatenates the lists and then
+// calls code with (globals, list) as an argument.
+
+void Main::reduceParticle(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *achGroup;
+    char *achParticleCode;
+    char *achReduceCode;
+    PyObject *global;		// data available to all particles
+    
+    if(PyArg_ParseTuple(arg, "sssO", &achGroup, &achParticleCode,
+			&achReduceCode, &global) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    string g(achGroup);
+    string sParticleCode(achParticleCode);
+    string sReduceCode(achReduceCode);
+    
+    Worker* w = workers[0].ckLocal();
+    Worker::GroupMap::iterator giter = w->groups.find(achGroup);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    pythonSleep(handle);
+    CkReductionMsg* mesg;
+    PyObjectMarshal result;
+    workers.reduceParticle(g, sParticleCode, sReduceCode,
+			   PyObjectMarshal(global),
+			   createCallbackResumeThread(mesg, result));
+    
+    pythonAwake(handle);
+    pythonReturn(handle);
+    delete mesg;
+}
+
 #if 0
 Think about this some more.
 This probably can be deleted.

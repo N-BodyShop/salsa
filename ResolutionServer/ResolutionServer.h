@@ -27,6 +27,10 @@ typedef long blkcnt_t;
 #include "Simulation.h"
 #include "SiXFormat.h"
 
+// Utility template to pull results out of resumeThread callback.
+// Note that data has to be copied out of "result" before the message
+// is deleted.
+
 template <typename MessageType, typename ResultType>
 class CkCallbackResumeThreadResult : public CkCallback {
 	MessageType*& m;
@@ -244,6 +248,7 @@ public:
 	void createGroupAttributeBox(int handle);
 	void runLocalParticleCode(int handle);
 	void runLocalParticleCodeGroup(int handle);
+	void reduceParticle(int handle);
 };
 
 class MetaInformationHandler : public Group {
@@ -382,6 +387,9 @@ public:
 				    PyObjectMarshal obj, const CkCallback &cb);
 	int buildIterator(PyObject*, void*); // for localParticle
 	int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
+	void reduceParticle(std::string g, std::string sParticleCode,
+			    std::string sReduceCode, PyObjectMarshal global,
+			    const CkCallback &cb);
 };
 
 #endif //RESOLUTIONSERVER_H

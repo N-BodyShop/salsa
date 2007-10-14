@@ -985,9 +985,9 @@ void Worker::getNumParticlesGroup(const std::string &groupName,
 
 template <typename T, typename IteratorType>
 double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
-		    IteratorType &itMin) {
+		    u_int64_t &itMin) {
 	double min = HUGE_VAL;
-	itMin = begin;
+	itMin = *begin;
 	
 	T const* array = arr.getArray(Type2Type<T>());
 	if(array == 0)
@@ -995,7 +995,7 @@ double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
 	for(; begin != end; ++begin)
 	    if(array[*begin] < min) {
 		min = array[*begin];
-		itMin = begin;
+		itMin = *begin;
 		}
 	return min;
 }
@@ -1008,8 +1008,8 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
 	if(gIter != groups.end()) {
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
-		    double min = HUGE;
-		    GroupIterator itGMin;
+		    double min = HUGE_VAL;
+		    u_int64_t itGMin;
 		    
 			Simulation::iterator simIter = sim->find(*famIter);
 			TypedArray& arr = simIter->second.attributes[attributeName];
@@ -1049,7 +1049,7 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
 			    ParticleFamily& family = (*sim)[*famIter];
 			    Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
 			    compair.first = min;
-			    compair.second = positions[*itGMin];
+			    compair.second = positions[itGMin];
 			    }
 		}
 		
@@ -1519,6 +1519,13 @@ void Worker::localParticleCodeGroup(std::string g, std::string s,
 	Py_DECREF(localPartPyGlob);
 	}
     contribute(0, 0, CkReduction::concat, cb); // barrier
+    }
+
+void Worker::reduceParticle(std::string g, std::string sParticleCode,
+			    std::string sReduceCode, PyObjectMarshal global,
+			    const CkCallback &cb)
+{
+    /* XXX place holder */
     }
 
 int Worker::buildIterator(PyObject *arg, void *iter) {

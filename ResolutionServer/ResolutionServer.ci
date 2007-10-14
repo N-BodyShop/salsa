@@ -57,6 +57,8 @@ mainmodule ResolutionServer {
 		      	      void runLocalParticleCodeGroup(int handle);
 		entry [python "import data from python"] 
 			void importData(int handle);
+		entry [python "perform a reduction of particle data"]
+			void reduceParticle(int handle);
 	};
 	
 	array [1D] [python] Worker {
@@ -120,6 +122,10 @@ mainmodule ResolutionServer {
 		entry void localParticleCodeGroup(std::string g, std::string s,
 		      	   		          PyObjectMarshal obj,
 						  const CkCallback &cb);
+		entry void reduceParticle(std::string g,
+		      	    std::string sParticleCode,
+			    std::string sReduceCode, PyObjectMarshal global,
+			    const CkCallback &cb);
 	};
 	
 	group MetaInformationHandler {
