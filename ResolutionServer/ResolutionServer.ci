@@ -25,6 +25,8 @@ mainmodule ResolutionServer {
 		entry [threaded] void drawVectors(CkCcsRequestMsg* m);
 		entry [threaded] void localParticleCode(CkCcsRequestMsg* m);
 		
+		entry [python "Choose a simulation file"]
+		      void chooseSimulation(int handle);
 		entry [python "return position with a group of the minimum value of an attribute"]
 			void findAttributeMin(int handle);
 		entry [python "return list of families"]

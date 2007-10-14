@@ -8,6 +8,29 @@
 using namespace std;
 using namespace SimulationHandling;
 
+void Main::chooseSimulation(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *fileName;
+    FILE *fp;
+    if(PyArg_ParseTuple(arg, "s", &fileName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+	
+    simListType::iterator chosen = simulationList.find(fileName);
+    if(chosen != simulationList.end()) {
+	workers.loadSimulation(chosen->second, CkCallbackResumeThread());
+	}
+    else if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
+	fclose(fp);
+	workers.loadSimulation(fileName, CkCallbackResumeThread());
+	}
+    else {
+	PyErr_SetString(PyExc_NameError, "No such file");
+	}
+    pythonReturn(handle);
+    }
+
 void Main::getFamilies(int handle) {
     Worker* w = this->workers[0].ckLocal();
     PyObject *lFamily = PyList_New(0);
