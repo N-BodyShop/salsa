@@ -120,11 +120,13 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 		catch(NameError &e) {
 		    cerr << CkMyPe() << ": Loading positions failed for family: "
 			 << iter->second.familyName << ":" << e.getText() << endl;
+		    iter->second.count.numParticles = 0;
 		    continue;
 		    }
 		catch(FileError &e) {
 		    cerr << CkMyPe() << ": Loading positions failed for family:"
 			 << iter->second.familyName << e.getText() << endl;
+		    iter->second.count.numParticles = 0;
 		    continue;
 		    }
 		TypedArray& arr = iter->second.attributes["position"];
