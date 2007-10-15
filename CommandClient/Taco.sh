@@ -5,8 +5,8 @@ echo host localhost >> nodelist
 
 rm -f /tmp/Resolution.out
 
-charmrun ++debug ++server ResolutionServer +stacksize 65536 -v -v run99.std >& /tmp/Resolution.out &
-# charmrun ++server ResolutionServer +stacksize 65536 run99.std >& /tmp/Resolution.out &
+# charmrun ++debug ++server ResolutionServer +stacksize 65536 -v -v run99.std >& /tmp/Resolution.out &
+charmrun ++server ResolutionServer +stacksize 65536 run99.std >& /tmp/Resolution.out &
 
 PORT=""
 while test -z "$PORT" ; do
@@ -17,4 +17,4 @@ done
 
 echo PORT is $PORT
 
-gdb taco localhost $PORT $*
+taco localhost $PORT $*
