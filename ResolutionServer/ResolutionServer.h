@@ -225,7 +225,7 @@ public:
 	void drawVectors(CkCcsRequestMsg* m);
 	void localParticleCode(CkCcsRequestMsg* m);
 	
-	void chooseSimulation(int handle);
+	void loadSimulation(int handle);
 	void saveSimulation(int handle);
 	void findAttributeMin(int handle);
 	void getFamilies(int handle);

@@ -8,7 +8,7 @@
 using namespace std;
 using namespace SimulationHandling;
 
-void Main::chooseSimulation(int handle) {
+void Main::loadSimulation(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *fileName;
     FILE *fp;
