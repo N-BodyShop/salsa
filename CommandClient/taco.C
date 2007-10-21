@@ -28,6 +28,7 @@ int main (int argc, char** argv) {
       }
 
   int interpreterHandle = 0;
+  read_history(".taco_history");
   
   while(1) {
       char *prompt = "Yes, master?";
@@ -55,7 +56,8 @@ int main (int argc, char** argv) {
       char data[4];
             
       CcsRecvResponse (&server, 4, data, 1000);
-      interpreterHandle = ntohl(*((int *) data));
+      if(interpreterHandle == 0)
+	  interpreterHandle = ntohl(*((int *) data));
       
       printf("handler: %d\n",interpreterHandle);
       // Possible bug in pack() method.
@@ -69,5 +71,7 @@ int main (int argc, char** argv) {
       printf("response: %s\n",buffer);
       free(my_gets_line);
       }
+  stifle_history(50);
+  write_history(".taco_history");
   return 0;
 }
