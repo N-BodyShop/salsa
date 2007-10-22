@@ -125,51 +125,8 @@ inline void operator|(PUP::er& p, MyVizRequest& req) {
 	p | req.doSplatter;
 }
 
-#include "marshal.h"
-
-// Class just to handle marshalling of Python Objects
-class PyObjectMarshal {
- public:
-    PyObject *obj;
-    PyObjectMarshal(PyObject *_obj) {obj = _obj;}
-    PyObjectMarshal() {}
-    };
-
-inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
-    char *buf;
-    int nBytes;
-    PyObject *pyStr;
-    
-    if(!p.isUnpacking()) {
-#if PY_MINOR_VERSION > 3
-	pyStr = PyMarshal_WriteObjectToString(objM.obj, Py_MARSHAL_VERSION);
-#else
-	pyStr = PyMarshal_WriteObjectToString(objM.obj);
-#endif
-	if(pyStr != NULL) {
-	    buf = PyString_AsString(pyStr);
-	    nBytes = PyString_Size(pyStr);
-	    }
-	else {
-	    PyErr_Print();
-	    nBytes = 0;
-	    }
-	}
-    p|nBytes;
-    if(p.isUnpacking())
-	buf = new char[nBytes];
-    p(buf, nBytes);
-    
-    if(p.isUnpacking()) {
-	objM.obj = PyMarshal_ReadObjectFromString(buf, nBytes);
-	delete [] buf;
-	}
-    else {
-	Py_DECREF(pyStr);
-	}
-    }
-
 #include "ParticleStatistics.h"
+#include "PyObjectMarshal.h"
 #include "ResolutionServer.decl.h"
 
 typedef unsigned char byte;
@@ -303,12 +260,6 @@ class Worker : public CBase_Worker {
 	
 	typedef std::map<std::string, boost::shared_ptr<SimulationHandling::Group> > GroupMap;
 	GroupMap groups;
-	// Filippo's Python stuff
-	boost::shared_ptr<SimulationHandling::Group> localPartG;
-	SimulationHandling::Group::GroupFamilies::iterator localPartFamIter;
-	SimulationHandling::GroupIterator localPartIter;
-	SimulationHandling::GroupIterator localPartEnd;
-	PyObject *localPartPyGlob;
 	
 	template <typename T>
 	void assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip);
@@ -386,8 +337,6 @@ public:
 	void localParticleCode(std::string s, const CkCallback &cb);
 	void localParticleCodeGroup(std::string g, std::string s,
 				    PyObjectMarshal obj, const CkCallback &cb);
-	int buildIterator(PyObject*, void*); // for localParticle
-	int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
 	void reduceParticle(std::string g, std::string sParticleCode,
 			    std::string sReduceCode, PyObjectMarshal global,
 			    const CkCallback &cb);

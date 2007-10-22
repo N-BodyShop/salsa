@@ -63,7 +63,7 @@ mainmodule ResolutionServer {
 			void reduceParticle(int handle);
 	};
 	
-	array [1D] [python] Worker {
+	array [1D] Worker {
 		entry Worker(const CkGroupID& metaID);
 		
 		entry void loadSimulation(const std::string& simulationName, const CkCallback& cb);

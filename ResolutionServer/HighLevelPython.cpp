@@ -702,7 +702,7 @@ void Main::runLocalParticleCodeGroup(int handle) {
 // item of each tuple is an index.
 // 2) a reducer that takes a list of tuples and combines common
 // indices and returns a new list
-// XXX show stopper: how to get reduction code to the reducer?
+// How to get reduction code to the reducer?
 // One idea: workers produce tuples of (code, globals, list) to send
 // to the reducer.  The reducer first concatenates the lists and then
 // calls code with (globals, list) as an argument.
@@ -733,53 +733,14 @@ void Main::reduceParticle(int handle) {
 	}
     pythonSleep(handle);
     CkReductionMsg* mesg;
+    char *data;
     PyObjectMarshal result;
     workers.reduceParticle(g, sParticleCode, sReduceCode,
 			   PyObjectMarshal(global),
-			   createCallbackResumeThread(mesg, result));
-    
+			   createCallbackResumeThread(mesg, data));
+
+    PUP::fromMemBuf(result, mesg->getData(), mesg->getSize());
     pythonAwake(handle);
-    pythonReturn(handle);
+    pythonReturn(handle, PySequence_GetItem(result.obj, 2));
     delete mesg;
 }
-
-#if 0
-Think about this some more.
-This probably can be deleted.
-
-// Create a sum of attribute 1 summed in attribute 2
-// Usage reduceSumAttribute(Group, Attribute1, Attribute2, min, max binsize)
-
-void Main::histSumAttribute(int handle) {
-    PyObject *arg = PythonObject::pythonGetArg(handle);
-    char *achCode;
-    char *achAttr1; // Attribute to be summed
-    char *achAttr2; // Attribute to determine bin
-    double dMin, dMax;
-    int nBin;
-    double *result;
-
-    if(PyArg_ParseTuple(arg, "sssddi", &sGroupName, &achAttr1, &achAttr2,
-			&dMin, &dMax, &nBin) == false) {
-	    
-	pythonReturn(handle, NULL);
-	return;
-	}
-
-    result = new[nBin] double;
-    
-    workers.histSumAttribute(sGroupName, &achAttr1, &achAttr2, dMin, dMax, nBin
-			     createCallbackResumeThread(mesg, result));
-
-    PyObject *lResult = PyList_New(0);
-    for(int i = 0; i < nBin; i++) 
-	{
-	    PyList_Append(lResult, Py_BuildValue("d", result[i]));
-	    }
-		
-
-    pythonReturn(handle, lResult);
-    delete result;
-    delete mesg;
-}
-#endif

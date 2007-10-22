@@ -1476,6 +1476,26 @@ void Worker::createGroup_AttributeBox(std::string const& groupName,
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
+class PythonLocalParticle: public PythonObjectLocal
+{
+    // Filippo's Python stuff
+    // Keep track of group, family, and place in particle loop
+public:
+    SimulationHandling::Simulation* sim;
+    boost::shared_ptr<SimulationHandling::Group> localPartG;
+    SimulationHandling::Group::GroupFamilies::iterator localPartFamIter;
+    SimulationHandling::GroupIterator localPartIter;
+    SimulationHandling::GroupIterator localPartEnd;
+
+    bool isReducing;
+    PyObject *localPartPyGlob;	// Hold global parameters
+    PyObject *localPartReduction;
+    PyObject *localReduceList;
+    int buildIterator(PyObject*, void*); // for localParticle
+    int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
+    };
+
+    
 // Run python code over all particles in a group
 // Deprecated in favor of the next function
 //
@@ -1485,16 +1505,17 @@ void Worker::localParticleCode(std::string s, const CkCallback &cb)
     GroupMap::iterator gIter = groups.find("All");
 
     if(gIter != groups.end()) {
-	localPartG = gIter->second;
-	localPartPyGlob = NULL;
+	PythonLocalParticle pyLocalPart;
+	
+	pyLocalPart.sim = sim;
+	pyLocalPart.localPartG = gIter->second;
+	pyLocalPart.localPartPyGlob = NULL;
+	pyLocalPart.isReducing = false;
 
 	PythonIterator info;
 	PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
-	CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
-	memcpy(msg->data, wrapper.pack(), wrapper.size());
-	msg->reply.attr.auth = 0;
 
-	PythonObject::pyRequest(msg);
+	pyLocalPart.execute(&wrapper);
 	}
     
     
@@ -1508,17 +1529,18 @@ void Worker::localParticleCodeGroup(std::string g, std::string s,
     GroupMap::iterator gIter = groups.find(g);
 
     if(gIter != groups.end()) {
-	localPartG = gIter->second;
-	localPartPyGlob = global.obj;
+	PythonLocalParticle pyLocalPart;
+	pyLocalPart.sim = sim;
+	pyLocalPart.localPartG = gIter->second;
+	pyLocalPart.localPartPyGlob = global.obj;
+	pyLocalPart.isReducing = false;
 	
 	PythonIterator info;	// XXX should this be initialized?
 	PythonExecute wrapper((char*)s.c_str(), "localparticle", &info);
-	CkCcsRequestMsg *msg=new (wrapper.size(), 0) CkCcsRequestMsg;
-	memcpy(msg->data, wrapper.pack(), wrapper.size());
-	msg->reply.attr.auth = 0;
 
-	PythonObject::pyRequest(msg);
-	Py_DECREF(localPartPyGlob);
+	pyLocalPart.execute(&wrapper);
+
+	Py_DECREF(pyLocalPart.localPartPyGlob);
 	}
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
@@ -1527,10 +1549,54 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
 			    std::string sReduceCode, PyObjectMarshal global,
 			    const CkCallback &cb)
 {
-    /* XXX place holder */
+    GroupMap::iterator gIter = groups.find(g);
+
+    PythonLocalParticle pyLocalPart;
+    pyLocalPart.localReduceList = PyList_New(0);
+    pyLocalPart.localPartPyGlob = global.obj;
+
+    if(gIter != groups.end()) {
+	// First apply the "map" function.
+	pyLocalPart.sim = sim;
+	pyLocalPart.localPartG = gIter->second;
+	pyLocalPart.isReducing = true;
+	
+	PythonIterator info;	// XXX should this be initialized?
+	PythonExecute wrapper((char*)sParticleCode.c_str(), "localparticle",
+			      &info);
+
+	pyLocalPart.execute(&wrapper);
+
+	// Reduce the local list
+	PythonReducer reducer(pyLocalPart.localReduceList,
+			      pyLocalPart.localPartPyGlob);
+	PythonExecute wrapperreduce((char*)sReduceCode.c_str(), "localparticle",
+			      &info);
+	int interp = reducer.execute(&wrapperreduce);
+	
+	Py_DECREF(pyLocalPart.localReduceList);
+	if(reducer.listResult)
+	    pyLocalPart.localReduceList = reducer.listResult;
+	else
+	    pyLocalPart.localReduceList = PyList_New(0);
+	}
+    // Send the local list to the contribute function
+    PyObject *result = Py_BuildValue("(sOO)", sReduceCode.c_str(), global.obj,
+				    pyLocalPart.localReduceList);
+    
+    PyObjectMarshal resultMarshal(result);
+    int nBuf = PUP::size(resultMarshal);
+    char *buf = new char[nBuf];
+    PUP::toMemBuf(resultMarshal, buf, nBuf);
+    contribute(nBuf, buf, pythonReduction, cb);
+
+    Py_DECREF(pyLocalPart.localPartPyGlob);
+    // Py_DECREF(localReduceList);
+    Py_DECREF(result);
+    delete[] buf;
     }
 
-int Worker::buildIterator(PyObject *arg, void *iter) {
+int PythonLocalParticle::buildIterator(PyObject *arg, void *iter) {
 
     if(localPartPyGlob != NULL) {
 	PyObject_SetAttrString(arg, "_param", localPartPyGlob);
@@ -1596,7 +1662,7 @@ int Worker::buildIterator(PyObject *arg, void *iter) {
     return 1;
     }
 
-int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
+int PythonLocalParticle::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
     // Copy out from Python object
 
     ParticleFamily family = (*sim)[*localPartFamIter];
@@ -1664,6 +1730,11 @@ int Worker::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
 	    Py_DECREF(tmp);
 	    }
 	}
+    if(isReducing) {
+	PyList_Append(localReduceList, result);
+	Py_INCREF(result);
+	}
+    
     // Increment
     localPartIter++;
     if(*localPartIter == *localPartEnd) { // End of particles in family

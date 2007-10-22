@@ -2,7 +2,34 @@
  */
 
 #include "Reductions.decl.h"
- 
+#include "PyObjectMarshal.h"
+
+class PythonObjectLocal: public PythonObject
+{
+ public:
+    int execute(PythonExecute *pyMsg);
+    };
+
+class PythonReducer: public PythonObjectLocal
+{
+ private:
+    PyObject *listReduce;
+    PyObject *objGlobals;
+    int iCurrent;
+    PyObject *getSubList();
+
+ public:
+    PyObject *listResult;
+    PythonReducer(PyObject *list, PyObject *globals) {
+	listReduce = list; objGlobals = globals;
+	listResult = NULL;
+	};
+    
+    int buildIterator(PyObject*, void*);
+    int nextIteratorUpdate(PyObject*, PyObject*, void*);
+    virtual ~PythonReducer() {} ;
+    };
+
 extern CkReduction::reducerType mergeStatistics;
 
 extern CkReduction::reducerType growOrientedBox_float;
@@ -21,3 +48,4 @@ extern CkReduction::reducerType pairFloatFloatSum;
 extern CkReduction::reducerType pairDoubleDoubleSum;
 extern CkReduction::reducerType pairDoubleVector3DSum;
 extern CkReduction::reducerType pairDoubleVector3DMin;
+extern CkReduction::reducerType pythonReduction;

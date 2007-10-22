@@ -17,3 +17,11 @@ ck.printclient(str(charm.getCenterOfMass("test2")))
 # testing importing data
 tstdat = [1,2,3,4,5,6,7,8,9,10]
 charm.importData('testf', 'data', tstdat)
+
+def boxstat(group, family):
+
+# reduce particle    
+mapcode = 'def localparticle(p):\n\treturn (int(p.position[0]), p.mass)'
+reducecode = 'def localparticle(p):\n\tsum = 0.0\n\tfor i in range(0,len(p.list)) :\n\t\tsum += p.list[i][1]\n\treturn (p.list[0][0], sum)'
+
+x = charm.reduceParticle('All', mapcode, reducecode, None)
