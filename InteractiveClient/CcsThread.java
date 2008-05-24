@@ -150,6 +150,8 @@ class CcsThread implements Runnable {
 		System.out.println("ERROR> "+what);
 		System.out.println("Traceback: "+e);
 		e.printStackTrace();
+		System.out.println("Server died?");
+		System.exit(1);
 	}
 		
 	public void run() {
