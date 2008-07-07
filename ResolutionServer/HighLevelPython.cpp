@@ -372,20 +372,20 @@ void Main::getAttributeRangeGroup(int handle) {
     if(iDim == 1) {
 	pair<double,double> minmax;
 
-	pythonSleep(handle);
+	// pythonSleep(handle);
 	workers.getAttributeRangeGroup(groupName, familyName, attributeName,
 				 createCallbackResumeThread(mesg, minmax));
-	pythonAwake(handle);
+	// pythonAwake(handle);
 	pythonReturn(handle,Py_BuildValue("(dd)", minmax.first, minmax.second));
 	delete mesg;
 	}
     else if(iDim == 3) {
 	OrientedBox<double> bounds;
 
-	pythonSleep(handle);
+	// pythonSleep(handle);
 	workers.getVecAttributeRangeGroup(groupName, familyName, attributeName,
 				 createCallbackResumeThread(mesg, bounds));
-	pythonAwake(handle);
+	// pythonAwake(handle);
 	pythonReturn(handle,Py_BuildValue("((ddd)(ddd))", bounds.lesser_corner.x,
 					  bounds.lesser_corner.y,
 					  bounds.lesser_corner.z,
@@ -444,10 +444,10 @@ void Main::getAttributeSum(int handle)
     CkReductionMsg* mesg;
     double sum;
 
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.getAttributeSum(groupName, familyName, attributeName, createCallbackResumeThread(mesg, sum));
     delete mesg;
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("d", sum));
     }
 
@@ -470,12 +470,12 @@ void Main::findAttributeMin(int handle)
 	return;
 	}
 	
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.findAttributeMin(groupName, attributeName,
 			     createCallbackResumeThread(mesg, compair));
     delete mesg;
     Vector3D<double> retval = compair.second;
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("(ddd)", retval.x, retval.y, retval.z));
     }
 
@@ -555,11 +555,11 @@ void Main::getCenterOfMass(int handle)
 	}
 
     pair<double, Vector3D<double> > compair;
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.getCenterOfMass(groupName, createCallbackResumeThread(mesg, compair));
     Vector3D<double> retval = compair.second / compair.first;
     delete mesg;
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("ddd", retval.x, retval.y, retval.z));
     }
 	
@@ -571,11 +571,11 @@ void Main::createGroup_Family(int handle)
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
     PyArg_ParseTuple(arg, "sss", &groupName, &parentName, &familyName);
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.createGroup_Family(groupName, parentName, familyName,
 			       createCallbackResumeThread(mesg, result));
     delete mesg;
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle);
     }
 	
@@ -589,12 +589,12 @@ void Main::createGroup_AttributeRange(int handle)
 
     PyArg_ParseTuple(arg, "sssdd", &groupName, &parentName, &attributeName,
 		     &minValue, &maxValue);
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.createGroup_AttributeRange(groupName, parentName, attributeName,
 				       minValue, maxValue,
 				       createCallbackResumeThread(mesg, result));
     delete mesg;
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle);
     }
 
@@ -610,11 +610,11 @@ void Main::createGroupAttributeSphere(int handle) {
     string sParentName(parentName);
     string sAttributeName(attributeName);
     
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.createGroup_AttributeSphere(sGroupName, sParentName,
 					sAttributeName, v3dCenter, dSize,
 					CkCallbackResumeThread());
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle);
 }
 
@@ -640,12 +640,12 @@ void Main::createGroupAttributeBox(int handle) {
     string sParentName(parentName);
     string sAttributeName(attributeName);
     
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.createGroup_AttributeBox(sGroupName, sParentName,
 					sAttributeName, v3dCorner,
 					v3dEdge1, v3dEdge2,v3dEdge3,
 					CkCallbackResumeThread());
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle);
 }
 
@@ -659,9 +659,9 @@ void Main::runLocalParticleCode(int handle) {
 
     string s = string(achCode);
     
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.localParticleCode(s, CkCallbackResumeThread());
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle);
 }
 
@@ -689,10 +689,10 @@ void Main::runLocalParticleCodeGroup(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    pythonSleep(handle);
+    // pythonSleep(handle);
     workers.localParticleCodeGroup(g, s, PyObjectMarshal(global),
 				   CkCallbackResumeThread());
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle);
 }
 
@@ -731,7 +731,7 @@ void Main::reduceParticle(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    pythonSleep(handle);
+    // pythonSleep(handle);
     CkReductionMsg* mesg;
     char *data;
     PyObjectMarshal result;
@@ -740,7 +740,7 @@ void Main::reduceParticle(int handle) {
 			   createCallbackResumeThread(mesg, data));
 
     PUP::fromMemBuf(result, mesg->getData(), mesg->getSize());
-    pythonAwake(handle);
+    // pythonAwake(handle);
     pythonReturn(handle, PySequence_GetItem(result.obj, 2));
     delete mesg;
 }

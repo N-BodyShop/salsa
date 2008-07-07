@@ -263,13 +263,13 @@ void registerReductions() {
 int PythonObjectLocal::execute (PythonExecute *pyMsg) {
   // ATTN: be sure that in all possible paths pyLock is released!
   PyEval_AcquireLock();
-  CmiLock(CsvAccess(pyLock));
   CmiUInt4 pyReference;
 
   if (pyMsg->getInterpreter() > 0) {
     // the user specified an interpreter, check if it is free
     PythonTable::iterator iter;
-    if ((iter=CsvAccess(pyWorkers)->find(pyMsg->getInterpreter()))!=CsvAccess(pyWorkers)->end() && !iter->second.inUse && iter->second.clientReady!=-1) {
+    if ((iter=pyWorkers.find(pyMsg->getInterpreter())) != pyWorkers.end()
+	&& !iter->second.inUse && iter->second.clientReady!=-1) {
       // the interpreter already exists and it is neither in use, nor dead
       //CkPrintf("interpreter present and not in use\n");
 	pyReference = pyMsg->getInterpreter();
@@ -279,7 +279,6 @@ int PythonObjectLocal::execute (PythonExecute *pyMsg) {
       // use, return an
       // error to the client, we don't want to create a new interpreter if the
       // old is in use, because this can corrupt the semantics of the user code.
-      CmiUnlock(CsvAccess(pyLock));
       PyEval_ReleaseLock();
       return 0;  // stop the execution
     }
@@ -287,17 +286,16 @@ int PythonObjectLocal::execute (PythonExecute *pyMsg) {
     // the user didn't specify an interpreter, create a new one
 
     // update the reference number, used to access the current chare
-    pyReference = ++CsvAccess(pyNumber);
-    CsvAccess(pyNumber) &= ~(1<<31);
-    ((*CsvAccess(pyWorkers))[pyReference]).object = this;
-    ((*CsvAccess(pyWorkers))[pyReference]).clientReady = 0;
+    pyReference = ++pyNumber;
+    pyNumber &= ~(1<<31);
+    pyWorkers[pyReference].clientReady = 0;
 
     // create the new interpreter
     //PyEval_AcquireLock();
     PyThreadState *pts = Py_NewInterpreter();
 
     CkAssert(pts != NULL);
-    ((*CsvAccess(pyWorkers))[pyReference]).pythread = pts;
+    pyWorkers[pyReference].pythread = pts;
 
     Py_InitModule("ck", CkPy_MethodsDefault);
     if (pyMsg->isHighLevel()) Py_InitModule("charm", getMethods());
@@ -332,22 +330,20 @@ int PythonObjectLocal::execute (PythonExecute *pyMsg) {
 
   }
 
-  ((*CsvAccess(pyWorkers))[pyReference]).inUse = true;
+  pyWorkers[pyReference].inUse = true;
   if (pyMsg->isKeepPrint()) {
-    ((*CsvAccess(pyWorkers))[pyReference]).isKeepPrint = true;
+    pyWorkers[pyReference].isKeepPrint = true;
   } else {
-    ((*CsvAccess(pyWorkers))[pyReference]).isKeepPrint = false;
+    pyWorkers[pyReference].isKeepPrint = false;
   }
 
   if (pyMsg->isWait()) {
-    ((*CsvAccess(pyWorkers))[pyReference]).finishReady = 1;
+    pyWorkers[pyReference].finishReady = 1;
   } else {
-    ((*CsvAccess(pyWorkers))[pyReference]).finishReady = 0;
+    pyWorkers[pyReference].finishReady = 0;
     // send back this number to the client, which is an ack
     ckout<<"new interpreter created "<<pyReference<<endl;
   }
-
-  CmiUnlock(CsvAccess(pyLock));
 
   // run the program
   executeThread(pyMsg);
