@@ -13,6 +13,8 @@ CkReduction::reducerType mergeStatistics;
 CkReduction::reducerType growOrientedBox_float;
 CkReduction::reducerType growOrientedBox_double;
 
+CkReduction::reducerType sum_int64;
+
 CkReduction::reducerType minmax_int;
 CkReduction::reducerType minmax_float;
 CkReduction::reducerType minmax_double;
@@ -63,6 +65,15 @@ CkReductionMsg* boxGrowth(int nMsg, CkReductionMsg** msgs) {
 	}
 	
 	return CkReductionMsg::buildNew(sizeof(OrientedBox<T>), pbox);
+}
+
+CkReductionMsg *sum_int64_reducer(int nMsg,CkReductionMsg **msg)
+{
+  int i;
+  int64_t ret=0;
+  for (i=0;i<nMsg;i++)
+    ret+=*(int64_t *)(msg[i]->getData());
+  return CkReductionMsg::buildNew(sizeof(int64_t),(void *)&ret);
 }
 
 /// Combine reduction messages to get min/max pair
@@ -244,6 +255,8 @@ void registerReductions() {
 	growOrientedBox_float = CkReduction::addReducer(boxGrowth<float>);
 	growOrientedBox_double = CkReduction::addReducer(boxGrowth<double>);
 	
+	sum_int64 = CkReduction::addReducer(sum_int64_reducer);
+
 	minmax_int = CkReduction::addReducer(minmax<int>);
 	minmax_float = CkReduction::addReducer(minmax<float>);
 	minmax_double = CkReduction::addReducer(minmax<double>);

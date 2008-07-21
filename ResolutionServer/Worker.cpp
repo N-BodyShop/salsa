@@ -972,7 +972,7 @@ void Worker::getNumParticlesGroup(const std::string &groupName,
 				  const CkCallback &cb)
 {
     GroupMap::iterator gIter = groups.find(groupName);
-    int i = 0;
+    int64_t i = 0;
 
     if(gIter != groups.end()) {
 	shared_ptr<SimulationHandling::Group>& g = gIter->second;
@@ -981,7 +981,7 @@ void Worker::getNumParticlesGroup(const std::string &groupName,
 	for(i = 0; *iter < *end; iter++)
 	    i++;
 	}
-    contribute(sizeof(int), &i, CkReduction::sum_int, cb);
+    contribute(sizeof(int64_t), &i, CkReduction::sum_int64, cb);
     }
 		
 

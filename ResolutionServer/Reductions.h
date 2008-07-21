@@ -35,6 +35,8 @@ extern CkReduction::reducerType mergeStatistics;
 extern CkReduction::reducerType growOrientedBox_float;
 extern CkReduction::reducerType growOrientedBox_double;
 
+extern CkReduction::reducerType sum_int64;
+
 extern CkReduction::reducerType minmax_int;
 extern CkReduction::reducerType minmax_float;
 extern CkReduction::reducerType minmax_double;

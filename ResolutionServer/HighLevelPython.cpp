@@ -118,7 +118,7 @@ void Main::getNumParticles(int handle) {
 	return;
     }
     if(groupName == NULL) {	// Single argument version
-	pythonReturn(handle,Py_BuildValue("i",
+	pythonReturn(handle,Py_BuildValue("l",
 				      iter->second.count.totalNumParticles));
 	}
     else 
@@ -130,10 +130,10 @@ void Main::getNumParticles(int handle) {
 		return;
 		}
 	    CkReductionMsg* mesg;
-	    int result;
+	    int64_t result;
 	    workers.getNumParticlesGroup(groupName, familyName,
 					 createCallbackResumeThread(mesg, result));
-	    pythonReturn(handle, Py_BuildValue("i", result));
+	    pythonReturn(handle, Py_BuildValue("l", result));
 	    delete mesg;
 	    }
 }
