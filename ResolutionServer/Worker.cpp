@@ -981,7 +981,7 @@ void Worker::getNumParticlesGroup(const std::string &groupName,
 	for(i = 0; *iter < *end; iter++)
 	    i++;
 	}
-    contribute(sizeof(int64_t), &i, CkReduction::sum_int64, cb);
+    contribute(sizeof(int64_t), &i, sum_int64, cb);
     }
 		
 
