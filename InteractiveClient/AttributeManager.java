@@ -10,6 +10,7 @@ import javax.swing.*;
 import javax.swing.tree.*;
 import javax.swing.event.*;
 import java.text.*;
+import java.util.*;
 
 public class AttributeManager extends Manager implements ActionListener, TreeSelectionListener, KeyListener {
 	Simulation sim;
@@ -19,15 +20,16 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 	JButton applyButton;
 	JButton refreshButton;
 	DefaultMutableTreeNode rootNode;
+	DefaultMutableTreeNode groupNode;
 	DefaultMutableTreeNode familyNode;
 	JLabel attributeNameLabel;
 	JLabel attributeTypeLabel;
 	JLabel attributeDimensionalityLabel;
 	JLabel attributeDefinitionLabel;
-	JLabel numberLabel;
+	JTextField numberLabel;
 	JTextArea attributeCodeArea;
-	JFormattedTextField minValField;
-	JFormattedTextField maxValField;
+	JTextField minValField;
+	JTextField maxValField;
 	JFormattedTextField sumField;
 	JFormattedTextField meanField;
 
@@ -73,22 +75,20 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Number of Particles: "));
-		numberLabel = new JLabel("");
+		numberLabel = new JTextField("");
 		b.add(numberLabel);
 		infoPanel.add(b);
 
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Minimum value: "));
 		DecimalFormat format = new DecimalFormat("0.######E0");
-		minValField = new JFormattedTextField(format);
-		minValField.setColumns(10);
+		minValField = new JTextField("0.0");
 		b.add(minValField);
 		infoPanel.add(b);
 
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Maximum value: "));
-		maxValField = new JFormattedTextField(format);
-		maxValField.setColumns(10);
+		maxValField = new JTextField("0.0");
 		b.add(maxValField);
 		infoPanel.add(b);
 
@@ -166,21 +166,26 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		} else {
 		    if(node.isLeaf()) {
 			// Fire off a request:
-			// charm.getDimensions(family,attribute)
 			// charm.getDataType(family,attribute')
-			// charm.getAttributeRange(family,attribute)
-			// charm.getAttributeSum('All',family,attribute)
+			// charm.getDimensions(family,attribute)
+			// charm.getNumParticles(group,family)
+			// charm.getAttributeRangeGroup(group,family,attribute)
+			// charm.getAttributeSum(group,family,attribute)
 			System.out.println("Selected node was: "
 					   + ((String) node.getUserObject()));
 			DefaultMutableTreeNode parentNode
 			    = (DefaultMutableTreeNode) node.getParent();
+			DefaultMutableTreeNode grandParentNode
+			    = (DefaultMutableTreeNode) parentNode.getParent();
+			String groupName = (String)grandParentNode.getUserObject();
 			String familyName = (String)parentNode.getUserObject();
 			String attrName = (String) node.getUserObject();
 			attributeNameField.setText(attrName);
 			String getRangeCode
 			    = "_family='" + familyName + "'\n"
+			    + "_group='" + groupName + "'\n"
 			    + "_attribute='" + attrName + "'\n"
-			    + "ck.printclient(str(charm.getDataType(_family,_attribute))+','+str(charm.getDimensions(_family,_attribute))+','+str(charm.getNumParticles(_family))+','+str(charm.getAttributeRange(_family,_attribute)).strip('()')+','+str(charm.getAttributeSum('All',_family,_attribute)))\n";
+			    + "ck.printclient(str(charm.getDataType(_family,_attribute))+','+str(charm.getDimensions(_family,_attribute))+','+str(charm.getNumParticles(_group,_family))+','+str(charm.getAttributeRangeGroup(_group,_family,_attribute)).strip('()')+','+str(charm.getAttributeSum(_group,_family,_attribute)))\n";
 			PythonExecute code = new PythonExecute(getRangeCode,
 							       false, true, 0);
 			HighLevelPython execute =
@@ -215,6 +220,12 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			rootNode.removeAllChildren();
 			treeModel.reload();
 			
+			// Put list of groups into the root
+			for(Enumeration e = sim.groups.elements(); e.hasMoreElements(); ) {
+			    groupNode = new DefaultMutableTreeNode(((Simulation.Group) e.nextElement()).name);
+			    treeModel.insertNodeInto(groupNode, rootNode, rootNode.getChildCount());
+			    }
+			
 			DelimitedStringEnumeration flist
 			    = new DelimitedStringEnumeration(result);
 			int i = 0;
@@ -235,17 +246,21 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		}
 	}
 	public class GetAttributesHandler extends PyPrintHandler {
-		public void handle(String result) {
-		    System.out.println("Return from code execution: \"" + result + "\"");
+	    public void handle(String result) {
+		System.out.println("Return from code execution: \"" + result + "\"");
+		for(Enumeration e = rootNode.children() ; e.hasMoreElements();) {
+		    groupNode = (DefaultMutableTreeNode) e.nextElement();
+		    
 		    DelimitedStringEnumeration alist
 			    = new DelimitedStringEnumeration(result);
 		    String familyName = (String) alist.nextElement();
 		    familyNode = new DefaultMutableTreeNode(familyName);
-		    treeModel.insertNodeInto(familyNode, rootNode, rootNode.getChildCount());
+		    treeModel.insertNodeInto(familyNode, groupNode, groupNode.getChildCount());
 		    while(alist.hasMoreElements()) {
 			String aName = (String) alist.nextElement();
 			treeModel.insertNodeInto(new DefaultMutableTreeNode(aName), familyNode, familyNode.getChildCount());
 			}
+		    }
 		}
 	    }
 
@@ -257,18 +272,35 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			String sValue = (String) alist.nextElement();
 			attributeTypeLabel.setText(sValue);
 			sValue = (String) alist.nextElement();
+			int nDim = Integer.parseInt(sValue);
 			attributeDimensionalityLabel.setText(sValue);
 			sValue = (String) alist.nextElement();
 			numberLabel.setText(sValue);
 			double np = Double.valueOf(sValue).doubleValue();
-			sValue = (String) alist.nextElement();
-			minValField.setValue(new Double(sValue));
-			sValue = (String) alist.nextElement();
-			maxValField.setValue(new Double(sValue));
-			sValue = (String) alist.nextElement();
-			sumField.setValue(new Double(sValue));
-			double sum = Double.valueOf(sValue).doubleValue();
-			meanField.setValue(new Double(sum/np));
+			if(nDim == 1) {
+			    sValue = (String) alist.nextElement();
+			    minValField.setText(sValue);
+			    sValue = (String) alist.nextElement();
+			    maxValField.setText(sValue);
+			    sValue = (String) alist.nextElement();
+			    sumField.setValue(new Double(sValue));
+			    double sum = Double.valueOf(sValue).doubleValue();
+			    meanField.setValue(new Double(sum/np));
+			    }
+			else {
+			    String sValuex = (String) alist.nextElement();
+			    String sValuey = (String) alist.nextElement();
+			    String sValuez = (String) alist.nextElement();
+			    minValField.setText(sValuex + "," + sValuey
+						 + "," + sValuez);
+			    sValuex = (String) alist.nextElement();
+			    sValuey = (String) alist.nextElement();
+			    sValuez = (String) alist.nextElement();
+			    maxValField.setText(sValuex + "," + sValuey
+						 + "," + sValuez);
+			    sumField.setValue(0.0);
+			    meanField.setValue(0.0);
+			    }
 			}
 		    catch(StringIndexOutOfBoundsException e) {
 			System.err.println("Problem parsing attributes: bad index\n");
