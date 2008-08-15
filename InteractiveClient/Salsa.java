@@ -22,6 +22,9 @@ public class Salsa {
 		ccs = new CcsThread(new Label(), hostname, port);
 	}
 	
+	public void connectSimulation() {
+			new WindowManager(ccs);
+	}
 	public void chooseSimulation(String name) {
 		SalsaRequests.ChooseSimulation cs = new SalsaRequests.ChooseSimulation(name);
 		ccs.doBlockingRequest(cs);
@@ -66,8 +69,9 @@ public class Salsa {
 			if(args.length > 2)
 				salsa.chooseSimulation(args[2]);
 			else {
-				salsa.getSimulationList();
-				salsa.displaySimulationList();
+			//	salsa.getSimulationList();
+			//	salsa.displaySimulationList();
+				salsa.connectSimulation();
 			}
 		} catch(UnknownHostException uhe) {            
 			System.err.println("Couldn't find host " + args[0] + ":" + args[1]);
