@@ -32,7 +32,7 @@ public class Simulation {
 	static public class Family {
 		public String name;
 		public int index;
-		public int numParticles;
+		public long numParticles;
 		public int numAttributes;
 		public NotifyingHashtable attributes = new NotifyingHashtable();
 		public int defaultColor;
@@ -58,7 +58,7 @@ public class Simulation {
 				Family family = new Family();
 				family.name = props.getProperty("family-" + i + ".name");
 				family.index = i;
-				family.numParticles = Integer.parseInt(props.getProperty("family-" + i + ".numParticles"));
+				family.numParticles = Long.parseLong(props.getProperty("family-" + i + ".numParticles"));
 				family.defaultColor = Integer.parseInt(props.getProperty("family-" + i + ".defaultColor"));
 				family.numAttributes = Integer.parseInt(props.getProperty("family-" + i + ".numAttributes"));
 				for(int j = 0; j < family.numAttributes; ++j) {
