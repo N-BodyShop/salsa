@@ -1,18 +1,21 @@
 STRUCTURES_PATH = ../structures
 
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
-LDFLAGS +=  -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
+OPTS=-g
+CXXFLAGS += $(OPTS) -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
+LDFLAGS +=  $(OPTS) -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
 LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
 
-PYTHON_INCLUDE_DIR = /usr/include/python2.3
-PYTHON_LIB = -L/usr/lib/python2.3/config -lpython2.3
+PYTHON_VER=python2.5
+# PYTHON_VER=python2.3
+PYTHON_INCLUDE_DIR = /usr/include/$(PYTHON_VER)
+PYTHON_LIB = -L/usr/lib/$(PYTHON_VER)/config -l$(PYTHON_VER)
 
 BOOST_PATH = /usr/include
 BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I$(BOOST_PATH)
 XERCESCROOT = /local/tmp/trq/dist/ResolutionServer-0.3/xerces-c-src_2_7_0
 
 LIBS = -lpthread -lpopt 
-CHARMC = /users/trq/peak/src/charm/bin/charmc
+CHARMC = $(CHARM_DIR)/bin/charmc
 CXX = $(CHARMC)
 CC = $(CXX)
 
