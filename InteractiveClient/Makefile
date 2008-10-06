@@ -25,9 +25,12 @@ TARGET = Salsa
 VERSION = 0.1
 all: $(TARGET).jar
 
-$(TARGET).jar: Manifest $(CLASSES)
-	unzip $(CHARM_JAVA)/bin/charmdebug.jar 
+$(TARGET).jar: Manifest $(CLASSES) charm
 	jar cmf Manifest $@ *.class charm
+
+# Unpack charm .class files, if they're not handy.
+charm:
+	unzip $(CHARM_JAVA)/bin/charmdebug.jar 
 
 .SUFFIXES: .java .class
 
