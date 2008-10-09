@@ -67,7 +67,7 @@ AC_CHECK_LIB([Tipsy], [main])
 
 # find boost
 ax_boost_header=no
-for boost in /usr/include $PWD/../boost $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 $PWD/../boost_1_33_1 ; do
+for boost in /usr/include $PWD/../boost $PWD/../boost_1_36_0 $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 $PWD/../boost_1_33_1 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost
@@ -98,6 +98,20 @@ for xercesc in $PWD/../xercesc $PWD/../xerces-c-src2_4_0 $PWD/../xerces-c-src_2_
    fi
 done
 fi
+# try version 3
+if test $ax_xercesc_header != yes; then
+for xercesc in $PWD/../xercesc $PWD/../xerces-c-3.0.0 ; do
+   if test -f $xercesc/src/xercesc/sax2/DefaultHandler.hpp ; then
+       ax_xercesc_header=yes
+       XERCESCROOT=$xercesc
+# fix up path
+       ln -s $xercesc/src $xercesc/include
+       ln -s $xercesc/src/.libs $xercesc/lib
+       break;
+   fi
+done
+fi
+
 if test $ax_xercesc_header != yes; then
    echo xercesc headers not found
    echo Download xercesc from www.apache.org and install in $PWD/..
