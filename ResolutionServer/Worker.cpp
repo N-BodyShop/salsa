@@ -1064,6 +1064,7 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
 
 void Worker::getAttributeInformation(CkCcsRequestMsg* m) {	
 	ostringstream oss;
+	CkAssert(sim != NULL);
 	oss << "simulationName = " << sim->name << "\n";
 	oss << "numFamilies = " << sim->size() << "\n";
 	int familyNumber = 0;
