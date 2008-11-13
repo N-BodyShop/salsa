@@ -1492,8 +1492,8 @@ public:
     PyObject *localPartPyGlob;	// Hold global parameters
     PyObject *localPartReduction;
     PyObject *localReduceList;
-    int buildIterator(PyObject*, void*); // for localParticle
-    int nextIteratorUpdate(PyObject*, PyObject*, void*); // for localParticle
+    int buildIterator(PyObject*&, void*); // for localParticle
+    int nextIteratorUpdate(PyObject*&, PyObject*, void*); // for localParticle
     };
 
     
@@ -1597,7 +1597,7 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
     delete[] buf;
     }
 
-int PythonLocalParticle::buildIterator(PyObject *arg, void *iter) {
+int PythonLocalParticle::buildIterator(PyObject *&arg, void *iter) {
 
     if(localPartPyGlob != NULL) {
 	PyObject_SetAttrString(arg, "_param", localPartPyGlob);
@@ -1663,7 +1663,7 @@ int PythonLocalParticle::buildIterator(PyObject *arg, void *iter) {
     return 1;
     }
 
-int PythonLocalParticle::nextIteratorUpdate(PyObject *arg, PyObject *result, void *iter) {
+int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, void *iter) {
     // Copy out from Python object
 
     ParticleFamily family = (*sim)[*localPartFamIter];
