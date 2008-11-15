@@ -1767,28 +1767,30 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 		}
 	    }
 	if(arr.dimensions == 3) {
+	    PyObject *pyVec = NULL;
 	    Vector3D<int> vl;
 	    Vector3D<float> vf;
 	    Vector3D<double> vd;
+
 	    switch(arr.code) {
 	    case TypeHandling::int32:
 		vl = arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter];
-		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
-				       Py_BuildValue("(iii)", vl.x, vl.y, vl.z));
+		pyVec = Py_BuildValue("(iii)", vl.x, vl.y, vl.z);
 		break;
 	    case float32:
 		vf = arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter];
-		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
-				       Py_BuildValue("(ddd)", vf.x, vf.y, vf.z));
+		pyVec = Py_BuildValue("(ddd)", vf.x, vf.y, vf.z);
 		break;
 	    case float64:
 		vd = arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter];
-		PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
-				       Py_BuildValue("(ddd)", vd.x, vd.y, vd.z));
+		pyVec = Py_BuildValue("(ddd)", vd.x, vd.y, vd.z);
 		break;
 	    default:
 		assert(0);
 		}
+	    PyObject_SetAttrString(arg, (char *) attrIter->first.c_str(),
+				   pyVec);
+	    Py_DECREF(pyVec);
 	    }
 	}
     return 1;
