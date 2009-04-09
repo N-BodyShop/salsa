@@ -182,6 +182,55 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
+void Worker::readTipsyArray(const std::string& fileName,
+			    const std::string& attributeName,
+			    long off, const CkCallback& cb) {
+    FILE *fp = fopen(fileName.c_str(), "r");
+    unsigned int nTotal;
+    if(thisIndex == 0) {
+	fscanf(fp, "%d\n", &nTotal);
+	if(nTotal != sim->totalNumParticles()) {
+	    ckerr << "Wrong number of particles\n" << endl;
+	    cb.send();
+	    }
+	}
+    else {
+	fseek(fp, off, SEEK_SET);
+	}
+    
+    ckout << "[" << thisIndex << "]: reading Array ... ";
+
+    for(Simulation::iterator family = sim->begin(); family != sim->end();
+	++family) {
+	AttributeMap::iterator attrIter = family->second.attributes.find(attributeName);
+	if(attrIter == family->second.attributes.end()) {
+	    // add attribute to family
+	    float *array = new float[family->second.count.numParticles];
+	    family->second.addAttribute(attributeName, array);
+	    attrIter = family->second.attributes.find(attributeName);
+	    }
+	
+	float* array = attrIter->second.getArray(Type2Type<float >());
+	for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
+	    fscanf(fp, "%f\n", &array[i]);
+	    }
+	attrIter->second.calculateMinMax();
+	}
+    ckout << "Done\n";
+    if(thisIndex+1 < CkNumPes()) {
+	long offset = ftell(fp);
+	
+	CProxy_Worker workers(thisArrayID);
+	workers[thisIndex+1].readTipsyArray(fileName, attributeName, offset,
+					    cb);
+	}
+    else {
+	cb.send();
+	}
+    fclose(fp);
+    }
+
+
 const byte lineColor = 1;
 
 #include "PixelDrawing.cpp"
@@ -1573,7 +1622,7 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
 			      pyLocalPart.localPartPyGlob);
 	PythonExecute wrapperreduce((char*)sReduceCode.c_str(), "localparticle",
 			      &info);
-	int interp = reducer.execute(&wrapperreduce);
+	reducer.execute(&wrapperreduce);
 	
 	Py_DECREF(pyLocalPart.localReduceList);
 	if(reducer.listResult)

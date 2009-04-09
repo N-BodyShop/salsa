@@ -184,6 +184,7 @@ public:
 	
 	void loadSimulation(int handle);
 	void saveSimulation(int handle);
+	void readTipsyArray(int handle);
 	void findAttributeMin(int handle);
 	void getFamilies(int handle);
 	void getAttributes(int handle);
@@ -277,6 +278,9 @@ public:
 	
 	void loadSimulation(const std::string& simulationName, const CkCallback& cb);
 	void saveSimulation(const std::string& simulationName, const CkCallback& cb);
+	void readTipsyArray(const std::string& fileName,
+			    const std::string& attributeName,
+			    long off, const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
 	

@@ -31,6 +31,38 @@ void Main::loadSimulation(int handle) {
     pythonReturn(handle);
     }
 
+// usage: charm.readTipsyArray('filename', 'attribute'), where
+// attribute is the attribute to which the array values will be assigned
+
+void Main::readTipsyArray(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    Worker* w = this->workers[0].ckLocal();
+
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle);
+	return;
+	}
+    
+    char *fileName;
+    char *attributeName;
+    FILE *fp;
+
+    if(PyArg_ParseTuple(arg, "ss", &fileName, &attributeName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
+	fclose(fp);
+	workers[0].readTipsyArray(fileName, attributeName, 0,
+				  CkCallbackResumeThread());
+	}
+    else {
+	PyErr_SetString(PyExc_NameError, "No such file");
+	}
+    pythonReturn(handle);
+    }
+
 void Main::getFamilies(int handle) {
     Worker* w = this->workers[0].ckLocal();
     PyObject *lFamily = PyList_New(0);
