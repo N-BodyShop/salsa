@@ -13,9 +13,9 @@ class PyObjectMarshal {
     };
 
 inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
-    char *buf;
+    char *buf = NULL;
     int nBytes;
-    PyObject *pyStr;
+    PyObject *pyStr = NULL;
     
     if(!p.isUnpacking()) {
 #if PY_MINOR_VERSION > 3
