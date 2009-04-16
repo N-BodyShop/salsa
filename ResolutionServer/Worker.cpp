@@ -346,6 +346,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	
 	MyVizRequest req;
 	liveVizRequestUnpack(m, req);
+	bool doVolumeRender=false; /* if false, 2D image; if true, 3D volume */
 	
 	if(verbosity > 2 && thisIndex == 0)
 		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
@@ -356,10 +357,12 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		image = new byte[imageSize];
 	}
 	memset(image, 0, req.width * req.height);
+	
+	if (req.height==req.width*req.width) doVolumeRender=true;
 
 	MetaInformationHandler* meta = metaProxy.ckLocalBranch();
 	if(!meta) {
-		cerr << "Well this sucks!  Couldn't get local pointer to meta handler" << endl;
+		cerr << "ResolutionServer Worker.cpp error: Couldn't get local pointer to meta handler" << endl;
 		return;
 	}
 	
@@ -368,6 +371,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
+	req.z /= req.z.lengthSquared();
 	double x, y;
 	unsigned int pixel;
 	
@@ -502,26 +506,48 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				}
 			}
 		} else { //draw points only
+			std::cout<<"Request dimensions: "<<req.width<<"x"<<req.height<<"\n";
+		  if (doVolumeRender) 
+		  { /* 3D volume render */
+		  	int SX=req.width, SY=req.width, SZ=req.width; /* size, pixels, along X, Y, Z */
+			std::cout<<"Volume render dimensions: "<<SX<<"x"<<SY<<"x"<<SZ<<"\n";
+			float hX=SX*0.5, hY=SY*0.5, hZ=SZ*0.5;
+			Vector3D<float> xAxis=req.x*hX, yAxis=req.y*hY, zAxis=req.z*hZ; /* pixel axes */
+			float xo=(dot(req.x,req.o)-1)*hX, yo=(dot(req.y,req.o)-1)*hY, zo=(dot(req.z,req.o)-1)*hZ; /* pixel origin */
+			
 			for(; *iter != *end; ++iter) {
-				x = dot(req.x, positions[*iter] - req.o);
-				if(x > -1 && x < 1) {
-					y = dot(req.y, positions[*iter] - req.o);
-					if(y > -1 && y < 1) {
-						if(req.radius == 0) {
-							pixel = (unsigned int) (floor(req.width * (x + 1) / 2) + req.width * floor(req.height * (1 - y) / 2));
-							if(pixel >= imageSize) {
-							    cerr << "Worker " << thisIndex << ": How is my pixel so big? " << pixel << endl;
-							    CkPrintf("should stop\n");
-							    assert(0 == 1);
-							    }
-							
-							if(image[pixel] < colors[*iter])
-								image[pixel] = colors[*iter];
-						} else
-							drawDisk(image, req.width, req.height, static_cast<unsigned int>(req.width * (x + 1) / 2), static_cast<unsigned int>(req.height * (1 - y) / 2), req.radius, colors[*iter]);
-					}
-				}
+				x=dot(xAxis,positions[*iter])-xo;
+				if (x<0 || x>=SX) continue; /* point is offscreen: skip */
+				y=dot(yAxis,positions[*iter])-yo;
+				if (y<0 || y>=SY) continue;
+				float z=dot(zAxis,positions[*iter])-zo;
+				if (z<0 || z>=SZ) continue;
+				pixel = (unsigned int) ((int)x + SX *((int)y + SY * (int)z));
+				if(image[pixel] < colors[*iter])
+				        image[pixel] = colors[*iter];
 			}
+		  } else 
+		  { /* 2D image render only */
+			float w=req.width/2, h=req.height/2;
+			Vector3D<float> xAxis=req.x*w, yAxis=req.y*h; /* pixel axes */
+			float xo=(dot(req.x,req.o)-1)*w, yo=(dot(req.y,req.o)-1)*h; /* pixel origin */
+			float zo=dot(req.z,req.o)-1;
+			for(; *iter != *end; ++iter) {
+				x=dot(xAxis,positions[*iter])-xo;
+				if (x<0 || x>=req.width) continue; /* point is offscreen: skip */
+				y=dot(yAxis,positions[*iter])-yo;
+				if (y<0 || y>=req.height) continue;
+				float z=dot(req.z,positions[*iter])-zo;
+				if (z<0 || z>=2.0) continue;
+				
+				if(req.radius == 0) {
+					pixel = (unsigned int) ((int)x + req.width * (int)y);
+					if(image[pixel] < colors[*iter])
+				        	image[pixel] = colors[*iter];
+				} else
+					drawDisk(image, req.width, req.height, x,y, req.radius, colors[*iter]);
+			}
+		  }
 		}
 	}
 	//double stop = CkWallTimer();
