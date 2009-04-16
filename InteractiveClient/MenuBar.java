@@ -47,6 +47,10 @@ public class MenuBar extends JMenuBar implements ActionListener{
 		item.setActionCommand("close");
 		item.addActionListener(this);
 		menu.add(item);
+		item = new JMenuItem("Exit and Kill Server",KeyEvent.VK_X);
+        item.setActionCommand("exitandkill");
+        item.addActionListener(this);
+        menu.add(item);
 		item = new JMenuItem("Quit",KeyEvent.VK_Q);
                 item.setAccelerator(KeyStroke.getKeyStroke("control Q"));
 		item.setActionCommand("quit");
@@ -112,6 +116,8 @@ public class MenuBar extends JMenuBar implements ActionListener{
                     c.dispatchEvent(new WindowEvent((JFrame) c, WindowEvent.WINDOW_CLOSING));
 		} else if(command.equals("quit"))
                     windowManager.quit();
+		else if(command.equals("exitandkill"))
+            windowManager.exitAndKill();
 	}
     
 }

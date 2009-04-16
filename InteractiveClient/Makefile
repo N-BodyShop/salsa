@@ -1,4 +1,4 @@
-CLASSES = CcsServer.class CcsThread.class Vector3D.class \
+CLASSES = Vector3D.class \
 	Config.class PngEncoder.class Simulation.class SimulationView.class \
 	ColorBarPanel.class ViewingPanel.class RightClickMenu.class \
 	WindowManager.class Manager.class NotifyingHashtable.class \
@@ -20,13 +20,24 @@ CLASSES = CcsServer.class CcsThread.class Vector3D.class \
 #	WindowManager.class
 
 CHARM_JAVA = $(CHARM_DIR)/java
+CLASSPATH=-classpath .:jogl.jar:gluegen-rt.jar:$(CHARM_JAVA)
 
 TARGET = Salsa
 VERSION = 0.1
 all: $(TARGET).jar
 
-$(TARGET).jar: Manifest $(CLASSES) charm
+$(TARGET).jar: jogl.jar Manifest $(CLASSES) charm
 	jar cmf Manifest $@ *.class charm
+
+JOGL_ARCHIVE=jogl-1.1.1-linux-i586.zip 
+jogl.jar: $(JOGL_ARCHIVE)
+	unzip -u $<
+	mv jogl-*linux*/lib/*.jar .
+	mv jogl-*linux*/lib/*.so .
+	touch jogl.jar
+
+$(JOGL_ARCHIVE): 
+	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@
 
 # Unpack charm .class files, if they're not handy.
 charm:
@@ -35,8 +46,8 @@ charm:
 .SUFFIXES: .java .class
 
 .java.class :
-	javac -classpath .:$(CHARM_JAVA) $<
-	
+	javac $(CLASSPATH) $<
+
 .PHONY: all clean dist binarydist
 
 clean:

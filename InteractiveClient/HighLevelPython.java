@@ -1,6 +1,8 @@
 // Class to send off python, handle server response, pick up the
 // printed output, then send the output to handlePrint()
 
+import charm.ccs.CcsServer;
+import charm.ccs.CcsThread;
 import charm.ccs.PythonAbstract;
 import charm.ccs.PythonExecute;
 import charm.ccs.PythonPrint;

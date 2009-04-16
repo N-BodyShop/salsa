@@ -13,6 +13,9 @@ import java.util.Vector;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
+import charm.ccs.CcsThread;
+
+
 public class Salsa {
 	CcsThread ccs;
 	Vector simulationList;
@@ -32,7 +35,7 @@ public class Salsa {
 			new WindowManager(ccs);
 		else {
 			System.err.println("Couldn't choose simulation from server");
-			ccs.doBlockingRequest(new SalsaRequests.ShutdownServer());
+			//ccs.doBlockingRequest(new SalsaRequests.ShutdownServer());
 			System.exit(1);
 		}
 	}
@@ -48,7 +51,7 @@ public class Salsa {
 		csf.addWindowListener(new WindowAdapter() {
 			public void windowClosed(WindowEvent e) {
     			if(csf.chosenSimulation == null) {
-					ccs.doBlockingRequest(new SalsaRequests.ShutdownServer());
+					//ccs.doBlockingRequest(new SalsaRequests.ShutdownServer());
 					System.exit(1);
 				} else
 					chooseSimulation(csf.chosenSimulation);

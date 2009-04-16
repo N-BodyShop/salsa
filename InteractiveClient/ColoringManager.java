@@ -7,6 +7,10 @@ import javax.swing.tree.*;
 import javax.swing.event.*;
 import java.util.*;
 import javax.swing.text.*;
+
+import charm.ccs.CcsThread;
+
+
 import java.text.*;
 
 public class ColoringManager extends Manager 

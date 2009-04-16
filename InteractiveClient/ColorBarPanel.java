@@ -84,7 +84,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
 	}
 	
     public void mousePressed(MouseEvent e) {
-        if(e.isPopupTrigger()) 
+        if(e.getButton()==e.BUTTON3) 
             cbpm.show(e.getComponent(), e.getX(), e.getY());
         cbstartx = e.getX();
     }
@@ -208,7 +208,8 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
         puke_blue[1] = 0;
 		
 		//set default colors for particle families
-		for(Enumeration e = sim.families.elements(); e.hasMoreElements(); ) {
+		for(Enumeration e = sim.families.elements(); e.hasMoreElements(); )
+		{
 			Simulation.Family family = (Simulation.Family) e.nextElement();
 			int color = family.defaultColor;
 			if(2 + family.index >= startColor)

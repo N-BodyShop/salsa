@@ -5,6 +5,10 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.tree.*;
 import javax.swing.event.*;
+
+import charm.ccs.CcsThread;
+
+
 import java.util.*;
 import java.io.*;
 
@@ -136,6 +140,15 @@ public class WindowManager extends WindowAdapter {
 	}
 	
 	public void quit() {
+		attributeManager.setVisible(false);
+		coloringManager.setVisible(false);
+		groupManager.setVisible(false);
+		
+		//ccs.doBlockingRequest(new SalsaRequests.ShutdownServer());
+		System.exit(1);
+	}
+	
+	public void exitAndKill() {
 		attributeManager.setVisible(false);
 		coloringManager.setVisible(false);
 		groupManager.setVisible(false);

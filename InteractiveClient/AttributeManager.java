@@ -298,8 +298,8 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 			    sValuez = (String) alist.nextElement();
 			    maxValField.setText(sValuex + "," + sValuey
 						 + "," + sValuez);
-			    sumField.setValue(0.0);
-			    meanField.setValue(0.0);
+			    sumField.setValue(new Double(0.0));
+			    meanField.setValue(new Double(0.0));
 			    }
 			}
 		    catch(StringIndexOutOfBoundsException e) {

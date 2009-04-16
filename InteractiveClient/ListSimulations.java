@@ -8,11 +8,14 @@
 
 import java.util.*;
 
+import charm.ccs.CcsThread;
+
+
 public class ListSimulations extends CcsThread.request {
 	Vector simulationList = new Vector();
 	
     public ListSimulations() {
-		super("ListSimulations", null);
+		super("ListSimulations", (String) null);
     }
 
     public void handleReply(byte[] data) {

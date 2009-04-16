@@ -1,1 +1,2 @@
 Main-Class: Salsa
+Class-Path: jogl.jar gluegen-rt.jar

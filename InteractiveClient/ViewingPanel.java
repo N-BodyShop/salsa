@@ -2,6 +2,8 @@
 
 import java.awt.*;
 import java.awt.event.*;
+
+import javax.media.opengl.GLCapabilities;
 import javax.swing.*;
 import javax.swing.event.*;
 
@@ -18,10 +20,10 @@ public class ViewingPanel extends JFrame {
                 Container c = getContentPane();
                 c.setLayout(new BorderLayout());
 		
-		int width = 512;
+		int width = 800;                                                                                                                 
 		
 		colorBar = new ColorBarPanel(windowManager.sim, width, 20);
-		view = new SimulationView(windowManager, colorBar.colorModel, width, width);
+		view = new SimulationView(windowManager, width, width, colorBar);
 		colorBar.setView(view);		
 		tools = new ToolBarPanel(windowManager, view);
 		

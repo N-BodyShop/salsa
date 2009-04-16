@@ -2,6 +2,9 @@
 
 import java.util.Vector;
 
+import charm.ccs.CcsThread;
+
+
 public class SalsaRequests {
 
 	public static class ShutdownServer extends CcsThread.request {
