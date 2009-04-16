@@ -796,53 +796,60 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		}
 	}
 	
+	private boolean hasShaders=false;
 	public void init(GLAutoDrawable arg0)
 	{
 		GL gl = arg0.getGL();
 		gl.glClearColor(0, 0, 0.0f, 0);
-		String shaderCode []=new String [1];
-		shaderCode[0]="varying vec2 texture_coordinate;" +
-						"void main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;" +
-						"texture_coordinate = vec2(gl_MultiTexCoord0);}";
-		String fragmentCode []=new String [1];
-		fragmentCode[0]="varying vec2 texture_coordinate; uniform sampler2D my_color_texture; uniform sampler2D my_screen_texture;"+
-						"void main()" +
-						"{ vec4 screenpix=texture2D(my_screen_texture, texture_coordinate);" +
-						"gl_FragColor = texture2D(my_color_texture, vec2(screenpix)+vec2(0.5/255,0));}";
-		int codeLength[]=new int[1];
 		
-		int my_vertex_shader;
-		int my_fragment_shader;
+		if (gl.isFunctionAvailable("glCompileShaderARB"))
+			hasShaders=true;
+		
+		if (hasShaders) {
+			String shaderCode []=new String [1];
+			shaderCode[0]="varying vec2 texture_coordinate;" +
+							"void main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;" +
+							"texture_coordinate = vec2(gl_MultiTexCoord0);}";
+			String fragmentCode []=new String [1];
+			fragmentCode[0]="varying vec2 texture_coordinate; uniform sampler2D my_color_texture; uniform sampler2D my_screen_texture;"+
+							"void main()" +
+							"{ vec4 screenpix=texture2D(my_screen_texture, texture_coordinate);" +
+							"gl_FragColor = texture2D(my_color_texture, vec2(screenpix)+vec2(0.5/255,0));}";
+			int codeLength[]=new int[1];
 
-		// Create Shader And Program Objects
-		my_program = gl.glCreateProgramObjectARB();
-		my_vertex_shader = gl.glCreateShaderObjectARB(GL.GL_VERTEX_SHADER_ARB);
-		my_fragment_shader = gl.glCreateShaderObjectARB(GL.GL_FRAGMENT_SHADER_ARB);
-		
-		// Load Shader Sources
-		codeLength[0]=shaderCode[0].length();
-		gl.glShaderSourceARB(my_vertex_shader, 1, shaderCode, (int [])null, 0);
-		gl.glShaderSourceARB(my_fragment_shader, 1, fragmentCode, (int [])null, 0);
-		
-		// Compile The Shaders
-		gl.glCompileShaderARB(my_vertex_shader);
-		gl.glCompileShaderARB(my_fragment_shader);
-		
-		// Attach The Shader Objects To The Program Object
-		gl.glAttachObjectARB(my_program, my_vertex_shader);
-		gl.glAttachObjectARB(my_program, my_fragment_shader);
-		
-		// Link The Program Object
-		gl.glLinkProgramARB(my_program);
-		
-		int size=10000;
-		byte log[]=new byte[size];
-		int one[]=new int[1];
-		gl.glGetInfoLogARB(my_vertex_shader, size, one, 0, log, 0);
-		gl.glGetInfoLogARB(my_fragment_shader, size, one, 0, log, 0);
-		/*for(byte bytes: log)
-			System.out.print((char)bytes);
-		System.out.println();*/
+			int my_vertex_shader;
+			int my_fragment_shader;
+
+			// Create Shader And Program Objects
+			my_program = gl.glCreateProgramObjectARB();
+			my_vertex_shader = gl.glCreateShaderObjectARB(GL.GL_VERTEX_SHADER_ARB);
+			my_fragment_shader = gl.glCreateShaderObjectARB(GL.GL_FRAGMENT_SHADER_ARB);
+
+			// Load Shader Sources
+			codeLength[0]=shaderCode[0].length();
+			gl.glShaderSourceARB(my_vertex_shader, 1, shaderCode, (int [])null, 0);
+			gl.glShaderSourceARB(my_fragment_shader, 1, fragmentCode, (int [])null, 0);
+
+			// Compile The Shaders
+			gl.glCompileShaderARB(my_vertex_shader);
+			gl.glCompileShaderARB(my_fragment_shader);
+
+			// Attach The Shader Objects To The Program Object
+			gl.glAttachObjectARB(my_program, my_vertex_shader);
+			gl.glAttachObjectARB(my_program, my_fragment_shader);
+
+			// Link The Program Object
+			gl.glLinkProgramARB(my_program);
+
+			int size=10000;
+			byte log[]=new byte[size];
+			int one[]=new int[1];
+			gl.glGetInfoLogARB(my_vertex_shader, size, one, 0, log, 0);
+			gl.glGetInfoLogARB(my_fragment_shader, size, one, 0, log, 0);
+			/*for(byte bytes: log)
+				System.out.print((char)bytes);
+			System.out.println();*/
+		}
 		
 		gl.glGenTextures(1, texture, 0);
 		screen=texture[0];
@@ -876,8 +883,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
 			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_LUMINANCE, width2D, height2D, 0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, null);
 			
-			gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, framebuffer);
-			gl.glFramebufferTexture2DEXT(GL.GL_FRAMEBUFFER_EXT, GL.GL_COLOR_ATTACHMENT0_EXT, GL.GL_TEXTURE_2D, screen, 0);
+			if (hasShaders) {
+				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, framebuffer);
+				gl.glFramebufferTexture2DEXT(GL.GL_FRAMEBUFFER_EXT, GL.GL_COLOR_ATTACHMENT0_EXT, GL.GL_TEXTURE_2D, screen, 0);
+			}
 			
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
@@ -992,42 +1001,44 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			}
 			gl.glDisable(GL.GL_TEXTURE_3D);
 			
-			gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, 0);
-			gl.glMatrixMode(GL.GL_PROJECTION);
-			gl.glLoadIdentity();
-			gl.glMatrixMode(GL.GL_MODELVIEW);
-			gl.glLoadIdentity();
-			gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
-			
-			b3.clear();
-			for(int i=0; i<256; i++)
-			{
-				b3.put(colorBar.cm_red[i]);
-				b3.put(colorBar.cm_green[i]);
-				b3.put(colorBar.cm_blue[i]);
+			if (hasShaders) {
+				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, 0);
+				gl.glMatrixMode(GL.GL_PROJECTION);
+				gl.glLoadIdentity();
+				gl.glMatrixMode(GL.GL_MODELVIEW);
+				gl.glLoadIdentity();
+				gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
+
+				b3.clear();
+				for(int i=0; i<256; i++)
+				{
+					b3.put(colorBar.cm_red[i]);
+					b3.put(colorBar.cm_green[i]);
+					b3.put(colorBar.cm_blue[i]);
+				}
+				b3.flip();
+				gl.glActiveTexture(GL.GL_TEXTURE1);
+				gl.glBindTexture(GL.GL_TEXTURE_2D, colortable);
+				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, colorBar.cmap_size, 1, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b3);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
+				gl.glActiveTexture(GL.GL_TEXTURE0);
+
+
+				// Use The Program Object Instead Of Fixed Function OpenGL
+				gl.glUseProgramObjectARB(my_program);
+				gl.glUniform1i(gl.glGetUniformLocationARB(my_program, "my_color_texture"), 1);
+				gl.glBegin(GL.GL_QUADS);
+					gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f,  1.0f, 0.0f);
+					gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f,  1.0f, 0.0f);
+					gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
+					gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
+				gl.glEnd();
+
+				gl.glUseProgramObjectARB(0);
 			}
-			b3.flip();
-			gl.glActiveTexture(GL.GL_TEXTURE1);
-			gl.glBindTexture(GL.GL_TEXTURE_2D, colortable);
-			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, colorBar.cmap_size, 1, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b3);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
-			gl.glActiveTexture(GL.GL_TEXTURE0);
-			
-			
-			// Use The Program Object Instead Of Fixed Function OpenGL
-			gl.glUseProgramObjectARB(my_program);
-			gl.glUniform1i(gl.glGetUniformLocationARB(my_program, "my_color_texture"), 1);
-			gl.glBegin(GL.GL_QUADS);
-				gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f,  1.0f, 0.0f);
-				gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f,  1.0f, 0.0f);
-				gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
-				gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
-			gl.glEnd();
-			
-			gl.glUseProgramObjectARB(0);
 		}
 		else
 		{
