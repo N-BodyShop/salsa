@@ -1,6 +1,7 @@
 STRUCTURES_PATH = ../structures
 
-OPTS=-g
+#OPTS=-g
+OPTS=-O3 -ffast-math
 CXXFLAGS += $(OPTS) -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
 LDFLAGS +=  $(OPTS) -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
 LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
