@@ -30,14 +30,17 @@ typedef long blkcnt_t;
 // Utility template to pull results out of resumeThread callback.
 // Note that data has to be copied out of "result" before the message
 // is deleted.
+// This is only used in the Python routines, it is derived from
+// CkCallbackPython so that python locking can be handled properly.
 
 template <typename MessageType, typename ResultType>
-class CkCallbackResumeThreadResult : public CkCallback {
+class CkCallbackResumeThreadResult : public CkCallbackPython {
 	MessageType*& m;
 	ResultType& result;
 public:
 		
-	CkCallbackResumeThreadResult(MessageType*& m_, ResultType& result_) : CkCallback(resumeThread), m(m_), result(result_) { }
+	CkCallbackResumeThreadResult(MessageType*& m_, ResultType& result_)
+	    : CkCallbackPython((void*&)m_), m(m_), result(result_) { }
 	~CkCallbackResumeThreadResult() {
 		m = reinterpret_cast<MessageType *>(thread_delay());
 		result = *reinterpret_cast<ResultType *>(m->getData());

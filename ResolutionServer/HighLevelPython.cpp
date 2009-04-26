@@ -122,9 +122,9 @@ void Main::saveSimulation(int handle) {
     // and it calls all the other workers in sequence.
     this->workers[0].saveSimulation(path,
 			       createCallbackResumeThread(mesg, result));
-    delete mesg;
 
     pythonReturn(handle, Py_BuildValue("i",result));
+    delete mesg;
     }
 
 /* usage: getNumParticles('family')  XXX deprecated
@@ -163,6 +163,7 @@ void Main::getNumParticles(int handle) {
 		}
 	    CkReductionMsg* mesg;
 	    int64_t result;
+	    
 	    workers.getNumParticlesGroup(groupName, familyName,
 					 createCallbackResumeThread(mesg, result));
 	    pythonReturn(handle, Py_BuildValue("l", result));
@@ -478,9 +479,9 @@ void Main::getAttributeSum(int handle)
 
     // pythonSleep(handle);
     workers.getAttributeSum(groupName, familyName, attributeName, createCallbackResumeThread(mesg, sum));
-    delete mesg;
     // pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("d", sum));
+    delete mesg;
     }
 
 void Main::findAttributeMin(int handle)
@@ -505,10 +506,10 @@ void Main::findAttributeMin(int handle)
     // pythonSleep(handle);
     workers.findAttributeMin(groupName, attributeName,
 			     createCallbackResumeThread(mesg, compair));
-    delete mesg;
     Vector3D<double> retval = compair.second;
     // pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("(ddd)", retval.x, retval.y, retval.z));
+    delete mesg;
     }
 
 void Main::getDimensions(int handle)
@@ -763,7 +764,6 @@ void Main::reduceParticle(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    // pythonSleep(handle);
     CkReductionMsg* mesg;
     char *data;
     PyObjectMarshal result;
@@ -772,7 +772,6 @@ void Main::reduceParticle(int handle) {
 			   createCallbackResumeThread(mesg, data));
 
     PUP::fromMemBuf(result, mesg->getData(), mesg->getSize());
-    // pythonAwake(handle);
     pythonReturn(handle, PySequence_GetItem(result.obj, 2));
     delete mesg;
 }

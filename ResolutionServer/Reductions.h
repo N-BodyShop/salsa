@@ -25,8 +25,8 @@ class PythonReducer: public PythonObjectLocal
 	listResult = NULL;
 	};
     
-    int buildIterator(PyObject*, void*);
-    int nextIteratorUpdate(PyObject*, PyObject*, void*);
+    int buildIterator(PyObject*&, void*);
+    int nextIteratorUpdate(PyObject*&, PyObject*, void*);
     virtual ~PythonReducer() {} ;
     };
 

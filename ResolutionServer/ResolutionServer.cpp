@@ -85,8 +85,9 @@ Main::Main(CkArgMsg* m) {
 	if(verbosity)
 		cerr << "Verbosity level " << verbosity << endl;
 	
-	Simulation* sim = new SiXFormatReader(fname);
-	if(sim->size() == 0) {
+	if(fname != NULL) {
+	    Simulation* sim = new SiXFormatReader(fname);
+	    if(sim->size() == 0) {
 		//try plain tipsy format
 		sim->release();
 		delete sim;
@@ -109,10 +110,11 @@ Main::Main(CkArgMsg* m) {
 				cerr << "Read list of " << simulationList.size() << " simulations from " << fname << endl;
 		} else
 			simulationList[fname] = fname;
-	} else
+	    } else
 		simulationList[fname] = fname;
-	sim->release();
-	delete sim;
+	    sim->release();
+	    delete sim;
+	    }
 
 	metaProxy = CProxy_MetaInformationHandler::ckNew();
     workers = CProxy_Worker::ckNew(metaProxy, CkNumPes());

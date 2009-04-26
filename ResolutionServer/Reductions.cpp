@@ -161,7 +161,7 @@ PythonReducer::getSubList()
     }
 
 int
-PythonReducer::buildIterator(PyObject* arg, void* iter) {
+PythonReducer::buildIterator(PyObject*& arg, void* iter) {
     // Sort list
     PyList_Sort(listReduce);
     iCurrent = 0;
@@ -182,7 +182,7 @@ PythonReducer::buildIterator(PyObject* arg, void* iter) {
     return 1;
     }
 
-int PythonReducer::nextIteratorUpdate(PyObject* arg, PyObject* result,
+int PythonReducer::nextIteratorUpdate(PyObject*& arg, PyObject* result,
 				      void* iter) {
     // Append this result to result list
     PyList_Append(listResult, result);
