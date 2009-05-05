@@ -273,94 +273,17 @@ void registerReductions() {
 	pythonReduction = CkReduction::addReducer(pythonReduce);
 }
 
+// Implementation of PythonObject::execute() that doesn't deal with
+// CCS messages.  See the original implementation in pythonCCS.C for
+// a comparision
+
 int PythonObjectLocal::execute (PythonExecute *pyMsg) {
-  // ATTN: be sure that in all possible paths pyLock is released!
-  PyEval_AcquireLock();
-  CmiUInt4 pyReference;
 
-  if (pyMsg->getInterpreter() > 0) {
-    // the user specified an interpreter, check if it is free
-    PythonTable::iterator iter;
-    if ((iter=pyWorkers.find(pyMsg->getInterpreter())) != pyWorkers.end()
-	&& !iter->second.inUse && iter->second.clientReady!=-1) {
-      // the interpreter already exists and it is neither in use, nor dead
-      //CkPrintf("interpreter present and not in use\n");
-	pyReference = pyMsg->getInterpreter();
-      PyThreadState_Swap(iter->second.pythread);
-    } else {
-      // Oops, either the iterator does not exist or is already in
-      // use, return an
-      // error to the client, we don't want to create a new interpreter if the
-      // old is in use, because this can corrupt the semantics of the user code.
-      PyEval_ReleaseLock();
-      return 0;  // stop the execution
-    }
-  } else {
-    // the user didn't specify an interpreter, create a new one
-
-    // update the reference number, used to access the current chare
-    pyReference = ++pyNumber;
-    pyNumber &= ~(1<<31);
-    pyWorkers[pyReference].clientReady = 0;
-
-    // create the new interpreter
-    //PyEval_AcquireLock();
-    PyThreadState *pts = Py_NewInterpreter();
-
-    CkAssert(pts != NULL);
-    pyWorkers[pyReference].pythread = pts;
-
-    Py_InitModule("ck", CkPy_MethodsDefault);
-    if (pyMsg->isHighLevel()) Py_InitModule("charm", getMethods());
-
-    // insert into the dictionary a variable with the reference number
-    PyObject *mod = PyImport_AddModule("__main__");
-    PyObject *dict = PyModule_GetDict(mod);
-
-    PyDict_SetItemString(dict,"__charmNumber__",PyInt_FromLong(pyReference));
-    PyRun_String("import ck\nimport sys\n"
-		 "ck.__doc__ = \"Ck module: basic charm routines\\n"
-		 "printstr(str) -- print a string on the server\\n"
-		 "printclient(str) -- print a string on the client\\n"
-		 "mype() -- return an integer for MyPe()\\n"
-		 "numpes() -- return an integer for NumPes()\\n"
-		 "myindex() -- return a tuple containing the array index (valid only for arrays)\\n"
-		 "read(where) -- read a value on the chare (uses the \\\"read\\\" method of the chare)\\n"
-		 "write(where, what) -- write a value back on the chare (uses the \\\"write\\\" method of the chare)\\n\"",
-		 Py_file_input,dict,dict);
-    if (pyMsg->isHighLevel()) {
-      PyRun_String("import charm",Py_file_input,dict,dict);
-      PyRun_String(getMethodsDoc(),Py_file_input,dict,dict);
-    }
-
-    PyRun_String("class __charmOutput__:\n"
-		 "    def __init__(self, stdout):\n"
-		 "        self.stdout = stdout\n"
-		 "    def write(self, s):\n"
-		 "        ck.printclient(s)\n"
-		 "sys.stdout = __charmOutput__(sys.stdout)"
-		 ,Py_file_input,dict,dict);
-
-  }
-
-  pyWorkers[pyReference].inUse = true;
-  if (pyMsg->isKeepPrint()) {
-    pyWorkers[pyReference].isKeepPrint = true;
-  } else {
-    pyWorkers[pyReference].isKeepPrint = false;
-  }
-
-  if (pyMsg->isWait()) {
-    pyWorkers[pyReference].finishReady = 1;
-  } else {
-    pyWorkers[pyReference].finishReady = 0;
-    // send back this number to the client, which is an ack
-    ckout<<"new interpreter created "<<pyReference<<endl;
-  }
+  CmiUInt4 pyReference = prepareInterpreter(pyMsg);
 
   // run the program
   executeThread(pyMsg);
-  // delete the message, execute was delegated
+  
   return pyReference;
 }
 #include "Reductions.def.h"
