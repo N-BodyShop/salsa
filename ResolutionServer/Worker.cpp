@@ -1139,7 +1139,13 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
 
 void Worker::getAttributeInformation(CkCcsRequestMsg* m) {	
 	ostringstream oss;
-	CkAssert(sim != NULL);
+	if(sim == NULL) {
+		oss << "Error: no simulation loaded\n" ;
+		string result(oss.str());
+		CcsSendDelayedReply(m->reply, result.length(), result.c_str());
+		delete m;
+		return;
+		}
 	oss << "simulationName = " << sim->name << "\n";
 	oss << "numFamilies = " << sim->size() << "\n";
 	int familyNumber = 0;
