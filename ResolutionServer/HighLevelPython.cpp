@@ -692,9 +692,7 @@ void Main::runLocalParticleCode(int handle) {
 
     string s = string(achCode);
     
-    // pythonSleep(handle);
-    workers.localParticleCode(s, CkCallbackResumeThread());
-    // pythonAwake(handle);
+    workers.localParticleCode(s, CkCallbackPython());
     pythonReturn(handle);
 }
 
@@ -722,10 +720,8 @@ void Main::runLocalParticleCodeGroup(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    // pythonSleep(handle);
     workers.localParticleCodeGroup(g, s, PyObjectMarshal(global),
-				   CkCallbackResumeThread());
-    // pythonAwake(handle);
+				   CkCallbackPython());
     pythonReturn(handle);
 }
 
