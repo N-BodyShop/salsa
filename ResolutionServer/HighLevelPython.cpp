@@ -174,17 +174,23 @@ void Main::getNumParticles(int handle) {
 void Main::getAttributeRange(int handle) {
     char *familyName, *attributeName;
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: getAttributeRange(family, attribute)");
+	pythonReturn(handle, NULL);
+	return;
+	}
     Worker* w = this->workers[0].ckLocal();
     Simulation::iterator simIter = w->sim->find(familyName);
 
     if(simIter == w->sim->end()) {
-	pythonReturn(handle);
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
 	return;
 	}
     AttributeMap::iterator attrIter = simIter->second.attributes.find(attributeName);
     if(attrIter == simIter->second.attributes.end()) {
-	pythonReturn(handle);
+	PyErr_SetString(PyExc_NameError, "No such attribute");
+	pythonReturn(handle, NULL);
 	return;
 	}
     pythonReturn(handle,Py_BuildValue("(dd)", getScalarMin(attrIter->second),
@@ -457,7 +463,10 @@ void Main::createScalarAttribute(int handle) {
 void Main::createVectorAttribute(int handle) {
     char *familyName, *attributeName;
     PyObject *arg = PythonObject::pythonGetArg(handle);
-    PyArg_ParseTuple(arg, "ss", &familyName, &attributeName);
+    if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
     CkReductionMsg* mesg;
     int result;
 
@@ -473,7 +482,10 @@ void Main::getAttributeSum(int handle)
 {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *groupName, *familyName, *attributeName;
-    PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName);
+    if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName)) {
+	pythonReturn(handle, NULL);
+	return;
+	}
     CkReductionMsg* mesg;
     double sum;
 
@@ -603,12 +615,14 @@ void Main::createGroup_Family(int handle)
     int result;
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
-    PyArg_ParseTuple(arg, "sss", &groupName, &parentName, &familyName);
-    // pythonSleep(handle);
+    if(PyArg_ParseTuple(arg, "sss", &groupName, &parentName, &familyName)
+       == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
     workers.createGroup_Family(groupName, parentName, familyName,
 			       createCallbackResumeThread(mesg, result));
     delete mesg;
-    // pythonAwake(handle);
     pythonReturn(handle);
     }
 	
@@ -620,14 +634,16 @@ void Main::createGroup_AttributeRange(int handle)
     CkReductionMsg* mesg;
     PyObject *arg = PythonObject::pythonGetArg(handle);
 
-    PyArg_ParseTuple(arg, "sssdd", &groupName, &parentName, &attributeName,
-		     &minValue, &maxValue);
-    // pythonSleep(handle);
+    if(PyArg_ParseTuple(arg, "sssdd", &groupName, &parentName, &attributeName,
+			&minValue, &maxValue) == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: createGroup_AttributeRange(group, parent_group, attribute, min, max)");
+	pythonReturn(handle, NULL);
+	return;
+	}
     workers.createGroup_AttributeRange(groupName, parentName, attributeName,
 				       minValue, maxValue,
 				       createCallbackResumeThread(mesg, result));
     delete mesg;
-    // pythonAwake(handle);
     pythonReturn(handle);
     }
 
@@ -636,8 +652,13 @@ void Main::createGroupAttributeSphere(int handle) {
     char *achGroupName, *parentName, *attributeName;
     double xCenter, yCenter, zCenter, dSize;
     
-    PyArg_ParseTuple(arg, "sssdddd", &achGroupName, &parentName,
-		     &attributeName, &xCenter, &yCenter, &zCenter, &dSize);
+    if(PyArg_ParseTuple(arg, "sssdddd", &achGroupName, &parentName,
+			&attributeName, &xCenter, &yCenter, &zCenter,
+			&dSize) == false) {
+	
+	pythonReturn(handle, NULL);
+	return;
+	}
     Vector3D<double> v3dCenter(xCenter, yCenter, zCenter);
     string sGroupName(achGroupName);
     string sParentName(parentName);
@@ -659,12 +680,16 @@ void Main::createGroupAttributeBox(int handle) {
     double xEdge2, yEdge2, zEdge2;
     double xEdge3, yEdge3, zEdge3;
     
-    PyArg_ParseTuple(arg, "sssdddddddddddd", &achGroupName, &parentName,
+    if(PyArg_ParseTuple(arg, "sssdddddddddddd", &achGroupName, &parentName,
 		     &attributeName,
 		     &xCorner, &yCorner, &zCorner,
 		     &xEdge1, &yEdge1, &zEdge1,
 		     &xEdge2, &yEdge2, &zEdge2,
-		     &xEdge3, &yEdge3, &zEdge3);
+			&xEdge3, &yEdge3, &zEdge3) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+	
     Vector3D<double> v3dCorner(xCorner, yCorner, zCorner);
     Vector3D<double> v3dEdge1(xEdge1, yEdge1, zEdge1);
     Vector3D<double> v3dEdge2(xEdge2, yEdge2, zEdge2);
