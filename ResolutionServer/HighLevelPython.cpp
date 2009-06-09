@@ -482,16 +482,17 @@ void Main::getAttributeSum(int handle)
 {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *groupName, *familyName, *attributeName;
-    if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName)) {
+    if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName)
+       == false) {
+	PyErr_SetString(PyExc_TypeError,
+			"Usage: getAttributeSum(group, family, attribute)");
 	pythonReturn(handle, NULL);
 	return;
 	}
     CkReductionMsg* mesg;
     double sum;
 
-    // pythonSleep(handle);
     workers.getAttributeSum(groupName, familyName, attributeName, createCallbackResumeThread(mesg, sum));
-    // pythonAwake(handle);
     pythonReturn(handle,Py_BuildValue("d", sum));
     delete mesg;
     }
