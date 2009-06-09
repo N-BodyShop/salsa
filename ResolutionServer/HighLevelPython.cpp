@@ -66,6 +66,12 @@ void Main::readTipsyArray(int handle) {
 void Main::getFamilies(int handle) {
     Worker* w = this->workers[0].ckLocal();
     PyObject *lFamily = PyList_New(0);
+
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
     for(Simulation::iterator iter = w->sim->begin(); iter != w->sim->end(); ++iter)
 	PyList_Append(lFamily, Py_BuildValue("s", iter->first.c_str()));
     pythonReturn(handle, lFamily);
@@ -78,6 +84,11 @@ void Main::getAttributes(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *familyName;
     Worker* w = this->workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
     PyObject *lAttributes = PyList_New(0);
     if(PyArg_ParseTuple(arg, "s", &familyName) == false) {
 	pythonReturn(handle, NULL);
