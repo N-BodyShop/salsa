@@ -29,15 +29,28 @@ all: $(TARGET).jar
 $(TARGET).jar: jogl.jar Manifest $(CLASSES) charm
 	jar cmf Manifest $@ *.class charm
 
-JOGL_ARCHIVE=jogl-1.1.1-linux-i586.zip 
+####################
+# JOGL implementation to use is different in 32-bit and 64-bit linux...
+JOGL_ARCHIVE32=jogl-1.1.1-linux-i586.zip 
+JOGL_ARCHIVE64=jogl-1.1.1-linux-amd64.zip 
+ifeq ($(shell uname -m),x86_64)
+JOGL_ARCHIVE=$(JOGL_ARCHIVE64)
+else
+JOGL_ARCHIVE=$(JOGL_ARCHIVE32)
+endif
+
 jogl.jar: $(JOGL_ARCHIVE)
 	unzip -u $<
 	mv jogl-*linux*/lib/*.jar .
 	mv jogl-*linux*/lib/*.so .
 	touch jogl.jar
 
-$(JOGL_ARCHIVE): 
+$(JOGL_ARCHIVE32): 
 	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@
+
+$(JOGL_ARCHIVE64): 
+	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@
+
 
 charm: charm/ccs/*.java
 	javac charm/ccs/*.java
