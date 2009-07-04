@@ -1,10 +1,9 @@
+import charm.ccs.CcsThread;
+
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.*;
-
-import charm.ccs.CcsThread;
-
 
 public class LocalParticle extends JPanel
                         implements ActionListener {

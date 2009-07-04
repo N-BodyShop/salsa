@@ -7,7 +7,7 @@ CLASSES = Vector3D.class \
 	SalsaRequests.class ChooseSimulationFrame.class \
 	Salsa.class DelimitedStringEnumeration.class GroupManager.class \
 	CodePanel.class GroupQuery.class MenuBar.class LocalParticle.class \
-	HighLevelPython.class PyPrintHandler.class 
+	HighLevelPython.class PyPrintHandler.class
 	
 #	ConnectFrame.class \
 #	ChooseSimulationFrame.class SimulationFrame.class ReColorFrame.class \
@@ -19,25 +19,15 @@ CLASSES = Vector3D.class \
 #	ListSimulations.class ChooseSimulation.class AttributeManager.class \
 #	WindowManager.class
 
-CLASSPATH=-classpath .:jogl.jar:gluegen-rt.jar
+CLASSPATH = -classpath .
 
 TARGET = Salsa
 VERSION = 0.1
 
 all: $(TARGET).jar
 
-$(TARGET).jar: jogl.jar Manifest $(CLASSES) charm
+$(TARGET).jar: Manifest $(CLASSES) charm
 	jar cmf Manifest $@ *.class charm
-
-JOGL_ARCHIVE=jogl-1.1.1-linux-i586.zip 
-jogl.jar: $(JOGL_ARCHIVE)
-	unzip -u $<
-	mv jogl-*linux*/lib/*.jar .
-	mv jogl-*linux*/lib/*.so .
-	touch jogl.jar
-
-$(JOGL_ARCHIVE): 
-	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@
 
 charm: charm/ccs/*.java
 	javac charm/ccs/*.java

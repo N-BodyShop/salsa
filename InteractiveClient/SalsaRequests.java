@@ -1,9 +1,7 @@
 //SalsaRequests.java
 
-import java.util.Vector;
-
 import charm.ccs.CcsThread;
-
+import java.util.Vector;
 
 public class SalsaRequests {
 
