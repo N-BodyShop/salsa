@@ -483,7 +483,6 @@ public class SimulationView extends JLabel
 			dos.writeDouble(minMass);
 			dos.writeDouble(maxMass);
 			dos.writeInt(doSplatter);
-			System.out.println("x:"+x.toString()+" y:"+y.toString()+" z:"+z.toString()+" or:"+origin.toString());
         } catch(IOException e) {
             System.err.println("Couldn't encode request!");
             e.printStackTrace();
