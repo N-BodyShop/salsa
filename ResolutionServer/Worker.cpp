@@ -506,7 +506,6 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				}
 			}
 		} else { //draw points only
-			std::cout<<"Request dimensions: "<<req.width<<"x"<<req.height<<"\n";
 		  if (doVolumeRender) 
 		  { /* 3D volume render */
 		  	int SX=req.width, SY=req.width, SZ=req.width; /* size, pixels, along X, Y, Z */
@@ -537,11 +536,13 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				if (x<0 || x>=req.width) continue; /* point is offscreen: skip */
 				y=dot(yAxis,positions[*iter])-yo;
 				if (y<0 || y>=req.height) continue;
-				float z=dot(req.z,positions[*iter])-zo;
-				if (z<0 || z>=2.0) continue;
+
+				// No z clipping planes for now
+				// float z=dot(req.z,positions[*iter])-zo;
+				// if (z<0 || z>=2.0) continue;
 				
 				if(req.radius == 0) {
-					pixel = (unsigned int) ((int)x + req.width * (int)y);
+				    pixel = (unsigned int) ((int)x + req.width * (int)(req.height -1 - y));
 					if(image[pixel] < colors[*iter])
 				        	image[pixel] = colors[*iter];
 				} else
