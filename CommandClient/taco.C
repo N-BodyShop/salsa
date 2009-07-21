@@ -65,10 +65,19 @@ int main (int argc, char** argv) {
       PythonPrint request(htonl(interpreterHandle));
       request.setWait(false);
       CcsSendRequest (&server, "ExecutePythonCode", 0, request.size(), request.pack());
-      char buffer[1001];
-      int len = CcsRecvResponse (&server, 1000, buffer, 1000);
-      buffer[len] = 0;
-      printf("response: %s\n",buffer);
+      char *buffer;
+      int msg_size;
+      
+      int len = CcsRecvResponseMsg(&server, &msg_size, (void **) &buffer, 1000);
+      if(len != -1) {
+	  buffer[len] = 0;
+	  printf("response: %s\n",buffer);
+	  free(buffer);
+	  }
+      else {
+	  printf("bad response?\n");
+	  }
+	  
       free(my_gets_line);
       }
   stifle_history(50);
