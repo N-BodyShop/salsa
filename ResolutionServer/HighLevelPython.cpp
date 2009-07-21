@@ -107,6 +107,12 @@ void Main::getAttributes(int handle) {
 
 void Main::getGroups(int handle) {
     Worker* w = this->workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
     PyObject *lGroup = PyList_New(0);
     
     for(Worker::GroupMap::iterator iter = w->groups.begin();
@@ -153,6 +159,12 @@ void Main::getNumParticles(int handle) {
 	    }
 	}
     
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
     Simulation::iterator iter = w->sim->find(familyName);
     
     if(iter == w->sim->end()) {
@@ -191,6 +203,12 @@ void Main::getAttributeRange(int handle) {
 	return;
 	}
     Worker* w = this->workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
     Simulation::iterator simIter = w->sim->find(familyName);
 
     if(simIter == w->sim->end()) {
@@ -397,6 +415,12 @@ void Main::getAttributeRangeGroup(int handle) {
 	return;
 	}
     
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
     Worker::GroupMap::iterator giter = w->groups.find(groupName);
     if(giter == w->groups.end()) {
 	PyErr_SetString(PyExc_NameError, "No such group");
@@ -520,6 +544,11 @@ void Main::findAttributeMin(int handle)
 	pythonReturn(handle, NULL);
 	return;
 	}
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
     Worker::GroupMap::iterator giter = w->groups.find(groupName);
     if(giter == w->groups.end()) {
 	PyErr_SetString(PyExc_NameError, "No such group");
@@ -544,6 +573,11 @@ void Main::getDimensions(int handle)
     int iDim;
     
     if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
 	pythonReturn(handle, NULL);
 	return;
 	}
@@ -576,6 +610,11 @@ void Main::getDataType(int handle)
 	return;
 	}
     
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
     Simulation::iterator simIter = w->sim->find(familyName);
     if(simIter == w->sim->end()) {
 	PyErr_SetString(PyExc_NameError, "No such family");
@@ -601,6 +640,11 @@ void Main::getCenterOfMass(int handle)
 
     PyObject *arg = PythonObject::pythonGetArg(handle);
     if(PyArg_ParseTuple(arg, "s", &groupName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
 	pythonReturn(handle, NULL);
 	return;
 	}
@@ -751,6 +795,11 @@ void Main::runLocalParticleCodeGroup(int handle) {
     string s(achCode);
     
     Worker* w = workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
     Worker::GroupMap::iterator giter = w->groups.find(achGroup);
     if(giter == w->groups.end()) {
 	PyErr_SetString(PyExc_NameError, "No such group");
@@ -791,6 +840,11 @@ void Main::reduceParticle(int handle) {
     string sReduceCode(achReduceCode);
     
     Worker* w = workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
     Worker::GroupMap::iterator giter = w->groups.find(achGroup);
     if(giter == w->groups.end()) {
 	PyErr_SetString(PyExc_NameError, "No such group");
