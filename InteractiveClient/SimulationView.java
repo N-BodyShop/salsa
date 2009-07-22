@@ -581,6 +581,7 @@ public class SimulationView extends JLabel
 		public void handleReply(byte[] data) {
 			String result = new String(data);
 			System.out.println("Return from code execution: \"" + result + "\"");
+			windowManager.groupManager.refreshGroups();
 		}
 	}
 }

@@ -163,12 +163,7 @@ public class GroupManager extends Manager
 			groupList.setSelectedValue(g.name, true);
 		} else if(command.equals("refresh")) { // get new list of
 						       // groups from server
-		    // Convert the Python list into a comma separated string
-		    String getGroupsCode
-			= "ck.printclient(str(charm.getGroups()).replace(\"', '\",\",\").strip(\"[]'\"))\n";
-		    PythonExecute code = new PythonExecute(getGroupsCode,
-						false, true, 0);
-		    HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetGroupsHandler());
+		    refreshGroups();
 		} else if(command.equals("chooseAttribute")) {
 			String attribute = (String) attributeNameBox.getSelectedItem();
 			if(attribute == null)
@@ -189,6 +184,15 @@ public class GroupManager extends Manager
 			minValField.setValue(new Double(minVal));
 			maxValField.setValue(new Double(maxVal));
 		}
+	}
+	
+	public void refreshGroups() { // get new list of groups from server
+	    // Convert the Python list into a comma separated string
+	    String getGroupsCode
+		= "ck.printclient(str(charm.getGroups()).replace(\"', '\",\",\").strip(\"[]'\"))\n";
+	    PythonExecute code = new PythonExecute(getGroupsCode, false, true,
+						   0);
+	    HighLevelPython execute = new HighLevelPython(code, windowManager.ccs, new GetGroupsHandler());
 	}
 	
 	public class CreateGroup extends CcsThread.request {
