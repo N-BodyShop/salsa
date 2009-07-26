@@ -1,4 +1,7 @@
-CHARMDIR=$(HOME)/peak/src/charm
+#
+# CHARMDIR may need to be set to point at your charm installation
+#
+CHARMDIR=../charm
 INCLC = -I$(CHARMDIR)/include
 LIBS = -lreadline  -lcurses -ltermcap -lm
 
