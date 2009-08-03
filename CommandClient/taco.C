@@ -70,6 +70,7 @@ int main (int argc, char** argv) {
       
       int len = CcsRecvResponseMsg(&server, &msg_size, (void **) &buffer, 1000);
       if(len != -1) {
+	  buffer = (char *) realloc((void *)buffer, len+1);
 	  buffer[len] = 0;
 	  printf("response: %s\n",buffer);
 	  free(buffer);
