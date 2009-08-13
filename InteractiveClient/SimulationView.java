@@ -881,7 +881,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		if (mode3D)
 		{
 			gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
-			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_LUMINANCE, width2D, height2D, 0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, null);
+			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width2D, height2D, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, null);
 			
 			if (hasShaders) {
 				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, framebuffer);
