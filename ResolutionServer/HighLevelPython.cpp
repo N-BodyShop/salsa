@@ -59,6 +59,8 @@ void Main::readTipsyArray(int handle) {
 	}
     else {
 	PyErr_SetString(PyExc_NameError, "No such file");
+	pythonReturn(handle, NULL);
+	return;
 	}
     pythonReturn(handle);
     }
