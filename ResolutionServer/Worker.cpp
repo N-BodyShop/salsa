@@ -542,7 +542,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				// if (z<0 || z>=2.0) continue;
 				
 				if(req.radius == 0) {
-				    pixel = (unsigned int) ((int)x + req.width * (int)(req.height -1 - y));
+				    pixel = (unsigned int) ((int)x + req.width * (int)(y));
 					if(image[pixel] < colors[*iter])
 				        	image[pixel] = colors[*iter];
 				} else
