@@ -968,7 +968,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			matrix[1]=y.x;	matrix[5]=y.y;  matrix[9]=y.z;	 matrix[13]=0;
 			matrix[2]=z.x;	matrix[6]=z.y;	matrix[10]=z.z;  matrix[14]=0;
 			matrix[3]=0;	matrix[7]=0;	matrix[11]=0;	 matrix[15]=1;
-			gl.glScaled(scale /(width2D*delta), -scale/(height2D*delta), scale);
+			gl.glScaled(scale /(width2D*delta), scale/(height2D*delta), scale);
 			gl.glMultMatrixd(matrix, 0);
 			
 			gl.glColor3ub((byte)2, (byte)0, (byte)0);
@@ -1131,10 +1131,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glColor4f(1f, 1f, 1f, 1f);
 			gl.glEnable(GL.GL_TEXTURE_2D);
 			gl.glBegin(GL.GL_QUADS);
-				gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
-				gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
-				gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, 1.0f, 0.0f);
-				gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, 1.0f, 0.0f);
+				gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f, 1.0f, 0.0f);
+				gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f, 1.0f, 0.0f);
+				gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
+				gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
 			gl.glEnd();
 			gl.glDisable(GL.GL_TEXTURE_2D);
 		}
