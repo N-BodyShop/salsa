@@ -230,6 +230,41 @@ void Worker::readTipsyArray(const std::string& fileName,
     fclose(fp);
     }
 
+void Worker::writeGroupArray(const std::string& groupName,
+			     const std::string& attributeName,
+			     const std::string& fileName,
+			     const CkCallback& cb)
+{
+    FILE *fp;
+    
+    if(thisIndex == 0) {
+	fp = fopen(fileName.c_str(), "w");
+	fprintf(fp, "%d\n", sim->totalNumParticles());
+	}
+    else {
+	fp = fopen(fileName.c_str(), "a");
+	}
+    
+    for(Simulation::iterator family = sim->begin(); family != sim->end();
+	++family) {
+	AttributeMap::iterator attrIter = family->second.attributes.find(attributeName);
+	if(attrIter == family->second.attributes.end()) {
+	    for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
+		fprintf(fp, "0\n");  // zero fill if no values
+		}
+	    
+	    }
+	else {
+	    // XXX take care of type handling
+	    float* array = attrIter->second.getArray(Type2Type<float >());
+	    for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
+		fprintf(fp, "%g\n", &array[i]);
+		}
+	    }
+	}
+    fclose(fp);
+    }
+
 
 const byte lineColor = 1;
 

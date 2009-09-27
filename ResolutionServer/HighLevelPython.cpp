@@ -146,6 +146,34 @@ void Main::saveSimulation(int handle) {
     delete mesg;
     }
 
+/* usage: writeGroupArray('Group', 'attribute', 'savepath') */
+void Main::writeGroupArray(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    Worker* w = this->workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    char *fileName;
+    char *attributeName;
+    char *groupName;
+    
+    if(PyArg_ParseTuple(arg, "sss", &groupName, &attributeName, &fileName)
+       == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    // The writing is done as a domino scheme.  Call the head node
+    // and it calls all the other workers in sequence.
+    this->workers[0].writeGroupArray(groupName, attributeName, fileName,
+				     CkCallbackResumeThread());
+
+    pythonReturn(handle);
+    }
+
 /* usage: getNumParticles('family')  XXX deprecated
    or getNumParticles('group', 'family') */
 void Main::getNumParticles(int handle) {
