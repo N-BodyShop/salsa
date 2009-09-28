@@ -31,6 +31,8 @@ mainmodule ResolutionServer {
 			void readTipsyArray(int handle);
 		entry [python "return position with a group of the minimum value of an attribute"]
 			void findAttributeMin(int handle);
+		entry [python "return simulate time"]
+			void getTime(int handle);
 		entry [python "return list of families"]
 			void getFamilies(int handle);
 		entry [python "return list of attributes of a family"]

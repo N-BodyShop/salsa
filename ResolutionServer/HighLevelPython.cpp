@@ -65,6 +65,17 @@ void Main::readTipsyArray(int handle) {
     pythonReturn(handle);
     }
 
+void Main::getTime(int handle) {
+    Worker* w = this->workers[0].ckLocal();
+
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    pythonReturn(handle,Py_BuildValue("d", w->sim->time));
+    }
+
 void Main::getFamilies(int handle) {
     Worker* w = this->workers[0].ckLocal();
     PyObject *lFamily = PyList_New(0);

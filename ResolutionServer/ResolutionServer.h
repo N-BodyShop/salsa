@@ -190,6 +190,7 @@ public:
 	void readTipsyArray(int handle);
 	void writeGroupArray(int handle);
 	void findAttributeMin(int handle);
+	void getTime(int handle);
 	void getFamilies(int handle);
 	void getAttributes(int handle);
 	void getGroups(int handle);
