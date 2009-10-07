@@ -277,9 +277,16 @@ void registerReductions() {
 // CCS messages.  See the original implementation in pythonCCS.C for
 // a comparision
 
+// First a function that does nothing: we don't want a reply to be
+// sent.
+
+void replyNone(PythonObject *obj, CcsDelayedReply *reply, CmiUInt4 *value) {
+    }
+
 int PythonObjectLocal::execute (PythonExecute *pyMsg) {
 
   CmiUInt4 pyReference = prepareInterpreter(pyMsg);
+  replyIntFn = &replyNone;	// set up a null reply
 
   // run the program
   executeThread(pyMsg);
