@@ -753,6 +753,7 @@ void Main::createGroupAttributeSphere(int handle) {
 			&attributeName, &xCenter, &yCenter, &zCenter,
 			&dSize) == false) {
 	
+	PyErr_SetString(PyExc_TypeError, "Usage: createGroupAttributeSphere(group, parent_group, attribute, xcenter, ycenter, zcenter, radius)");
 	pythonReturn(handle, NULL);
 	return;
 	}
