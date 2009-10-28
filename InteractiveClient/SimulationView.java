@@ -15,11 +15,14 @@ import javax.swing.event.*;
 import java.io.*;
 import java.nio.ByteBuffer;
 
+import javax.imageio.ImageIO;
 import javax.media.opengl.*;
 import javax.media.opengl.glu.GLU;
 
 import com.sun.opengl.util.Animator;
 import com.sun.opengl.util.BufferUtil;
+import com.sun.gluegen.runtime.BufferFactory;
+import com.sun.image.codec.jpeg.*;
 
 public class SimulationView extends JPanel implements ActionListener, MouseInputListener, MouseMotionListener, MouseWheelListener, ComponentListener, GLEventListener
 {
@@ -36,6 +39,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	double minMass = 0;
 	double maxMass = 1;
 	int doSplatter = 0;
+	//0=none, 1=end of box xy, 2= in box z, 3=end box z, 4=sphere, 5=ruler,
 	int selectState = 0;	// State of box selection
 	Vector3D selectCorner, selectEdge1, // Box vectors
 	         selectEdge2, selectEdge3;
@@ -87,11 +91,21 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	CcsThread.request nextRequest=null;
 	boolean requestLock3D=false;
 	CcsThread.request nextRequest3D=null;
+	boolean waiting=false;
 	
 	Vector3D ox, oy, oz;
 	
 	int my_program;
 	GLJPanel glcanvas;
+	
+	//0=No Compression, 1=JPEG, 2=RunLength
+	int encoding2D=2;
+	int encoding3D=2;
+	int compression2D=0;
+	int compression3D=60;
+	
+	//0=Rotate, 1=Zoom+, 2=Zoom-, 3=Select Sphere, 4=Select Box, 5=Ruler
+	public int activeTool=0;
 	
 	public SimulationView(WindowManager wm, int w, int h, ColorBarPanel cbp)
 	{
@@ -99,7 +113,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		windowManager = wm;
 		width = w;
 		height = h;
-
+		
 		boxSize = windowManager.sim.boxSize;
 		zoomFactor = 2;
 		
@@ -111,7 +125,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		
 		colorBar=cbp;
 		//Quick Hack
-		width3D=height3D=depth3D=256;
+		width3D=height3D=depth3D=512;
 		width2D=w;
 		height2D=h;
 		pixels = new byte[width2D*height2D];
@@ -163,7 +177,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	}
 	
 	public void getNewDepth() {
-		ccs.addRequest(new CenterRequest());
+		ccs.doBlockingRequest(new CenterRequest());
 	}
 	
 	public void zoom(double fac) {
@@ -187,62 +201,32 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		rcm.show(e.getComponent(), e.getX(), e.getY());
 		return;
 		}
-	    if(e.getModifiers()
-	       == (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK)) {
-		// box selection
-		    switch(selectState) {
-		    case 0:	// starting box selection
-			selectCorner = coordEvent(e);
-			selStartX = e.getX();
-			selStartY = e.getY();
-			oldCurrentX = selStartX;
-			oldCurrentY = selStartY;
-			selectState = 1;
-			System.out.println("Corner 1: " + selectCorner.toString());
-			break;
-		    case 2:
-			// get 3rd component of box origin
-			Vector3D dz = y.scalarMultiply(y.dot(coordEvent(e).minus(origin))
-						       /y.lengthSquared());
-			selectCorner = selectCorner.plus(dz);
-			
-			selectEdge3 = coordEvent(e);
-			selectState = 3;
-			selStartY = e.getY();
-			oldCurrentY = selStartY;
-			System.out.println("Corner 3: " + selectEdge3.toString());
-			break;
-		    default:
-			System.out.println("Bad state in press: " + selectState);
-			}
-		return;
-		}
-	    if(e.getModifiers()
-	       == (MouseEvent.BUTTON1_MASK|InputEvent.CTRL_MASK)) {
-		// sphere selection
-		    switch(selectState) {
-		    case 0:
-			selectCorner = coordEvent(e);
-			selStartX = e.getX();
-			selStartY = e.getY();
-			oldCurrentX = selStartX;
-			oldCurrentY = selStartY;
-			selectState = 4;
-			System.out.println("Center: " + selectCorner.toString());
-			break;
-		    default:
-			System.out.println("Bad state in press: " + selectState);
-			}
-		}
-	    rotationPoint=e.getPoint();
-	    if(e.getModifiers() == (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK))
+	    else if(e.getModifiers()== (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK))
 	    {
-		    mode3D=true;
-		    if((reget3DImageCounter>=reget3DImageLimit||reget3DImageCounter<=-reget3DImageLimit)&&mode3D)
-			{
-				request3D();
-			}
-		    displayImage();
+			boxSelect(e);
+		}
+	    else if(e.getModifiers()== (MouseEvent.BUTTON1_MASK|InputEvent.CTRL_MASK))
+	    {
+	    	sphereSelect(e);
+		}
+	    else if(e.getModifiers() == (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK))
+	    {
+	    	rotate(e);
+	    }
+	    else
+	    {
+	    	switch(activeTool)
+	    	{
+	    		case 0:
+	    			rotate(e);
+	    			break;
+	    		case 3:
+	    			sphereSelect(e);
+	    			break;
+	    		case 4:
+	    			boxSelect(e);
+	    			break;
+	    	}
 	    }
 	}
 	
@@ -264,7 +248,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			System.out.println("Corner 2: " + selectEdge1.toString());
 			System.out.println("Corner 3: " + selectEdge2.toString());
 			rotateUp(-0.5*Math.PI);
-			getNewImage();
+			//getNewImage();
+			request2D();
 			getNewDepth();
 			selStartX = xCoord(selectCorner);
 			selStartY = -1;
@@ -282,10 +267,13 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			break;
 		    case 4:	// end of Sphere
 			selectRadius = (coordEvent(e).minus(selectCorner)).length();
-			System.out.println("Corner: " + selectCorner.toString());
+			System.out.println("Center: " + selectCorner.toString());
+			System.out.println("Edge: " + coordEvent(e));
 			System.out.println("Radius: " + selectRadius);
 			gquery.setVisible(true);
 			break;
+		    case 5:
+		    	break;
 		    default:
 			System.out.println("Bad state in release: " + selectState);
 		}
@@ -297,95 +285,168 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	    	displayImage();
 	    }
     }
+    
+    private void rotate(MouseEvent e)
+    {
+    	rotationPoint=e.getPoint();
+    	mode3D=true;
+	    if((reget3DImageCounter>=reget3DImageLimit||reget3DImageCounter<=-reget3DImageLimit)&&mode3D)
+		{
+			request3D();
+		}
+	    displayImage();
+    }
+    
+    private void boxSelect(MouseEvent e)
+    {
+    	// box selection
+	    switch(selectState)
+	    {
+		    case 0:	// starting box selection
+				selectCorner = coordEvent(e);
+				selStartX = e.getX();
+				selStartY = e.getY();
+				oldCurrentX = selStartX;
+				oldCurrentY = selStartY;
+				selectState = 1;
+				System.out.println("Corner 1: " + selectCorner.toString());
+				break;
+			    case 2:
+				// get 3rd component of box origin
+				Vector3D dz = y.scalarMultiply(y.dot(coordEvent(e).minus(origin))/y.lengthSquared());
+				selectCorner = selectCorner.plus(dz);
+				
+				selectEdge3 = coordEvent(e);
+				selectState = 3;
+				selStartY = e.getY();
+				oldCurrentY = selStartY;
+				System.out.println("Corner 3: " + selectEdge3.toString());
+				break;
+		    default:
+		    	System.out.println("Bad state in press: " + selectState);
+		}
+    }
+    
+    private void sphereSelect(MouseEvent e)
+    {
+    	// sphere selection
+	    switch(selectState)
+	    {
+		    case 0:
+				selectCorner = coordEvent(e);
+				selStartX = e.getX();
+				selStartY = e.getY();
+				oldCurrentX = selStartX;
+				oldCurrentY = selStartY;
+				selectState = 4;
+				System.out.println("Center: " + selectCorner.toString());
+				break;
+		    default:
+		    	System.out.println("Bad state in press: " + selectState);
+		}
+    }
 
     Vector3D coordEvent(MouseEvent e) // get simulation coordinates of
 				      // mouse click
     {
-	return origin.plus(x.scalarMultiply(2.0 * (e.getX() - (width - 1) / 2.0) / (width - 1))).plus(y.scalarMultiply(2.0 * ((height - 1) / 2.0 - e.getY()) / (height - 1)));
+    	double delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
+    	return origin.plus(x.scalarMultiply(width2D*delta/factor*2.0 * (e.getX() - (width - 1) / 2.0) / (width - 1))).plus(y.scalarMultiply(width2D*delta/factor*2.0 * ((height - 1) / 2.0 - e.getY()) / (height - 1)));
     }
     
     public void mouseDragged(MouseEvent e)
     {
-    	if(e!=null)
+    	if(e!=null&&mode3D)
     	{
-    	
-    	double yDis=(Math.PI/height)*(rotationPoint.getY()-e.getPoint().getY());
-    	double xDis=(Math.PI/height)*(rotationPoint.getX()-e.getPoint().getX());
-    	double xLength=x.length();
-    	double yLength=y.length();
-        x=x.minus(z.scalarMultiply(xDis)).unitVector().scalarMultiply(xLength);
-        y=y.plus(z.scalarMultiply(yDis)).unitVector().scalarMultiply(yLength);
-        orthoNormalizeZVector();
-    	rotationPoint=e.getPoint();
-    	displayImage();
+	    	double yDis=(Math.PI/height)*(rotationPoint.getY()-e.getPoint().getY());
+	    	double xDis=(Math.PI/height)*(rotationPoint.getX()-e.getPoint().getX());
+	    	double xLength=x.length();
+	    	double yLength=y.length();
+	        x=x.minus(z.scalarMultiply(xDis)).unitVector().scalarMultiply(xLength);
+	        y=y.plus(z.scalarMultiply(yDis)).unitVector().scalarMultiply(yLength);
+	        orthoNormalizeZVector();
+	    	rotationPoint=e.getPoint();
+	    	displayImage();
     	}
-	if(selectState == 0) return;
+    	
+		if(selectState == 0) return;
+		
+		Graphics g = glcanvas.getGraphics();
+		g.setXORMode(Color.green);
+		g.drawRect(0, 0, 1, 1);
 	
-	Graphics g = getGraphics();
-	g.setXORMode(Color.green);
-
-	if(selectState == 3) {	// selecting "z" bounds
-	    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
-	    int deltaX = Math.abs(oldCurrentX - selStartX);
-	    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
-	    int deltaY = Math.abs(oldCurrentY - selStartY);
-	    g.drawRect(rectX, rectY, deltaX, deltaY);
-
-	    int currentY = e.getY();
-	    rectY = selStartY < currentY ? selStartY : currentY;
-	    deltaY = Math.abs(currentY - selStartY);
-	    g.drawRect(rectX, rectY, deltaX, deltaY);
-	    oldCurrentY = currentY;
-	    }
-	else if(selectState == 1) { // selecting x and y bounds
-	    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
-	    int deltaX = Math.abs(oldCurrentX - selStartX);
-	    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
-	    int deltaY = Math.abs(oldCurrentY - selStartY);
-	    g.drawRect(rectX, rectY, deltaX, deltaY);
-
-	    int currentX = e.getX();
-	    int currentY = e.getY();
-	    rectX = selStartX < currentX ? selStartX : currentX;
-	    deltaX = Math.abs(currentX - selStartX);
-	    rectY = selStartY < currentY ? selStartY : currentY;
-	    deltaY = Math.abs(currentY - selStartY);
-	    g.drawRect(rectX, rectY, deltaX, deltaY);
-	    oldCurrentX = currentX;
-	    oldCurrentY = currentY;
-	    }
-	else { // selecting sphere
-	    int size = (int) Math.sqrt((selStartX - oldCurrentX)
-				 *(selStartX - oldCurrentX)
-				 + (selStartY - oldCurrentY)
-				 *(selStartY - oldCurrentY));
-	    
-	    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
-	    int currentX = e.getX();
-	    int currentY = e.getY();
-	    size = (int) Math.sqrt((selStartX - currentX)
-				 *(selStartX - currentX)
-				 + (selStartY - currentY)
-				 *(selStartY - currentY));
-	    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
-	    oldCurrentX = currentX;
-	    oldCurrentY = currentY;
+		if(selectState == 3) {	// selecting "z" bounds
+		    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
+		    int deltaX = Math.abs(oldCurrentX - selStartX);
+		    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
+		    int deltaY = Math.abs(oldCurrentY - selStartY);
+		    g.drawRect(rectX, rectY, deltaX, deltaY);
+	
+		    int currentY = e.getY();
+		    rectY = selStartY < currentY ? selStartY : currentY;
+		    deltaY = Math.abs(currentY - selStartY);
+		    g.drawRect(rectX, rectY, deltaX, deltaY);
+		    oldCurrentY = currentY;
+		    }
+		else if(selectState == 1) { // selecting x and y bounds
+		    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
+		    int deltaX = Math.abs(oldCurrentX - selStartX);
+		    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
+		    int deltaY = Math.abs(oldCurrentY - selStartY);
+		    g.drawRect(rectX, rectY, deltaX, deltaY);
+	
+		    int currentX = e.getX();
+		    int currentY = e.getY();
+		    rectX = selStartX < currentX ? selStartX : currentX;
+		    deltaX = Math.abs(currentX - selStartX);
+		    rectY = selStartY < currentY ? selStartY : currentY;
+		    deltaY = Math.abs(currentY - selStartY);
+		    g.drawRect(rectX, rectY, deltaX, deltaY);
+		    oldCurrentX = currentX;
+		    oldCurrentY = currentY;
+		    }
+		else { // selecting sphere
+		    int size = (int) Math.sqrt((selStartX - oldCurrentX)
+					 *(selStartX - oldCurrentX)
+					 + (selStartY - oldCurrentY)
+					 *(selStartY - oldCurrentY));
+		    
+		    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
+		    int currentX = e.getX();
+		    int currentY = e.getY();
+		    size = (int) Math.sqrt((selStartX - currentX)
+					 *(selStartX - currentX)
+					 + (selStartY - currentY)
+					 *(selStartY - currentY));
+		    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
+		    oldCurrentX = currentX;
+		    oldCurrentY = currentY;
 	    }
     }
     
-    public void mouseMoved(MouseEvent e) { 
-	if(selectState == 0) return;
-	
-	if(selectState == 2) {	// box is rotated, now draw a line
-	    Graphics g = getGraphics();
-	    g.setXORMode(Color.green);
-	    g.drawLine(selStartX, oldCurrentY, oldCurrentX, oldCurrentY);
-	    int currentY = e.getY();
-	    g.drawLine(selStartX, currentY, oldCurrentX, currentY);
-	    oldCurrentY = currentY;
-	    
-	    return;
-	    }
+    public void mouseMoved(MouseEvent e)
+    { 
+		if(selectState == 0) return;
+		
+		if(selectState == 2)
+		{	// box is rotated, now draw a line
+		    Graphics g = glcanvas.getGraphics();
+		    g.setXORMode(Color.green);
+		    g.drawLine(selStartX, oldCurrentY, oldCurrentX, oldCurrentY);
+		    int currentY = e.getY();
+		    g.drawLine(selStartX, currentY, oldCurrentX, currentY);
+		    oldCurrentY = currentY;
+		    
+		    return;
+		}
+		else if (selectState == 5)
+		{
+			Graphics g = glcanvas.getGraphics();
+		    g.setXORMode(Color.green);
+		    g.drawLine(selStartX, selStartY, oldCurrentX, oldCurrentY);
+		    oldCurrentX=e.getX(); 
+		    oldCurrentY=e.getY();
+		    g.drawLine(selStartX, selStartY, oldCurrentX, oldCurrentY);
+		}
     }
 
     int xCoord(Vector3D c) 	// Return x pixel value for a
@@ -404,38 +465,82 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
     public void mouseClicked(MouseEvent e)
     {
  		switch(e.getModifiers()) {
-		case MouseEvent.BUTTON1_MASK:  // Zoom in.
-		    if(selectState == 1 || selectState == 3)
-			return;
-		    origin = coordEvent(e);
-		    factor*=(32.0f)/16.0f;
-		    getNewDepth();
-		    getNewImage();
-		    if(selectState == 2) {
-			selStartX = xCoord(selectCorner);
-			selStartY = -1;
-			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
-			oldCurrentY = -1;
-			}
+		case (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK|InputEvent.CTRL_MASK):  // Zoom in.
+		    zoomIn(e);
 		    break;
-		case MouseEvent.BUTTON2_MASK:  // Zoom out
-		    if(selectState == 1 || selectState == 3)
-			return;
-		    origin = coordEvent(e);
-		    factor*=(8.0f)/16.0f;
-		    getNewDepth();
-		    getNewImage();
-		    if(selectState == 2) {
-			selStartX = xCoord(selectCorner);
-			selStartY = -1;
-			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
-			oldCurrentY = -1;
-			}
+		case (MouseEvent.BUTTON3_MASK|InputEvent.ALT_MASK|InputEvent.CTRL_MASK):  // Zoom out
+		    zoomOut(e);
 		    break;
+		case MouseEvent.BUTTON1_MASK:
+			switch(activeTool)
+			{
+				case 1:
+					zoomIn(e);
+					break;  
+				case 2:
+					zoomOut(e);
+					break;
+				case 5:
+					switch(selectState)
+					{
+						case 0:
+							selectCorner=coordEvent(e);
+							selectState=5;
+							oldCurrentX=selStartX=e.getX();
+							oldCurrentY=selStartY=e.getY();
+							break;
+						case 5:
+							System.out.println("Distance is " +selectCorner.minus(coordEvent(e)).length());
+							selectState=0;
+							Graphics g = glcanvas.getGraphics();
+						    g.setXORMode(Color.green);
+						    g.drawLine(selStartX, selStartY, oldCurrentX, oldCurrentY);
+							break;
+					}
+			}
+			break;
 		default:
 		    break;
 		}
 	}
+    
+    private void zoomIn(MouseEvent e)
+    {
+    	if(selectState == 1 || selectState == 3)
+			return;
+		System.out.println(origin);
+	    origin = coordEvent(e);
+	    ccs.doBlockingRequest(new CenterRequest());
+	    System.out.println(origin);
+	    factor*=(32.0f)/16.0f;
+	    //getNewDepth();
+	    getNewImage();
+	    if(selectState == 2) {
+		selStartX = xCoord(selectCorner);
+		selStartY = -1;
+		oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
+		oldCurrentY = -1;
+		}
+    }
+    
+    private void zoomOut(MouseEvent e)
+    {
+    	if(selectState == 1 || selectState == 3)
+			return;
+	    System.out.println(origin);
+	    origin = coordEvent(e);
+	    ccs.doBlockingRequest(new CenterRequest());
+	    System.out.println(origin);
+	    factor*=(8.0f)/16.0f;
+	    //getNewDepth();
+	    getNewImage();
+	    if(selectState == 2) {
+		selStartX = xCoord(selectCorner);
+		selStartY = -1;
+		oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
+		oldCurrentY = -1;
+	    }
+    }
 			
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
@@ -464,7 +569,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	//rotate the top half toward you, bottom away
     public void rotateUp(double theta) {
-        y.rotate(-theta, x.unitVector());
+        y.rotate(theta, x.unitVector());
         //z.rotate(-theta, x.unitVector());
         orthoNormalizeZVector();
     }
@@ -513,7 +618,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
     public void zall() {
         origin = new Vector3D(windowManager.sim.origin);
 		double delta = boxSize;
-		System.out.println("BoxSize: "+boxSize);
         x = new Vector3D(delta / 2.0, 0, 0);
         y = new Vector3D(0, delta / 2.0, 0);
         //z = x.cross(y);
@@ -560,7 +664,56 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				cheight2D=h;
 				b2=BufferUtil.newByteBuffer(cwidth2D*cheight2D*3);
 			}
-			pixels=data;
+			byte[] bytes=new byte [cwidth2D*cheight2D];
+			long startTime=0;
+			switch(encoding2D)
+			{
+				case 0:
+					pixels=data;
+					break;
+				case 1:
+					startTime=System.currentTimeMillis();
+					DataBuffer db=null;
+					try {
+						JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
+						db=dec.decodeAsRaster().getDataBuffer();
+					} catch (Exception e) {
+						System.out.println("Cannot read Image");
+					}
+					for (int i=0; i<cwidth2D*cheight2D; i++)
+					{
+						bytes[i]=((byte) ((db.getElem(i)) & 0xFF));
+					}
+					pixels=(byte[])bytes;
+					System.out.println("Decompress time (ms) JPEG2D: "+(System.currentTimeMillis()-startTime));
+					System.out.println("JPEG Compression 2D: " +((double)data.length)/db.getSize()*100+"%\n Bytes: "+data.length);
+					break;
+				case 2:
+					startTime=System.currentTimeMillis();
+					if(data.length%2==0)
+					{
+						for(int i=0, k=0; i<data.length; i+=2)
+						{
+							int reps=0;
+							reps=((int)data[i]&0xff);
+							for(int j=0; j<reps; j++, k++)
+								bytes[k]=data[i+1];
+						}
+						synchronized(b2)
+						{
+							pixels=(byte[])bytes;
+						}
+					}
+					else
+						System.err.println("Compression failure");
+					System.out.println("Decompress time (ms) RL2D: "+(System.currentTimeMillis()-startTime));
+					System.out.println("RunLength Compression 2D: " +((double)data.length)/(cwidth2D*cheight2D)*100+"%\n Bytes: "+data.length);
+					break;
+				default:
+					pixels=data;
+					break;
+					
+			}
 			displayImage();
 			if (nextRequest!=null)
 			{
@@ -569,12 +722,13 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			}
 			else
 			{
-				requestLock=false;
 				if (nextRequest3D!=null)
 				{
 					ccs.addRequest(nextRequest3D, false);
 					nextRequest3D=null;
 				}
+				else
+					requestLock=false;
 			}
 			if(requestOrigin3D)
 				mode3D=false;
@@ -592,11 +746,60 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			requestLock=true;
 		}
 
-		public void handleReply(byte[] data) {
+		public void handleReply(byte[] data)
+		{
 			setCursor(Cursor.getDefaultCursor());
-			b.clear();
-			b.put(data);
-			b.flip();
+			long startTime=0;
+			synchronized(b)
+			{
+				switch(encoding3D)
+				{
+					case 0:
+						b.put(data);
+						break;
+					case 1:
+						startTime=System.currentTimeMillis();
+						DataBuffer db=null;
+						try {
+							JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
+							db=dec.decodeAsRaster().getDataBuffer();
+						} catch (Exception e) {
+							System.out.println("Cannot read Image");
+						}
+						b.clear();
+						for (int i=0; i<db.getSize(); i++)
+						{
+							b.put((byte) ((db.getElem(i)) & 0xFF));
+						}
+						System.out.println("Decompress time (ms) JPEG3D: "+(System.currentTimeMillis()-startTime));
+						System.out.println("JPEG Compression 3D: " +((double)data.length)/db.getSize()*100+"%\n Bytes: "+data.length);
+						break;
+						
+					case 2:
+						startTime=System.currentTimeMillis();
+						if(data.length%2==0)
+						{
+							for(int i=0, k=0; i<data.length; i+=2)
+							{
+								int reps=0;
+								reps=((int)data[i]&0xff);
+								for(int j=0; j<reps; j++, k++)
+									b.put(data[i+1]);
+							}
+							
+						}
+						else
+							System.err.println("Compression failure");
+						System.out.println("Decompress time (ms) RL3D: "+(System.currentTimeMillis()-startTime));
+						System.out.println("RunLength Compression 3D: " +((double)data.length)/b.capacity()*100+"%\n Bytes: "+data.length);
+						break;
+						
+					default:
+						b.put(data);
+						break;
+				}
+				b.flip();
+			}
 			factorFor3D=factorStore;
 			isNewImageData=true;
 			if (nextRequest!=null)
@@ -606,12 +809,13 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			}
 			else
 			{
-				requestLock=false;
 				if (nextRequest3D!=null)
 				{
 					ccs.addRequest(nextRequest3D, false);
 					nextRequest3D=null;
 				}
+				else
+					requestLock=false;
 			}
 		}
 	}
@@ -636,10 +840,12 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
         try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			// These fields go into the liveVizRequest
-			dos.writeInt(1); /* version */
-			dos.writeInt(1); /* code */
+			dos.writeInt(2); /* version */
+			dos.writeInt(0); /* code */
 			dos.writeInt(width2D);
 			dos.writeInt(height2D);
+			dos.writeInt(encoding2D);
+			dos.writeInt(compression2D);
 			
 			// These fields go into the MyVizRequest
 			dos.writeInt(activeColoring);
@@ -681,10 +887,12 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
         try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			// These fields go into the liveVizRequest
-			dos.writeInt(1); /* version */
-			dos.writeInt(1); /* code */
+			dos.writeInt(2); /* version */
+			dos.writeInt(0); /* code */
 			dos.writeInt(width3D);
 			dos.writeInt(height3D*height3D);
+			dos.writeInt(encoding3D);
+			dos.writeInt(compression3D);
 			
 			// These fields go into the MyVizRequest
 			dos.writeInt(activeColoring);
@@ -693,7 +901,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeInt(height3D*height3D);
 			Vector3D tx = ox.scalarMultiply(1/factor);
 			Vector3D ty = oy.scalarMultiply(1/factor);
-			Vector3D tz = oz.scalarMultiply(1/factor);
+			Vector3D tz = (((ox.cross(oy)).unitVector()).scalarMultiply((ox.length()+oy.length())/2)).scalarMultiply(1/factor);
 			dos.writeDouble(tx.x);
 			dos.writeDouble(tx.y);
 			dos.writeDouble(tx.z);
@@ -731,15 +939,22 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 /* Post a new network image request */
 	void request2D() {
 		if(!requestLock)
+		{
 			ccs.addRequest(new ImageRequest(), true);
+			requestLock=true;
+		}
 		else
 			nextRequest=new ImageRequest();
 		displayImage();
 	}
 	
 	void request3D() {
+		displayImage();
 		if(!requestLock)
+		{
 			ccs.addRequest(new Image3DRequest(), false);
+			requestLock=true;
+		}
 		else
 			nextRequest3D=new Image3DRequest();
 		displayImage();
@@ -840,7 +1055,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		if (gl.isFunctionAvailable("glCompileShaderARB"))
 			hasShaders=true;
 		
-		if (hasShaders) {
+		if (hasShaders)
+		{
 			String shaderCode []=new String [1];
 			shaderCode[0]="varying vec2 texture_coordinate;" +
 							"void main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;" +
@@ -907,21 +1123,14 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();						// Reset The View
 		gl.glHint(GL.GL_PERSPECTIVE_CORRECTION_HINT, GL.GL_NICEST);			// Really Nice Perspective Calculation
-		boolean store=mode3D;
-		if(((GLJPanel)(arg0)).getName()=="3D")
-		{
-			store=mode3D;
-			mode3D=true;
-		}
 		if (mode3D)
 		{
 			gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
 			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width2D, height2D, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, null);
 			
-			if (hasShaders) {
-				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, framebuffer);
-				gl.glFramebufferTexture2DEXT(GL.GL_FRAMEBUFFER_EXT, GL.GL_COLOR_ATTACHMENT0_EXT, GL.GL_TEXTURE_2D, screen, 0);
-			}
+			gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, framebuffer);
+			gl.glFramebufferTexture2DEXT(GL.GL_FRAMEBUFFER_EXT, GL.GL_COLOR_ATTACHMENT0_EXT, GL.GL_TEXTURE_2D, screen, 0);
+
 			
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
@@ -942,7 +1151,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				gl.glGenTextures(1, texture, 0);
 				texture3D=texture[0];
 				gl.glBindTexture(GL.GL_TEXTURE_3D, texture3D);
-				gl.glTexImage3D(GL.GL_TEXTURE_3D, 0, GL.GL_LUMINANCE, width3D, height3D, height3D, 0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, b);
+				synchronized(b)
+				{
+					gl.glTexImage3D(GL.GL_TEXTURE_3D, 0, GL.GL_LUMINANCE, width3D, height3D, height3D, 0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, b);
+				}
 				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
 				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
 				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
@@ -968,10 +1180,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			matrix[1]=y.x;	matrix[5]=y.y;  matrix[9]=y.z;	 matrix[13]=0;
 			matrix[2]=z.x;	matrix[6]=z.y;	matrix[10]=z.z;  matrix[14]=0;
 			matrix[3]=0;	matrix[7]=0;	matrix[11]=0;	 matrix[15]=1;
-			gl.glScaled(scale /(width2D*delta), scale/(height2D*delta), scale);
+			gl.glScaled(scale /(width2D*delta), scale/(height2D*delta), scale*0);
 			gl.glMultMatrixd(matrix, 0);
 			
-			gl.glColor3ub((byte)2, (byte)0, (byte)0);
+			gl.glColor3d(2, 2, 2);
 			gl.glBegin(GL.GL_LINE_LOOP);
 				gl.glVertex3d(-1, 1, 1);
 				gl.glVertex3d( 1, 1, 1);
@@ -1065,7 +1277,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			}
 			gl.glDisable(GL.GL_TEXTURE_3D);
 			
-			if (hasShaders) {
+			if (hasShaders)
+			{
 				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, 0);
 				gl.glMatrixMode(GL.GL_PROJECTION);
 				gl.glLoadIdentity();
@@ -1103,12 +1316,49 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 				gl.glUseProgramObjectARB(0);
 			}
+			else //no shaders
+			{
+				int w=width;
+				int h=height;
+				ByteBuffer temp=BufferFactory.newDirectByteBuffer(w*h);
+				ByteBuffer temp2=BufferFactory.newDirectByteBuffer(w*h*3);
+				gl.glReadPixels(0, 0, w, h, GL.GL_RED, GL.GL_UNSIGNED_BYTE, temp);
+				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, 0);
+				gl.glMatrixMode(GL.GL_PROJECTION);
+				gl.glLoadIdentity();
+				gl.glMatrixMode(GL.GL_MODELVIEW);
+				gl.glLoadIdentity();
+				for(int i=0; i<w*h; i++)
+				{
+					int index=0xff&(int)temp.get(i);
+					//if(index!=0)
+						//System.out.println(index);
+					temp2.put(colorBar.cm_red[index]);
+					temp2.put(colorBar.cm_green[index]);
+					temp2.put(colorBar.cm_blue[index]);
+				}
+				temp2.flip();
+				gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, w, h, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, temp2);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
+				gl.glEnable(GL.GL_TEXTURE_2D);
+				gl.glBegin(GL.GL_QUADS);
+					gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f,  1.0f, 0.0f);
+					gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f,  1.0f, 0.0f);
+					gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
+					gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
+				gl.glEnd();
+				gl.glDisable(GL.GL_TEXTURE_2D);
+			}
 		}
 		else
 		{
-			b2.clear();
 			synchronized(b2)
 			{
+				b2.clear();
 				for(int i=0;i<pixels.length;i++)
 				{
 					int b=0xff&(int)pixels[i];
@@ -1127,7 +1377,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_R, GL.GL_CLAMP_TO_BORDER);
 			gl.glDisable(GL.GL_ALPHA_TEST); /* too agressive--loses too many points */
 			gl.glDisable(GL.GL_BLEND);
-			gl.glEnable(GL.GL_DEPTH_TEST);
 			gl.glColor4f(1f, 1f, 1f, 1f);
 			gl.glEnable(GL.GL_TEXTURE_2D);
 			gl.glBegin(GL.GL_QUADS);
@@ -1138,11 +1387,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glEnd();
 			gl.glDisable(GL.GL_TEXTURE_2D);
 		}
+		if(requestLock)
+		{
+			Graphics g= glcanvas.getGraphics();
+			g.setColor(Color.green);
+			g.drawString("Loading New Image...", 0, 20);
+		}
 		j=gl.glGetError();
 		if(j!=0)
 			System.out.println("End of display: " + j);
-		if(((GLJPanel)(arg0)).getName()=="3D")
-			mode3D=store;
 	}//end display
 	
 	//Pre: X, Y, and Z vectors are orthogonal to each other
@@ -1168,19 +1421,28 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	public void mouseWheelMoved(MouseWheelEvent e)
 	{
 		
+		try
+		{
+			Robot r = new Robot();
+			Point p=getLocationOnScreen();
+			r.mouseMove((int)(p.getX()+e.getX()+.1*(width/2.0-e.getX())),(int)(p.getY()+e.getY()+.1*(height/2.0-e.getY())));
+		} catch(Exception ex) {}
+		
 		factor*=(16.0f-(float)e.getWheelRotation())/16.0f;
 		/*if (factor <1.0f/16f)
 				factor=1.0f/16f;*/
 		reget3DImageCounter-=e.getWheelRotation();
+		origin=origin.plus((coordEvent(e).minus(origin)).scalarMultiply((1+1.0/16.0)*1.1-1));
+		getNewDepth();
 		displayImage();
 		//System.out.println("reget3DImageCounter: " + reget3DImageCounter + "/" +reget3DImageLimit);
 		if(!mode3D)
 		{
 			request2D();
 		}
-		if((reget3DImageCounter>=reget3DImageLimit||reget3DImageCounter<=-reget3DImageLimit))
-		{
+		//if((reget3DImageCounter>=reget3DImageLimit||reget3DImageCounter<=-reget3DImageLimit))
+		//{
 			request3D();
-		}
+		//}
 	}
 }

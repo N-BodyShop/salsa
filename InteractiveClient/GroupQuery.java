@@ -1,10 +1,11 @@
 import java.awt.*;
 import java.awt.event.*;
+
 import javax.swing.*;
 import javax.swing.event.*;
 
 public class GroupQuery extends JFrame
-                        implements ActionListener {
+                        implements ActionListener, KeyListener {
     
     JTextField groupNameField;
     SimulationView simulationView;
@@ -20,10 +21,11 @@ public class GroupQuery extends JFrame
 	Box b = new Box(BoxLayout.LINE_AXIS);
 	b.add(new JLabel("Group Name: "));
 	groupNameField = new JTextField(15);
+	groupNameField.addKeyListener(this);
 	b.add(groupNameField);
 	displayPanel.add(b);
 	JButton button = new JButton("Create group");
-	button.setActionCommand("new");
+	button.setMnemonic(KeyEvent.VK_ENTER);
 	button.addActionListener(this);
 	displayPanel.add(button);
 	getContentPane().add(displayPanel);
@@ -32,10 +34,31 @@ public class GroupQuery extends JFrame
     public void actionPerformed(ActionEvent e) {
 	
 	System.out.println("Creating group: " + groupNameField.getText());
+	simulationView.request2D();
 	simulationView.makeBox(groupNameField.getText());
-    
 	setVisible(false);
     }
+
+	public void keyPressed(KeyEvent e)
+	{
+		if (e.getKeyCode()==KeyEvent.VK_ENTER)
+		{
+			System.out.println("Creating group: " + groupNameField.getText());
+			simulationView.request2D();
+			simulationView.makeBox(groupNameField.getText());
+			setVisible(false);
+		}
+	}
+
+	public void keyReleased(KeyEvent e) {
+		// Nothing
+		
+	}
+
+	public void keyTyped(KeyEvent e) {
+		// Nothing
+		
+	}
 }
 
 	
