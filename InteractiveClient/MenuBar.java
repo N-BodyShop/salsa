@@ -13,6 +13,11 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.UnknownHostException;
 import java.util.*;
+import charm.ccs.CcsThread;
+import charm.ccs.PythonAbstract;
+import charm.ccs.PythonExecute;
+import charm.ccs.PythonPrint;
+import charm.ccs.PythonFinished;
 
 public class MenuBar extends JMenuBar implements ActionListener{
 	WindowManager windowManager;
@@ -32,6 +37,16 @@ public class MenuBar extends JMenuBar implements ActionListener{
                 menu = new JMenu("File");
                 menu.setMnemonic(KeyEvent.VK_F);
                 add(menu);
+		item = new JMenuItem("Load Simulation",KeyEvent.VK_F);
+                item.setAccelerator(KeyStroke.getKeyStroke("control F"));
+                item.setActionCommand("loadSimulation");
+		item.addActionListener(this);
+		menu.add(item);
+		item = new JMenuItem("Read Tipsy Array",KeyEvent.VK_A);
+                item.setAccelerator(KeyStroke.getKeyStroke("control A"));
+                item.setActionCommand("readTipsyArray");
+		item.addActionListener(this);
+		menu.add(item);
 		item = new JMenuItem("New View",KeyEvent.VK_N);
                 item.setAccelerator(KeyStroke.getKeyStroke("control N"));
                 item.setActionCommand("newview");
@@ -107,6 +122,25 @@ public class MenuBar extends JMenuBar implements ActionListener{
 		String command = e.getActionCommand();
 		if(command.equals("newview")) {
                     windowManager.addView();
+		} else if(command.equals("loadSimulation")){
+		    JFileChooser chooser = new JFileChooser(System.getProperty("user.dir"));
+		    int returnVal = chooser.showOpenDialog(MenuBar.this);
+		    if(returnVal == JFileChooser.APPROVE_OPTION) {
+			PythonExecute code = new PythonExecute("charm.loadSimulation(\""
+			+ chooser.getSelectedFile() + "\")\n", false, true, 0);
+			windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+			}
+		} else if(command.equals("readTipsyArray")){
+		    JFileChooser chooser = new JFileChooser(System.getProperty("user.dir"));
+		    int returnVal = chooser.showOpenDialog(MenuBar.this);
+		    if(returnVal == JFileChooser.APPROVE_OPTION) {
+			String strPy = "charm.readTipsyArray(\""
+			    + chooser.getSelectedFile() + "\", \"array\")\n";
+			System.out.println(strPy);
+			PythonExecute code = new PythonExecute(strPy, false,
+							       true, 0);
+			windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+			}
 		} else if(command.equals("close")){
                     //find containing JFrame
                     Container c = this.getParent();
@@ -120,4 +154,14 @@ public class MenuBar extends JMenuBar implements ActionListener{
             windowManager.exitAndKill();
 	}
     
+	private class ExecutePythonCode extends CcsThread.request {
+		public ExecutePythonCode(byte[] s) {
+			super("ExecutePythonCode", s);
+		}
+		
+		public void handleReply(byte[] data) {
+			String result = new String(data);
+			System.out.println("Return from code execution: \"" + result + "\"");
+		}
+	}
 }
