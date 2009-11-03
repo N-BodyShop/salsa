@@ -896,11 +896,17 @@ void Main::reduceParticle(int handle) {
     CkReductionMsg* mesg;
     char *data;
     PyObjectMarshal result;
+    PyThreadState *_save = PyThreadState_Swap(NULL);
+    PyEval_ReleaseLock();
+    PyGILState_STATE state = PyGILState_Ensure();
     workers.reduceParticle(g, sParticleCode, sReduceCode,
 			   PyObjectMarshal(global),
 			   createCallbackResumeThread(mesg, data));
 
     PUP::fromMemBuf(result, mesg->getData(), mesg->getSize());
+    PyGILState_Release(state);
+    PyEval_AcquireLock();
+    PyThreadState_Swap(_save);
     pythonReturn(handle, PySequence_GetItem(result.obj, 2));
     delete mesg;
 }

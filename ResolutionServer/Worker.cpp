@@ -188,7 +188,13 @@ void Worker::readTipsyArray(const std::string& fileName,
     FILE *fp = fopen(fileName.c_str(), "r");
     unsigned int nTotal;
     if(thisIndex == 0) {
-	fscanf(fp, "%d\n", &nTotal);
+	int count = fscanf(fp, "%d%*[, \t]%*d%*[, \t]%*d",&nTotal) ;
+	if ( (count == EOF) || (count==0) ){
+	    ckerr << "<Sorry, file format is wrong>\n" ;
+	    fclose(fp);
+	    cb.send();
+	    return;
+	    }
 	if(nTotal != sim->totalNumParticles()) {
 	    ckerr << "Wrong number of particles\n" << endl;
 	    cb.send();
@@ -212,7 +218,11 @@ void Worker::readTipsyArray(const std::string& fileName,
 	
 	float* array = attrIter->second.getArray(Type2Type<float >());
 	for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
-	    fscanf(fp, "%f\n", &array[i]);
+	    if(fscanf(fp, "%f", &array[i]) == EOF) {
+		ckerr << "<Sorry, file format is wrong>\n" ;
+		cb.send();
+		return;
+		}
 	    }
 	attrIter->second.calculateMinMax();
 	}
@@ -239,7 +249,7 @@ void Worker::writeGroupArray(const std::string& groupName,
     
     if(thisIndex == 0) {
 	fp = fopen(fileName.c_str(), "w");
-	fprintf(fp, "%d\n", sim->totalNumParticles());
+	fprintf(fp, "%ld\n", sim->totalNumParticles());
 	}
     else {
 	fp = fopen(fileName.c_str(), "a");
@@ -258,7 +268,7 @@ void Worker::writeGroupArray(const std::string& groupName,
 	    // XXX take care of type handling
 	    float* array = attrIter->second.getArray(Type2Type<float >());
 	    for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
-		fprintf(fp, "%g\n", &array[i]);
+		fprintf(fp, "%g\n", array[i]);
 		}
 	    }
 	}
@@ -1698,6 +1708,7 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
 	else
 	    pyLocalPart.localReduceList = PyList_New(0);
 	}
+    PyGILState_STATE state = PyGILState_Ensure();
     // Send the local list to the contribute function
     PyObject *result = Py_BuildValue("(sOO)", sReduceCode.c_str(), global.obj,
 				    pyLocalPart.localReduceList);
@@ -1711,6 +1722,7 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
     Py_DECREF(pyLocalPart.localPartPyGlob);
     // Py_DECREF(localReduceList);
     Py_DECREF(result);
+    PyGILState_Release(state);
     delete[] buf;
     }
 
@@ -1848,7 +1860,7 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	    Py_DECREF(tmp);
 	    }
 	}
-    if(isReducing) {
+    if(isReducing && (result != Py_None)) {
 	PyList_Append(localReduceList, result);
 	Py_INCREF(result);
 	}

@@ -17,11 +17,22 @@ inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
     int nBytes;
     PyObject *pyStr = NULL;
     
+    CkAssert(Py_IsInitialized());
+
+    PyGILState_STATE state = PyGILState_Ensure();
+    
+    PyObject *pickle = PyImport_ImportModule("cPickle");
+    PyObject *proto = PyObject_GetAttrString(pickle, "HIGHEST_PROTOCOL");
+    
     if(!p.isUnpacking()) {
+	PyObject *dumps = PyObject_GetAttrString(pickle, "dumps");
+	pyStr = PyObject_CallFunctionObjArgs(dumps, objM.obj, proto, NULL);
+#if 0
 #if PY_MINOR_VERSION > 3
 	pyStr = PyMarshal_WriteObjectToString(objM.obj, Py_MARSHAL_VERSION);
 #else
 	pyStr = PyMarshal_WriteObjectToString(objM.obj);
+#endif
 #endif
 	if(pyStr != NULL) {
 	    buf = PyString_AsString(pyStr);
@@ -31,6 +42,7 @@ inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
 	    PyErr_Print();
 	    nBytes = 0;
 	    }
+	Py_DECREF(dumps);
 	}
     p|nBytes;
     if(p.isUnpacking())
@@ -38,12 +50,30 @@ inline void operator|(PUP::er& p, PyObjectMarshal& objM) {
     p(buf, nBytes);
     
     if(p.isUnpacking()) {
-	objM.obj = PyMarshal_ReadObjectFromString(buf, nBytes);
+	PyObject *loads = PyObject_GetAttrString(pickle, "loads");
+	pyStr = PyString_FromStringAndSize(buf, nBytes);
+	objM.obj = PyObject_CallFunctionObjArgs(loads, pyStr, NULL);
+	if(PyErr_Occurred() != NULL) {
+	    PyErr_Print();
+	    objM.obj = Py_None;
+	    }
+	// objM.obj = PyMarshal_ReadObjectFromString(buf, nBytes);
 	delete [] buf;
+	Py_DECREF(loads);
 	}
     else {
-	Py_DECREF(pyStr);
+	if(pyStr != NULL) {
+	    Py_DECREF(pyStr);
+	    }
+	else {
+	    PyErr_Print();
+	    nBytes = 0;
+	    }
 	}
+    Py_DECREF(proto);
+    Py_DECREF(pickle);
+    PyErr_Clear();
+    PyGILState_Release(state);
     }
 
 #endif
