@@ -30,10 +30,13 @@ $(TARGET): ResolutionServer.o Worker.o MetaInformationHandler.o Reductions.o Hig
 $(STRUCTURES_PATH)/libTipsy.a:
 	cd $(STRUCTURES_PATH); make
 
-ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h
+ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h \
+	PyObjectMarshal.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
 Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h \
-	../structures/TypeHandling.h ../structures/TypedArray.h Reductions.h
+	../structures/TypeHandling.h ../structures/TypedArray.h Reductions.h \
+	PyObjectMarshal.h
+Reductions.o: PyObjectMarshal.h
 HighLevelPython.o: HighLevelPython.cpp config.h ResolutionServer.h \
   ../structures/TipsyParticles.h ../structures/Vector3D.h \
   ../structures/TypeSelection.h ../structures/OrientedBox.h \
@@ -43,7 +46,7 @@ HighLevelPython.o: HighLevelPython.cpp config.h ResolutionServer.h \
   ../structures/config.h ../structures/TypedArray.h \
   ../structures/TypeHandling.h ../SimulationHandler/SiXFormat.h \
   ../SimulationHandler/Simulation.h \
-  ParticleStatistics.h ResolutionServer.decl.h \
+  ParticleStatistics.h ResolutionServer.decl.h PyObjectMarshal.h \
   Reductions.decl.h ../SimulationHandler/Group.h
 ../SimulationHandler/SiXFormat.o: ../SimulationHandler/Simulation.h
 ../SimulationHandler/TipsyFormat.o: ../SimulationHandler/Simulation.h

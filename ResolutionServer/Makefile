@@ -1,22 +1,18 @@
 STRUCTURES_PATH = ../structures
 
-#OPTS=-g
-OPTS=-O3 -ffast-math
-CXXFLAGS += $(OPTS) -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
-LDFLAGS +=  $(OPTS) -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
+CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
+LDFLAGS +=  -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
 LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
 
-PYTHON_VER=python2.5
-# PYTHON_VER=python2.3
-PYTHON_INCLUDE_DIR = /usr/include/$(PYTHON_VER)
-PYTHON_LIB = -L/usr/lib/$(PYTHON_VER)/config -l$(PYTHON_VER)
+PYTHON_INCLUDE_DIR = /usr/include/python2.4
+PYTHON_LIB = -L/usr/lib/python2.4/config -lpython2.4
 
 BOOST_PATH = /usr/include
 BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I$(BOOST_PATH)
-XERCESCROOT = /local/tmp/trq/dist/ResolutionServer-0.3/xerces-c-src_2_7_0
+XERCESCROOT = /astro/users/trq/nchil/src/xerces-c-src_2_6_0
 
-LIBS = -lpthread -lpopt 
-CHARMC = $(CHARM_DIR)/bin/charmc
+LIBS = -lrt -lpthread -lpopt 
+CHARMC = ../charm/bin/charmc
 CXX = $(CHARMC)
 CC = $(CXX)
 
@@ -34,9 +30,26 @@ $(TARGET): ResolutionServer.o Worker.o MetaInformationHandler.o Reductions.o Hig
 $(STRUCTURES_PATH)/libTipsy.a:
 	cd $(STRUCTURES_PATH); make
 
-ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h
+ResolutionServer.o: PythonInstance.h ../SimulationHandler/Group.h \
+	PyObjectMarshal.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../SimulationHandler/Simulation.h
-Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h
+Worker.o: PixelDrawing.cpp ../SimulationHandler/Group.h \
+	../structures/TypeHandling.h ../structures/TypedArray.h Reductions.h \
+	PyObjectMarshal.h
+Reductions.o: PyObjectMarshal.h
+HighLevelPython.o: HighLevelPython.cpp config.h ResolutionServer.h \
+  ../structures/TipsyParticles.h ../structures/Vector3D.h \
+  ../structures/TypeSelection.h ../structures/OrientedBox.h \
+  ../structures/Shape.h ../structures/Sphere.h ../structures/Box.h \
+  ../SimulationHandler/Simulation.h ../structures/tree_xdr.h \
+  ../structures/OrientedBox.h ../structures/xdr_template.h \
+  ../structures/config.h ../structures/TypedArray.h \
+  ../structures/TypeHandling.h ../SimulationHandler/SiXFormat.h \
+  ../SimulationHandler/Simulation.h \
+  ParticleStatistics.h ResolutionServer.decl.h PyObjectMarshal.h \
+  Reductions.decl.h ../SimulationHandler/Group.h
+../SimulationHandler/SiXFormat.o: ../SimulationHandler/Simulation.h
+../SimulationHandler/TipsyFormat.o: ../SimulationHandler/Simulation.h
 
 %.decl.h %.def.h : %.ci
 	$(CHARMC) $<
