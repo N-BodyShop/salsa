@@ -70,6 +70,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	int screen, colortable; 
 	int framebuffer; /* framebuffer object */
 	int texture[]=new int[1];
+	private boolean hasShaders=false;
 	boolean isNewImageData=true; /* need to regenerate texture3D */
 	boolean mode3D=false;
 	boolean requestOrigin3D=false;
@@ -77,6 +78,9 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	ByteBuffer b;
 	ByteBuffer b2;
 	ByteBuffer b3;
+	Object bLock=new Object();
+	Object b2Lock=new Object();
+	Object GLLock=new Object();
 	int width3D, height3D, depth3D;
 	int width2D, height2D;
 	int cwidth2D, cheight2D;
@@ -642,7 +646,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		//b=BufferUtil.newByteBuffer(width*height*height);
 		glcanvas.setPreferredSize(new Dimension(width,height));
 		glcanvas.setSize(new Dimension(width, height));
-		this.repaint();
+		//System.out.println("SizeWin: "+width+", "+height);
+		displayImage();
 	}
 	
 	private class ImageRequest extends CcsThread.request {
@@ -658,61 +663,58 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 		public void handleReply(byte[] data) {
 			setCursor(Cursor.getDefaultCursor());
-			synchronized(b2)
+			synchronized(b2Lock)
 			{
 				cwidth2D=w;
 				cheight2D=h;
 				b2=BufferUtil.newByteBuffer(cwidth2D*cheight2D*3);
-			}
-			byte[] bytes=new byte [cwidth2D*cheight2D];
-			long startTime=0;
-			switch(encoding2D)
-			{
-				case 0:
-					pixels=data;
-					break;
-				case 1:
-					startTime=System.currentTimeMillis();
-					DataBuffer db=null;
-					try {
-						JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
-						db=dec.decodeAsRaster().getDataBuffer();
-					} catch (Exception e) {
-						System.out.println("Cannot read Image");
-					}
-					for (int i=0; i<cwidth2D*cheight2D; i++)
-					{
-						bytes[i]=((byte) ((db.getElem(i)) & 0xFF));
-					}
-					pixels=(byte[])bytes;
-					System.out.println("Decompress time (ms) JPEG2D: "+(System.currentTimeMillis()-startTime));
-					System.out.println("JPEG Compression 2D: " +((double)data.length)/db.getSize()*100+"%\n Bytes: "+data.length);
-					break;
-				case 2:
-					startTime=System.currentTimeMillis();
-					if(data.length%2==0)
-					{
-						for(int i=0, k=0; i<data.length; i+=2)
-						{
-							int reps=0;
-							reps=((int)data[i]&0xff);
-							for(int j=0; j<reps; j++, k++)
-								bytes[k]=data[i+1];
+				byte[] bytes=new byte [cwidth2D*cheight2D];
+				long startTime=0;
+				switch(encoding2D)
+				{
+					case 0:
+						pixels=data;
+						break;
+					case 1:
+						startTime=System.currentTimeMillis();
+						DataBuffer db=null;
+						try {
+							JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
+							db=dec.decodeAsRaster().getDataBuffer();
+						} catch (Exception e) {
+							System.out.println("Cannot read Image");
 						}
-						synchronized(b2)
+						for (int i=0; i<cwidth2D*cheight2D; i++)
 						{
+							bytes[i]=((byte) ((db.getElem(i)) & 0xFF));
+						}
+						pixels=(byte[])bytes;
+						System.out.println("Decompress time (ms) JPEG2D: "+(System.currentTimeMillis()-startTime));
+						System.out.println("JPEG Compression 2D: " +((double)data.length)/db.getSize()*100+"%\n Bytes: "+data.length);
+						break;
+					case 2:
+						startTime=System.currentTimeMillis();
+						if(data.length%2==0)
+						{
+							for(int i=0, k=0; i<data.length; i+=2)
+							{
+								int reps=0;
+								reps=((int)data[i]&0xff);
+								for(int j=0; j<reps; j++, k++)
+									bytes[k]=data[i+1];
+							}
 							pixels=(byte[])bytes;
 						}
-					}
-					else
-						System.err.println("Compression failure");
-					System.out.println("Decompress time (ms) RL2D: "+(System.currentTimeMillis()-startTime));
-					System.out.println("RunLength Compression 2D: " +((double)data.length)/(cwidth2D*cheight2D)*100+"%\n Bytes: "+data.length);
-					break;
-				default:
-					pixels=data;
-					break;
-					
+						else
+							System.err.println("Compression failure");
+						System.out.println("Decompress time (ms) RL2D: "+(System.currentTimeMillis()-startTime));
+						System.out.println("RunLength Compression 2D: " +((double)data.length)/(cwidth2D*cheight2D)*100+"%\n Bytes: "+data.length);
+						break;
+					default:
+						pixels=data;
+						break;
+						
+				}
 			}
 			displayImage();
 			if (nextRequest!=null)
@@ -750,7 +752,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		{
 			setCursor(Cursor.getDefaultCursor());
 			long startTime=0;
-			synchronized(b)
+			synchronized(bLock)
 			{
 				switch(encoding3D)
 				{
@@ -1045,7 +1047,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		}
 	}
 	
-	private boolean hasShaders=false;
 	public void init(GLAutoDrawable arg0)
 	{
 		GL gl = arg0.getGL();
@@ -1112,6 +1113,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		texture2D=texture[0];
 		gl.glGenTextures(1, texture, 0);
 		texture3D=texture[0];
+		isNewImageData=true;
+		//System.out.println("Re-ran GL init function...");
 	}
 
 	public void display(GLAutoDrawable arg0)
@@ -1120,6 +1123,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		int j=gl.glGetError();
 		if(j!=0)
 			System.out.println("Beginning of display: " + j);
+		gl.glPushAttrib(GL.GL_ALL_ATTRIB_BITS);
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();						// Reset The View
 		gl.glHint(GL.GL_PERSPECTIVE_CORRECTION_HINT, GL.GL_NICEST);			// Really Nice Perspective Calculation
@@ -1151,7 +1155,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				gl.glGenTextures(1, texture, 0);
 				texture3D=texture[0];
 				gl.glBindTexture(GL.GL_TEXTURE_3D, texture3D);
-				synchronized(b)
+				synchronized(bLock)
 				{
 					gl.glTexImage3D(GL.GL_TEXTURE_3D, 0, GL.GL_LUMINANCE, width3D, height3D, height3D, 0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, b);
 				}
@@ -1356,15 +1360,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		}
 		else
 		{
-			synchronized(b2)
+			synchronized(b2Lock)
 			{
 				b2.clear();
 				for(int i=0;i<pixels.length;i++)
 				{
-					int b=0xff&(int)pixels[i];
-					b2.put(colorBar.cm_red[b]);
-					b2.put(colorBar.cm_green[b]);
-					b2.put(colorBar.cm_blue[b]);
+					int index=0xff&(int)pixels[i];
+					b2.put(colorBar.cm_red[index]);
+					b2.put(colorBar.cm_green[index]);
+					b2.put(colorBar.cm_blue[index]);
 				}
 				b2.flip();
 				gl.glBindTexture(GL.GL_TEXTURE_2D, texture2D);
@@ -1393,6 +1397,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			g.setColor(Color.green);
 			g.drawString("Loading New Image...", 0, 20);
 		}
+		gl.glPopAttrib();
 		j=gl.glGetError();
 		if(j!=0)
 			System.out.println("End of display: " + j);
