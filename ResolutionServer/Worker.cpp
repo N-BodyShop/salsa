@@ -196,8 +196,11 @@ void Worker::readTipsyArray(const std::string& fileName,
 	    return;
 	    }
 	if(nTotal != sim->totalNumParticles()) {
-	    ckerr << "Wrong number of particles\n" << endl;
+	    ckerr << "Wrong number of particles" << endl;
+	    ckerr << "Expected: " << sim->totalNumParticles() << ", got: "
+		  << nTotal << endl;
 	    cb.send();
+	    return;
 	    }
 	}
     else {
