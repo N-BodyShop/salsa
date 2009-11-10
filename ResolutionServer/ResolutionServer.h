@@ -289,7 +289,7 @@ public:
 			     const CkCallback& cb);
 	void readTipsyArray(const std::string& fileName,
 			    const std::string& attributeName,
-			    long off, const CkCallback& cb);
+			    long off, int iType, const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
 	

@@ -49,12 +49,13 @@ void Main::readTipsyArray(int handle) {
     FILE *fp;
 
     if(PyArg_ParseTuple(arg, "ss", &fileName, &attributeName) == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: readTipsyArray(file, attribute)");
 	pythonReturn(handle, NULL);
 	return;
 	}
     if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
 	fclose(fp);
-	workers[0].readTipsyArray(fileName, attributeName, 0,
+	workers[0].readTipsyArray(fileName, attributeName, 0, 0,
 				  CkCallbackResumeThread());
 	}
     else {

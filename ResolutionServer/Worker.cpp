@@ -182,12 +182,37 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
+static int readFamilyArray(FILE *fp,
+			    const std::string & attributeName,
+			    ParticleFamily &second) 
+{
+	AttributeMap::iterator attrIter = second.attributes.find(attributeName);
+	if(attrIter == second.attributes.end()) {
+	    // add attribute to family
+	    float *array = new float[second.count.numParticles];
+	    second.addAttribute(attributeName, array);
+	    attrIter = second.attributes.find(attributeName);
+	    }
+	
+	float* array = attrIter->second.getArray(Type2Type<float >());
+	for(unsigned int i = 0; i < second.count.numParticles; i++) {
+	    if(fscanf(fp, "%f", &array[i]) == EOF) {
+		ckerr << "<Sorry, file format is wrong>\n" ;
+		return 0;
+		}
+	    }
+	attrIter->second.calculateMinMax();
+	return 1;
+    }
+
 void Worker::readTipsyArray(const std::string& fileName,
 			    const std::string& attributeName,
-			    long off, const CkCallback& cb) {
+			    long off,
+			    int iType, // 0 -> gas, 1 -> dark, 2-> star
+			    const CkCallback& cb) {
     FILE *fp = fopen(fileName.c_str(), "r");
     unsigned int nTotal;
-    if(thisIndex == 0) {
+    if((thisIndex == 0) && (iType == 0)) {
 	int count = fscanf(fp, "%d%*[, \t]%*d%*[, \t]%*d",&nTotal) ;
 	if ( (count == EOF) || (count==0) ){
 	    ckerr << "<Sorry, file format is wrong>\n" ;
@@ -209,36 +234,47 @@ void Worker::readTipsyArray(const std::string& fileName,
     
     ckout << "[" << thisIndex << "]: reading Array ... ";
 
-    for(Simulation::iterator family = sim->begin(); family != sim->end();
-	++family) {
-	AttributeMap::iterator attrIter = family->second.attributes.find(attributeName);
-	if(attrIter == family->second.attributes.end()) {
-	    // add attribute to family
-	    float *array = new float[family->second.count.numParticles];
-	    family->second.addAttribute(attributeName, array);
-	    attrIter = family->second.attributes.find(attributeName);
-	    }
-	
-	float* array = attrIter->second.getArray(Type2Type<float >());
-	for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
-	    if(fscanf(fp, "%f", &array[i]) == EOF) {
-		ckerr << "<Sorry, file format is wrong>\n" ;
-		cb.send();
-		return;
-		}
-	    }
-	attrIter->second.calculateMinMax();
+    Simulation::iterator family;
+    switch(iType) {
+    case 0:
+	family = sim->find("gas");
+	break;
+    case 1:
+	family = sim->find("dark");
+	break;
+    case 2:
+	family = sim->find("star");
+	break;
+    default:
+	CkAssert("bad type");
 	}
+    
+    if(family != sim->end()) {
+	if(readFamilyArray(fp, attributeName, family->second) == 0) {
+	    cb.send();
+	    fclose(fp);
+	    return;
+	    }
+	}
+    
     ckout << "Done\n";
     if(thisIndex+1 < CkNumPes()) {
 	long offset = ftell(fp);
 	
 	CProxy_Worker workers(thisArrayID);
 	workers[thisIndex+1].readTipsyArray(fileName, attributeName, offset,
-					    cb);
+					    iType, cb);
 	}
     else {
-	cb.send();
+	if(iType < 2) { // Do next type
+	    long offset = ftell(fp);
+	    CProxy_Worker workers(thisArrayID);
+	    workers[0].readTipsyArray(fileName, attributeName, offset,
+				      iType+1, cb);
+	    
+	    }
+	else
+	    cb.send();
 	}
     fclose(fp);
     }

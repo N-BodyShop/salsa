@@ -76,7 +76,7 @@ mainmodule ResolutionServer {
 		entry void saveSimulation(const std::string& path, const CkCallback& cb);
 		entry void readTipsyArray(const std::string& fileName,
 			    const std::string& attributeName,
-			    long off, const CkCallback& cb);
+			    long off, int iType, const CkCallback& cb);
 		
 		entry void writeGroupArray(const std::string& groupName,
 			    const std::string& attributeName,
