@@ -1,5 +1,33 @@
 import traceback
 
+def test_circe() :
+    print circe(3.5, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+def test_splinit() :
+    age = [.01,.02,.05,.1,.2,.5,1.,2.,5.,10.,20.]
+    lum = [.0635,.0719,.0454,.153,.293,.436,.636,.898,1.39,2.54,5.05]
+    lumv_fit = [None] * 11
+    
+    print "age = " + str(age)
+    print "lum = " + str(lum)
+    print "lumv_fit = " + str(lumv_fit)
+    
+    s_splinit(age,lum,lumv_fit,11,0.,0.)
+    
+    print "age = " + str(age)
+    print "lum = " + str(lum)
+    print "lumv_fit = " + str(lumv_fit)
+
+def test_spft() :
+    star_age = 1
+    age = [.01,.02,.05,.1,.2,.5,1.,2.,5.,10.,20.]
+    lum = [.0635,.0719,.0454,.153,.293,.436,.636,.898,1.39,2.54,5.05]
+    lumv_fit = [None] * 11
+    s_splinit(age,lum,lumv_fit,11,0.,0.)
+
+    mass_to_light = spft(star_age,age,lum,lumv_fit,11,0)
+    print str(mass_to_light)
+
 def s_circe(x, t) :
     try :
         print circe(x, t)
@@ -34,6 +62,7 @@ def circe(x, t) :
     """ returns index i of first element of t >= x.
     values in t must be sorted. will return extrema if
     x is outside the range of t. """
+    # checked successfully against spline.c, no deviation
     lo = 0
     hi = len(t) - 1
     if x > t[lo] and x < t[hi] :
@@ -78,11 +107,22 @@ def splinit(x, y, k, n, q2b, q2e) :
     dio = 0.
     for i in range(n) :
         ip = i + 1
-        hip = x[ip] - x[i] if ip < n else 0
-        dip = (y[i + 1] - y[i]) / hip if ip < n else 0
-        b[i] = hip if ip < n else hio
+        # ?: syntax is not compatible with Python 2.4
+        #hip = x[ip] - x[i] if ip < n else 0
+        #dip = (y[i + 1] - y[i]) / hip if ip < n else 0
+        #b[i] = hip if ip < n else hio
+        hip = 0
+        dip = 0
+        b[i] = hio
+        if ip < n :
+            hip = x[ip] - x[i]
+            dip = (y[i + 1] - y[i]) / hip
+            b[i] = hip
         a[i] = 2. * (hip + hio)
-        c[i] = hio if i > 0 else hip
+        #c[i] = hio if i > 0 else hip
+        c[i] = hip
+        if i > 0 :
+            c[i] = hio
         f[i] = 3. * (hip * dio + hio * dip)
         if i == 0 :
             f[0] = 3. * hip * dip - hip * hip * q2b * 0.5
