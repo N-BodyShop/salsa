@@ -264,8 +264,38 @@ void Main::getAttributeRange(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    pythonReturn(handle,Py_BuildValue("(dd)", getScalarMin(attrIter->second),
-				      getScalarMax(attrIter->second)));
+    int iDim =  attrIter->second.dimensions;
+    CkReductionMsg* mesg;
+    if(iDim == 1) {
+	pair<double,double> minmax;
+
+	// pythonSleep(handle);
+	workers.getAttributeRangeGroup("All", familyName, attributeName,
+				 createCallbackResumeThread(mesg, minmax));
+	// pythonAwake(handle);
+	pythonReturn(handle,Py_BuildValue("(dd)", minmax.first, minmax.second));
+	delete mesg;
+	}
+    else if(iDim == 3) {
+	OrientedBox<double> bounds;
+
+	// pythonSleep(handle);
+	workers.getVecAttributeRangeGroup("All", familyName, attributeName,
+				 createCallbackResumeThread(mesg, bounds));
+	// pythonAwake(handle);
+	pythonReturn(handle,Py_BuildValue("((ddd)(ddd))", bounds.lesser_corner.x,
+					  bounds.lesser_corner.y,
+					  bounds.lesser_corner.z,
+					  bounds.greater_corner.x,
+					  bounds.greater_corner.y,
+					  bounds.greater_corner.z));
+	delete mesg;
+	}
+    else {
+	PyErr_SetString(PyExc_ValueError, "Dimension is not 1 or 3");
+	pythonReturn(handle, NULL);
+	return;
+	}
 }
 
 
