@@ -830,6 +830,7 @@ void Main::runLocalParticleCodeGroup(int handle) {
     PyObject *global;		// data available to all particles
     
     if(PyArg_ParseTuple(arg, "ssO", &achGroup, &achCode, &global) == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: runLocalParticleCodeGroup(group, code string, parameters)");
 	pythonReturn(handle, NULL);
 	return;
 	}
@@ -849,8 +850,15 @@ void Main::runLocalParticleCodeGroup(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
+    PyThreadState *_save = PyThreadState_Swap(NULL);
+    PyEval_ReleaseLock();
+    // PyGILState_STATE state = PyGILState_Ensure();
     workers.localParticleCodeGroup(g, s, PyObjectMarshal(global),
-				   CkCallbackPython());
+				   CkCallbackResumeThread());
+    // PyGILState_Release(state);
+    PyEval_AcquireLock();
+    PyThreadState_Swap(_save);
+
     pythonReturn(handle);
 }
 
@@ -874,6 +882,7 @@ void Main::reduceParticle(int handle) {
     
     if(PyArg_ParseTuple(arg, "sssO", &achGroup, &achParticleCode,
 			&achReduceCode, &global) == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: reduceParticle(group, code string, reduce string, parameters)");
 	pythonReturn(handle, NULL);
 	return;
 	}
