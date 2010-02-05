@@ -1,3 +1,2 @@
-group main ++shell /usr/bin/ssh
+group main ++shell /usr/bin/ssh -X
 host localhost
-# Add more hosts here
