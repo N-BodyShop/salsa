@@ -132,6 +132,13 @@ inline void operator|(PUP::er& p, MyVizRequest& req) {
 #include "PyObjectMarshal.h"
 #include "ResolutionServer.decl.h"
 
+class StatusMsg : public CMessage_StatusMsg {
+    StatusMsg() {} // unavailable
+ public:
+    StatusMsg(int i) : status(i) {}
+  int status;
+};
+
 typedef unsigned char byte;
 
 extern int verbosity;

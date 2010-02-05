@@ -6,6 +6,8 @@ mainmodule ResolutionServer {
 	
 	readonly int verbosity;
 
+	message StatusMsg;
+
 	mainchare [python] Main {
 		entry Main(); //creates interpreter, load Python binding to Main classes, expose this object to instance of interpreter
 		

@@ -55,8 +55,16 @@ void Main::readTipsyArray(int handle) {
 	}
     if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
 	fclose(fp);
+	StatusMsg *mesg;
 	workers[0].readTipsyArray(fileName, attributeName, 0, 0,
-				  CkCallbackResumeThread());
+				  CkCallbackPython((void *&)mesg));
+	if(mesg->status == 0) {	// I/O error
+	    PyErr_SetString(PyExc_IOError, "File read error");
+	    pythonReturn(handle, NULL);
+	    delete mesg;
+	    return;
+	    }
+	delete mesg;
 	}
     else {
 	PyErr_SetString(PyExc_NameError, "No such file");

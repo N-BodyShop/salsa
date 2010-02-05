@@ -211,20 +211,23 @@ void Worker::readTipsyArray(const std::string& fileName,
 			    int iType, // 0 -> gas, 1 -> dark, 2-> star
 			    const CkCallback& cb) {
     FILE *fp = fopen(fileName.c_str(), "r");
+    StatusMsg *msg;
     unsigned int nTotal;
     if((thisIndex == 0) && (iType == 0)) {
 	int count = fscanf(fp, "%d%*[, \t]%*d%*[, \t]%*d",&nTotal) ;
 	if ( (count == EOF) || (count==0) ){
 	    ckerr << "<Sorry, file format is wrong>\n" ;
 	    fclose(fp);
-	    cb.send();
+	    msg = new StatusMsg(0);
+	    cb.send(msg);
 	    return;
 	    }
 	if(nTotal != sim->totalNumParticles()) {
 	    ckerr << "Wrong number of particles" << endl;
 	    ckerr << "Expected: " << sim->totalNumParticles() << ", got: "
 		  << nTotal << endl;
-	    cb.send();
+	    msg = new StatusMsg(0);
+	    cb.send(msg);
 	    return;
 	    }
 	}
@@ -251,7 +254,8 @@ void Worker::readTipsyArray(const std::string& fileName,
     
     if(family != sim->end()) {
 	if(readFamilyArray(fp, attributeName, family->second) == 0) {
-	    cb.send();
+	    msg = new StatusMsg(0);
+	    cb.send(msg);
 	    fclose(fp);
 	    return;
 	    }
@@ -273,8 +277,10 @@ void Worker::readTipsyArray(const std::string& fileName,
 				      iType+1, cb);
 	    
 	    }
-	else
-	    cb.send();
+	else{
+	    msg = new StatusMsg(1); // Success
+	    cb.send(msg);
+	    }
 	}
     fclose(fp);
     }
@@ -614,7 +620,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			float w=req.width/2, h=req.height/2;
 			Vector3D<float> xAxis=req.x*w, yAxis=req.y*h; /* pixel axes */
 			float xo=(dot(req.x,req.o)-1)*w, yo=(dot(req.y,req.o)-1)*h; /* pixel origin */
-			float zo=dot(req.z,req.o)-1;
+			// Only needed for clipping planes
+			// float zo=dot(req.z,req.o)-1;
 			for(; *iter != *end; ++iter) {
 				x=dot(xAxis,positions[*iter])-xo;
 				if (x<0 || x>=req.width) continue; /* point is offscreen: skip */
