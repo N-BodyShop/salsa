@@ -637,7 +637,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 					if(image[pixel] < colors[*iter])
 				        	image[pixel] = colors[*iter];
 				} else
-					drawDisk(image, req.width, req.height, x,y, req.radius, colors[*iter]);
+				    drawDisk(image, req.width, req.height, (int)x, (int)y, req.radius, colors[*iter]);
 			}
 		  }
 		}
@@ -951,89 +951,118 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	double minPotential = HUGE_VAL;
 	
 	//should only use active particles to calculate this!!!!
+	boost::shared_ptr<SimulationHandling::Group> g(groups[req.activeGroup]);
 	
 	req.centerFindingMethod = 2;  // potential only for now
+	Coloring& c = colorings[req.coloring];
 	
 	switch(req.centerFindingMethod) {
-		case 0: { //average of all pixels in frame	
-			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
-				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
-					x = dot(req.x, positions[i] - req.o);
-					if(x > -1 && x < 1) {
-						y = dot(req.y, positions[i] - req.o);
-						if(y > -1 && y < 1) {
-							numParticlesInFrame++;
-							z += dot(req.z, positions[i] - req.o);
-						}
-					}
-				}
+	case 0: { //average of all pixels in frame	
+	    for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		GroupIterator iter = g->make_begin_iterator(*famIter);
+		GroupIterator end = g->make_end_iterator(*famIter);
+		if(iter == end)
+		    continue;
+		//don't try to draw inactive families
+		if(c.activeFamilies.find(*famIter) == c.activeFamilies.end())
+		    continue;
+		
+		ParticleFamily& family = (*sim)[*famIter];
+		Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+		for(; *iter != *end; ++iter) {
+		    x = dot(req.x, positions[*iter] - req.o);
+		    if(x > -1 && x < 1) {
+			y = dot(req.y, positions[*iter] - req.o);
+			if(y > -1 && y < 1) {
+			    numParticlesInFrame++;
+			    z += dot(req.z, positions[*iter] - req.o);
+			    }
 			}
-			//send an extra unused number to differentiate the responses
-			double numbers[3];
-			numbers[0] = z;
-			numbers[1] = numParticlesInFrame;
-			numbers[2] = 0;
-			contribute(3 * sizeof(double), numbers, CkReduction::sum_double, cb);
-			break;
+		    }
 		}
-		case 1: { //"mostest" particle in frame
-			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
-				byte* colors = simIter->second.getAttribute("color", Type2Type<byte>());
-				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
-					x = dot(req.x, positions[i] - req.o);
-					if(x > -1 && x < 1) {
-						y = dot(req.y, positions[i] - req.o);
-						if(y > -1 && y < 1) {
-							if(colors[i] > maxPixel) {
-								maxPixel = colors[i];
-								z = dot(req.z, positions[i] - req.o);
-							}
-						}
-					}
+		//send an extra unused number to differentiate the responses
+		double numbers[3];
+		numbers[0] = z;
+		numbers[1] = numParticlesInFrame;
+		numbers[2] = 0;
+		contribute(3 * sizeof(double), numbers, CkReduction::sum_double, cb);
+		break;
+	    }
+	case 1: { //"mostest" particle in frame
+	    for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		GroupIterator iter = g->make_begin_iterator(*famIter);
+		GroupIterator end = g->make_end_iterator(*famIter);
+		if(iter == end)
+		    continue;
+		//don't try to draw inactive families
+		if(c.activeFamilies.find(*famIter) == c.activeFamilies.end())
+		    continue;
+		
+		ParticleFamily& family = (*sim)[*famIter];
+		Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+		byte* colors = family.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
+		for(; *iter != *end; ++iter) {
+		    x = dot(req.x, positions[*iter] - req.o);
+		    if(x > -1 && x < 1) {
+			y = dot(req.y, positions[*iter] - req.o);
+			if(y > -1 && y < 1) {
+			    if(colors[*iter] > maxPixel) {
+				maxPixel = colors[*iter];
+				z = dot(req.z, positions[*iter] - req.o);
 				}
+			    }
 			}
-			pair<byte, double> mostest(maxPixel, z);
-			contribute(sizeof(pair<byte, double>), &mostest, pairByteDoubleMax, cb);
-			break;
+		    }
 		}
-		case 2: { //particle with lowest potential in frame
-			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-				Vector3D<float>* positions = simIter->second.getAttribute("position", Type2Type<Vector3D<float> >());
-				if(positions == NULL) {
-				    CkError(simIter->second.familyName.c_str());
-				    CkError(":Family has no positions or a bad type\n");
-				    continue;
-				    }
-				float* potentials = simIter->second.getAttribute("potential", Type2Type<float>());
-				if(potentials == 0) {
-				    try {
-					sim->loadAttribute(simIter->first, "potential", simIter->second.count.numParticles, simIter->second.count.startParticle);
-					potentials = simIter->second.getAttribute("potential", Type2Type<float>());
-					}
-				    catch(NameError &) {
-					cerr << "Warning no potentials" << endl;
-					}
-				}
-				//should only look at active particles here!
-				for(u_int64_t i = 0; i < simIter->second.count.numParticles; ++i) {
-					x = dot(req.x, positions[i] - req.o);
-					if(x > -1 && x < 1) {
-						y = dot(req.y, positions[i] - req.o);
-						if(y > -1 && y < 1) {
-							if(potentials && potentials[i] < minPotential) {
-								minPotential = potentials[i];
-								z = dot(req.z, positions[i] - req.o);
-							}
-						}
-					}
-				}
+	    pair<byte, double> mostest(maxPixel, z);
+	    contribute(sizeof(pair<byte, double>), &mostest, pairByteDoubleMax, cb);
+	    break;
+	    }
+	case 2: { //particle with lowest potential in frame
+	    for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		GroupIterator iter = g->make_begin_iterator(*famIter);
+		GroupIterator end = g->make_end_iterator(*famIter);
+		if(iter == end)
+		    continue;
+		//don't try to draw inactive families
+		if(c.activeFamilies.find(*famIter) == c.activeFamilies.end())
+		    continue;
+		
+		ParticleFamily& family = (*sim)[*famIter];
+		Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+		if(positions == NULL) {
+		    CkError(family.familyName.c_str());
+		    CkError(":Family has no positions or a bad type\n");
+		    continue;
+		    }
+		float* potentials = family.getAttribute("potential",
+							Type2Type<float>());
+		if(potentials == 0) {
+		    try {
+			sim->loadAttribute(*famIter, "potential", family.count.numParticles, family.count.startParticle);
+			potentials = family.getAttribute("potential", Type2Type<float>());
 			}
-			pair<double, double> lowest(minPotential, z);
-			contribute(sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
-			break;
+		    catch(NameError &) {
+			cerr << "Warning no potentials" << endl;
+			}
+		    }
+		for(; *iter != *end; ++iter) {
+		    x = dot(req.x, positions[*iter] - req.o);
+		    if(x > -1 && x < 1) {
+			y = dot(req.y, positions[*iter] - req.o);
+			if(y > -1 && y < 1) {
+			    if(potentials && potentials[*iter] < minPotential) {
+				minPotential = potentials[*iter];
+				z = dot(req.z, positions[*iter] - req.o);
+				}
+			    }
+			}
+		    }
 		}
+	    pair<double, double> lowest(minPotential, z);
+	    contribute(sizeof(pair<double, double>), &lowest, pairDoubleDoubleMin, cb);
+	    break;
+	    }
 	}
 }
 
@@ -1161,13 +1190,16 @@ double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
 	T const* array = arr.getArray(Type2Type<T>());
 	if(array == 0)
 		return min;
-	for(; begin != end; ++begin)
+	for(; *begin != *end; ++begin)
 	    if(array[*begin] < min) {
 		min = array[*begin];
 		itMin = *begin;
 		}
 	return min;
 }
+
+// @brief Find the minimum of an attribute array and the index it
+// cooresponds to.
 
 void Worker::findAttributeMin(const string& groupName, const string& attributeName, const CkCallback& cb) {
     double aMin = HUGE_VAL;
