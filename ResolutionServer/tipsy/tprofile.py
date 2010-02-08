@@ -1,13 +1,14 @@
-import traceback, charm, tipsyf, math, spline
+import traceback, config, charm, tipsyf, math, spline
+# loading of meanmwt is here temporarily for ease of testing, it should NOT stay here!
 
 def safeprofile() :
     try :
         profile()
-        print 'Fn profile() completed successfully.'
+        print '\nSAFE: Method \'profile()\' completed with no errors.'
     except :
         print traceback.format_exc()
 
-def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='star', center='pot', projection='sph', fit_radius=0.) :
+def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='all', center='pot', projection='sph', fit_radius=0., debug_flag = 1) :
     """Perform the Tipsy profile() function.
     
     This version implements:
@@ -17,10 +18,16 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
     base data fields
     star data fields
     
-    Note that there is still some difference between
-    the values found here and those found in Tipsy. For
-    the base data fields, these are typically minor. For
-    the star data fields, there may be meaningful errors."""
+    currently developing:
+    gas data fields
+        mean mass weighted gas density
+        mass weighted gas temperature 
+        mass weighted gas pressure
+        mass weighted gas entropy
+    """
+    if debug_flag == 1 :
+        import load_meanmwt
+        load_meanmwt.safeload()
     
     # min_radius default should be 0., changed for comparison against tipsy
     # parameters should be reordered at completion of function
@@ -159,8 +166,11 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
             fam_radius = charm.reduceParticle(famgroups[i], maxradmap, maxradreduce, p_param)[0][1]
             max_radius = max(max_radius, fam_radius)
     
-    # !!! use tipsy's max_radius value for debugging, remove later !!!
-    max_radius = 8.18829
+    # TIPSY uses an approximation for max_radius which can't be adequately emulated here.
+    # for the run99 data file, the value of max_radius is known; set it manually.
+    # remove when done debugging.
+    if debug_flag == 1 :
+        max_radius = 8.18829
     
     # determine bin_size
     # if min_radius > 0, then bin 0 should have the specified radius.
@@ -199,16 +209,14 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
         for i in range(1, nbins + 1) :
             bounds[i] = pow(10., bounds[i])
     
-    # prep star parameters, will need to change handling of constants later (simulation & user settings behavior)
-    # replace with defaults & user params behavior for simulation constants
-    # star simulation parameters
-    msolunit  = 1.e12
-    kpcunit   = 1.
-    # constant star constants
-    KPCCM     = 3.085678e21    # kiloparsec in centimeters
-    GCGS      = 6.67e-8        # G in cgs
-    MSOLG     = 1.99e33        # solar mass in grams
-    GYRSEC    = 3.155693e16    # gigayear in seconds
+    # constants
+    # msolunit  = 1.e12          # mass scale
+    # kpcunit   = 1.             # distance scale
+    # fhydrogen = 0.76           # fraction of gas as hydrogen 
+    # KPCCM     = 3.085678e21    # kiloparsec in centimeters
+    # GCGS      = 6.67e-8        # G in cgs
+    # MSOLG     = 1.99e33        # solar mass in grams
+    # GYRSEC    = 3.155693e16    # gigayear in seconds
 
     age      = [  .01,   .02,   .05,   .1,   .2,   .5,   1.,   2.,   5.,  10.,  20.]
     lum      = [.0635, .0719, .0454, .153, .293, .436, .636, .898, 1.39, 2.54, 5.05]
@@ -229,36 +237,42 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
     spline.splinit( age, uv_dat,  uv_fit,   n, 0., 0. )
     spline.splinit( age, uuv_dat, uuv_fit,  n, 0., 0. )
     
-    time_unit = math.sqrt(pow(kpcunit*KPCCM, 3.) / (GCGS*msolunit*MSOLG)) / GYRSEC
+    # time_unit = math.sqrt(pow(kpcunit*KPCCM, 3.) / (GCGS*msolunit*MSOLG)) / GYRSEC
     sim_time = charm.getTime()
     
-    # do MapReduce for "base" fields present for all families
-    # must parse each family seperately, so add each fam's result to a list & combine later
-    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, center, center_vel, ba, ca, msolunit, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit]
-    fam_base_data = []
+    # do calculations which must see individual particles.
+    # the set of attributes on a particle varies by family, so each family must be processed seperately
+    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit]
+    fam_data = [None] * len(famgroups)
     for i in range(len(famgroups)) :
         params[0] = families[i]
-        fam_base_data += [charm.reduceParticle(famgroups[i], basemap, basereduce, tuple(params))]
-    if len(fam_base_data) < 1 or fam_base_data == None :
-        raise StandardException('MapReduce for fam_base_data has length zero or is NoneType.')
+        fam_data[i] = charm.reduceParticle(famgroups[i], basemap, basereduce, tuple(params))
+        
+        if debug_flag == 1 :
+            print '\nThe current family is: ' + families[i]
+            for line in fam_data[i] :
+                print line
+    if len(fam_data) < 1 or fam_data == None :
+        raise StandardException('MapReduce for fam_data has length zero or is NoneType.')
     
-    # for debugging only, print some basic data to check that result is sane
-    for i in range(len(fam_base_data[0])) :
-        print '%d  bound = %g\t map = %g  \tcount = %d' % (i, bounds[i+1], fam_base_data[0][i][7], fam_base_data[0][i][1])
-
-    # sum results into one list, noting that some bins may not be present in a given reduce result
-    # values are: bin, number, mass, vel_radial, vel_radial_sigma, vel_tang_sigma, angular_mom(x,y,z)
+    # sum results into one list.
+    # Note that if a bin has no particles, it will be missing from the reduce result. data[] should have no missing rows.
+    # values are: bin, number, mass, vel_radial, vel_radial_sigma, vel_tang_sigma, angular_mom[x,y,z], lum, density, temp, pressure, entropy, gas_mass
     data = [None] * nbins
     for i in range(nbins) :
-        data[i] = [i, 0, 0., 0., 0., 0., [0., 0., 0.], 0.]    
-    for fam in fam_base_data :
+        data[i] = [i, 0, 0., 0., 0., 0., [0., 0., 0.], 0., 0., 0., 0., 0., 0.]    
+    for fam in fam_data :
         for row in fam :
             bin = row[0]
+            # merge fields 0 thru 5
             for i in range(1, 6) :
                 data[bin][i] += row[i]
+            # merge field 6 (angular momentum vector)
             for i in range(3) :
                 data[bin][6][i] += row[6][i]
-            data[bin][7] += row[7]
+            # merge fields 7 thru 12
+            for i in range(7, 13) :
+                data[bin][i] += row[i]
     if not len(data) == nbins :
         raise StandardError('nbins != length of result after basemap')
 
@@ -271,7 +285,7 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
         r_mean = (r_max + r_min) / 2.
         # number of particles in bin
         number = data[i][1]
-        # if the bin is empty then some calculations (n / mass) will explode; catch.
+        # if the bin is empty then some calculations e.g. 1/mass will explode; catch these.
         if number != 0 :
             # find volume by projection
             pi = 3.141592653589793
@@ -281,7 +295,6 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
                 volume = pi * (pow((r_max),2) - pow((r_min),2))
             else :
                 volume = (4. / 3.) * pi * (pow(r_max,3) - pow(r_min,3))
-                print 'r_max = ' + str(r_max) + '  r_min = ' + str(r_min) + '  vol = ' + str(volume)
             # unpack values. deal with non-sum calculations, largely n / mass
             mass = data[i][2]
             mass_r += mass
@@ -303,34 +316,39 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
             rho = mass / volume
             vel_circ = ang / r_mean
             c_vel = math.sqrt(mass_r / r_max)
-            # temporarily zeroing temporary gas placeholders
-            gas1 = 0.
-            gas2 = 0.
-            gas3 = 0.
-            gas4 = 0.
+            # star stuff
             lum_den = data[i][7] / volume
-            data[i] = [r_max, number, rho, mass_r, c_vel, vel_radial, vel_radial_sigma, vel_circ, vel_tang_sigma, ang, ang_theta, ang_phi, gas1, gas2, gas3, gas4, lum_den]
+            # gas stuff
+            if 'gas' in families :
+                density  = data[i][8]  / data[i][12]
+                temp     = data[i][9]  / data[i][12]
+                pressure = data[i][10] / data[i][12]
+                entropy  = data[i][11] / data[i][12]
+            else :
+                density  = 0.
+                temp     = 0.
+                pressure = 0.
+                entropy  = -config.HUGE
+            data[i] = [r_max, number, rho, mass_r, c_vel, vel_radial, vel_radial_sigma, vel_circ, vel_tang_sigma, ang, ang_theta, ang_phi, density, temp, pressure, entropy, lum_den]
         else :
             data[i] = [r_max, 0, 0., mass_r, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
     
     # build header row
-    # !!! replace variable names with those from MAN page !!!
+    # may need to update the exact text used for clarity or for consistency with TIPSY
     headers = ('radius', 'number', 'rho', 'mass_r', 'c_vel', 'vel_radial', 'vel_radial_sigma', 'vel_circ', 'vel_tang_sigma', 'ang', 'ang_theta', 'ang_phi')
     gasheaders = ('mmwg_density', 'mwg_temp', 'mwg_pres', 'mwg_entr')
     starheaders = ('lum_V')
     
-    # write output to file.
+    if debug_flag == 1 :
+        print '\nFinal data'
+        for line in data :
+            print line
+    
+    # write output to file
     f = open(WRITE_TO, 'w')
-    # write header row according to families present
-    #f.write('# %s %s %s %s %s %s %s %s %s %s %s %s' % headers)
-    #if 'gas' in families :
-    #    print 'found some gas in the output'
-    #    f.write(' %s %s %s %s' % gasheaders)
-    #if 'star' in families :
-    #    print 'found some stars in the output'
-    #    f.write(' %s' % starheaders)
-    #f.write('\n')
-    # write results according to families present
+    # write headers according to families present
+    # ADD ME
+    # write data according to families present
     for i in range(nbins) :
         f.write('%g %d %g %g %g %g %g %g %g %g %g %g' % tuple(data[i][0:12]))
         if 'gas' in families :
@@ -399,7 +417,8 @@ maxradreduce = """def localparticle(p):
 
 basemap = """def localparticle(p):
     # map code to get per-particle values needed to calculate base fields
-    # def some functions to improve readability of parent function
+    import math
+    # define some functions to improve readability of parent function
     # fn to take the dot product of two vectors in R3
     def dotprod(a, b) :
         return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
@@ -421,15 +440,15 @@ basemap = """def localparticle(p):
         return math.sqrt(pow(a[0], 2) + pow(a[1], 2) + pow(a[2], 2))
     # import necessary packages & unpack values passed on p._param
     import math, spline
-    fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, center, center_vel, ba, ca, msolunit, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit = p._param
+    fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, msolunit, gasconst, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit = p._param
     # find radius and bin number
     radius = 0.
     if projection == 'sph' :
         radius = vlength(subvec(p.position, center))
     # --> need to add distance algorithms for other projections here <--
-    # !!! this is a kludge to make it behave like Tipsy, this should be removed !!!
-    if radius > 8.18829 :
-        return (nbins - 1, 0, 0., 0., 0., 0., [0., 0., 0.], 0.)
+    # deal with out-of-bounds conditions as a result of precision
+    if radius > max_radius :
+        return (nbins - 1, 0, 0., 0., 0., 0., [0., 0., 0.], 0., 0., 0., 0., 0., 0.)
     # find the bin number by comparison to a list of boundary radii
     bin = nbins - 1
     for i in range(1, len(bounds)) :
@@ -454,8 +473,13 @@ basemap = """def localparticle(p):
         vel = vlength(delta_v)
     vel_radial = p.mass * vel
     vel_radial_sigma = p.mass * pow(vel, 2)
-    # star code
-    lum_star = 0
+    # per-family calculations: zero result variables & pass always
+    lum_star = 0.
+    density = 0.
+    temp = 0.
+    pressure = 0.
+    entropy = 0.
+    gas_mass = 0.
     if fam == 'star' :
         mass = p.mass
         time = p.formationtime
@@ -470,11 +494,22 @@ basemap = """def localparticle(p):
         else :
             bv = spline.spft(star_age, age, bv_dat, bv_fit, n, 0)
             lum_star *= pow(10., -.4*bv)
-    return (bin, 1, p.mass, vel_radial, vel_radial_sigma, vel_tang_sigma, ang_mom, lum_star)
+    if fam == 'gas' :
+        gas_mass = p.mass
+        pd = p.density
+        pt = p.temperature
+        pm = p.meanmwt
+        density = gas_mass * pd
+        temp = gas_mass * pt
+        pressure = density * pt * gasconst / pm
+        entropy = gas_mass * math.log10(pow(pt, 1.5)/(pd))
+    return (bin, 1, p.mass, vel_radial, vel_radial_sigma, vel_tang_sigma, ang_mom, lum_star, density, temp, pressure, entropy, gas_mass)
 """
 
 basereduce = """def localparticle(p):
     # sum values used for calculation of base fields to get per-bin results
+    bin = p.list[0][0]
+    num = len(p.list)
     mass = 0.
     vel_radial = 0.
     vel_radial_sigma = 0.
@@ -482,7 +517,12 @@ basereduce = """def localparticle(p):
     ang_mom = [0., 0., 0.]
     radius = 0.
     lum = 0.
-    for i in range(len(p.list)) :
+    density = 0.
+    temp = 0.
+    pressure = 0.
+    entropy = 0.
+    gas_mass = 0.
+    for i in range(num) :
         mass += p.list[i][2]
         vel_radial += p.list[i][3]
         vel_radial_sigma += p.list[i][4]
@@ -491,6 +531,12 @@ basereduce = """def localparticle(p):
         ang_mom[1] += p.list[i][6][1]
         ang_mom[2] += p.list[i][6][2]
         lum += p.list[i][7]
-    return (p.list[0][0], len(p.list), mass, vel_radial, vel_radial_sigma, vel_tang_sigma, ang_mom, lum)
+        density += p.list[i][8]
+        temp += p.list[i][9]
+        pressure += p.list[i][10]
+        entropy += p.list[i][11]
+        gas_mass += p.list[i][12]
+    return (bin, num, mass, vel_radial, vel_radial_sigma, vel_tang_sigma, ang_mom, lum, density, temp, pressure, entropy, gas_mass)
 """
+
 

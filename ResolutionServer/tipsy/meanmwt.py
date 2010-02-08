@@ -1,4 +1,4 @@
-import traceback, config, math, charm
+import traceback, config, math
 
 def safecalc_meanmwt(temp, rho) :
     try :
