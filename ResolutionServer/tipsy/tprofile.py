@@ -8,7 +8,7 @@ def safeprofile() :
     except :
         print traceback.format_exc()
 
-def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='all', center='pot', projection='sph', fit_radius=0., debug_flag = 1) :
+def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='all', center='pot', projection='sph', WRITE_TO = 'profile.DAT', fit_radius=0., debug_flag = 1) :
     """Perform the Tipsy profile() function.
     
     This version implements:
@@ -56,7 +56,6 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
     def weightvecs(m1, x1, m2, x2) :
         return [(x1[0]*m1 + x2[0]*m2)/(m1+m2), (x1[1]*m1 + x2[1]*m2)/(m1+m2), (x1[2]*m1 + x2[2]*m2)/(m1+m2)]
     # constants (fake since it's Python)
-    WRITE_TO = '../profile.DAT' # output path (should probably parameterize, worry about this later, trivial change)
     LOG_MIN = 0.01 # alternate min_radius to use if bin_type == 'log' and min_radius == 0
     
     # scrub input
@@ -509,7 +508,7 @@ basemap = """def localparticle(p):
 basereduce = """def localparticle(p):
     # sum values used for calculation of base fields to get per-bin results
     bin = p.list[0][0]
-    num = len(p.list)
+    num = 0
     mass = 0.
     vel_radial = 0.
     vel_radial_sigma = 0.
@@ -522,7 +521,8 @@ basereduce = """def localparticle(p):
     pressure = 0.
     entropy = 0.
     gas_mass = 0.
-    for i in range(num) :
+    for i in range(len(p.list)) :
+        num += p.list[i][1]
         mass += p.list[i][2]
         vel_radial += p.list[i][3]
         vel_radial_sigma += p.list[i][4]
