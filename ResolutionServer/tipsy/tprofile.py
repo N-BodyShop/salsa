@@ -8,22 +8,11 @@ def safeprofile() :
     except :
         print traceback.format_exc()
 
-def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='all', center='pot', projection='sph', WRITE_TO = 'profile.DAT', fit_radius=0., debug_flag = 1) :
+def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family='all', center='pot', projection='cyl', WRITE_TO = 'profile.DAT', fit_radius=0., debug_flag = 1) :
     """Perform the Tipsy profile() function.
     
-    This version implements:
-    
-    linear and logarithmic binning
-    spherical projections
-    base data fields
-    star data fields
-    
-    currently developing:
-    gas data fields
-        mean mass weighted gas density
-        mass weighted gas temperature 
-        mass weighted gas pressure
-        mass weighted gas entropy
+    elliptial binning not yet implemented.
+    some rarer configurations not implemented e.g. non-uniform UV for star luminosity calculation
     """
     if debug_flag == 1 :
         import load_meanmwt
@@ -241,7 +230,7 @@ def profile(nbins=4, min_radius=0.0534932, bin_type='log', group='All', family='
     
     # do calculations which must see individual particles.
     # the set of attributes on a particle varies by family, so each family must be processed seperately
-    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit]
+    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom]
     fam_data = [None] * len(famgroups)
     for i in range(len(famgroups)) :
         params[0] = families[i]
@@ -437,13 +426,22 @@ basemap = """def localparticle(p):
     def vlength(a) :
         import math
         return math.sqrt(pow(a[0], 2) + pow(a[1], 2) + pow(a[2], 2))
+    # fn to find distance from a line.
+    # sqrt(dot(cross(pos - cen, ang_mom), cross(pos - cen, ang_mom)) / dot(ang_mom, ang_mom))
+    def perp_distance(cen, ang_mom, pos) :
+        return math.sqrt( ( ((pos[1] - cen[1])*ang_mom[2] - (pos[2] - cen[2])*ang_mom[1])**2
+                          + ((pos[2] - cen[2])*ang_mom[0] - (pos[0] - cen[0])*ang_mom[2])**2
+                          + ((pos[0] - cen[0])*ang_mom[1] - (pos[1] - cen[1])*ang_mom[0])**2 )
+                          / ( ang_mom[0]**2 + ang_mom[1]**2 + ang_mom[2]**2 ) )
     # import necessary packages & unpack values passed on p._param
     import math, spline
-    fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, msolunit, gasconst, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit = p._param
+    fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, msolunit, gasconst, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom = p._param
     # find radius and bin number
     radius = 0.
     if projection == 'sph' :
         radius = vlength(subvec(p.position, center))
+    elif projection == 'cyl' :
+        radius = perp_distance(center, center_angular_mom, p.position)
     # --> need to add distance algorithms for other projections here <--
     # deal with out-of-bounds conditions as a result of precision
     if radius > max_radius :
