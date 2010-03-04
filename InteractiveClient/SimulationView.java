@@ -87,6 +87,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	float factor=1.0f;
 	float factorFor3D=1.0f;
+	boolean maxMode=true;
 	Point rotationPoint;
 	int reget3DImageCounter=0;
 	int reget3DImageLimit=6;
@@ -652,9 +653,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	private class ImageRequest extends CcsThread.request {
 		int w, h;
+		long reqStartTime=0;
 		public ImageRequest() {
 			// could be a while, lets wait
 			super("lvImage", encodeRequest2D());
+			reqStartTime=System.currentTimeMillis();
 			w=width2D;
 			h=height2D;
 			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -662,6 +665,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		}
 
 		public void handleReply(byte[] data) {
+			System.out.println("Request Time 2D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			synchronized(b2Lock)
 			{
@@ -739,9 +743,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	private class Image3DRequest extends CcsThread.request {
 		float factorStore=0.0f;
+		long reqStartTime=0;
 		public Image3DRequest() {
 			// could be a while, lets wait
 			super("lvImage", encodeRequest3D());
+			reqStartTime=System.currentTimeMillis();
 			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			reget3DImageCounter=0;
 			factorStore=factor;
@@ -750,6 +756,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 		public void handleReply(byte[] data)
 		{
+			System.out.println("Request Time 3D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			long startTime=0;
 			synchronized(bLock)
@@ -994,7 +1001,14 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
             File file = fc.getSelectedFile();
             try {
                 FileOutputStream fos = new FileOutputStream(file);
-                PngEncoder png = new PngEncoder(createImage(source), false);
+                
+                int pix[]=new int [pixels.length];
+                for(int i=0;i<pixels.length;i++)
+				{
+					int index=0xff&(int)pixels[i];
+					pix[i]=((0xff&colorBar.cm_red[index])<<16)+((0xff&colorBar.cm_green[index])<<8)+((0xff&colorBar.cm_blue[index])<<0);
+				}
+                PngEncoder png = new PngEncoder(createImage(new MemoryImageSource(width, height, pix, 0, width)), false);
                 byte[] pngBytes = png.pngEncode();
                 fos.write(pngBytes);
                 fos.flush();
@@ -1114,7 +1128,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		gl.glGenTextures(1, texture, 0);
 		texture3D=texture[0];
 		isNewImageData=true;
-		//System.out.println("Re-ran GL init function...");
 	}
 
 	public void display(GLAutoDrawable arg0)
@@ -1174,8 +1187,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glDisable(GL.GL_DEPTH_TEST); /* don't do Z buffer (screws up overlaps, esp. w/blending) */
 			gl.glEnable(GL.GL_BLEND);
 			gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-			gl.glBlendEquation(GL.GL_MAX);
-
+			if(maxMode)
+				gl.glBlendEquation(GL.GL_MAX);
+			else
+				gl.glBlendEquation(GL.GL_FUNC_ADD);
 			//scale and rotate
 			double scale=factor/factorFor3D*2/boxSize;
 			double matrix []=new double[16];

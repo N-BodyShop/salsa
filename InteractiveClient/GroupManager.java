@@ -29,6 +29,7 @@ public class GroupManager extends Manager
 	
 	JPanel displayPanel;
 	JButton applyButton;
+	JButton refreshButton;
 	
 	public GroupManager(WindowManager wm) {
 		super("Salsa: Group Manager", wm);
@@ -40,9 +41,18 @@ public class GroupManager extends Manager
 		groupList.setVisibleRowCount(8);
 		groupList.setPrototypeCellValue("Log Density Color");
 		
-		JPanel lhs = new JPanel();
+		JPanel lhs = new JPanel(new BorderLayout());
 		lhs.setBorder(BorderFactory.createTitledBorder("Groups"));
-		lhs.add(new JScrollPane(groupList));
+		lhs.add(new JScrollPane(groupList), BorderLayout.WEST);
+		Box b2 = new Box(BoxLayout.LINE_AXIS);
+		b2.add(new JLabel("Active Group:"));
+		JComboBox groupCombo = new JComboBox(windowManager.sim.createGroupModel());
+		groupCombo.setPrototypeDisplayValue("Density");
+		groupCombo.setSelectedIndex(0);
+		groupCombo.setActionCommand("activateGroup");
+		groupCombo.addActionListener(this);
+		b2.add(groupCombo);
+		lhs.add(b2, BorderLayout.NORTH);
 		
 		displayPanel = new JPanel();
 		displayPanel.setBorder(BorderFactory.createTitledBorder("Group definition"));
@@ -89,7 +99,7 @@ public class GroupManager extends Manager
 		applyButton.setActionCommand("apply");
 		applyButton.addActionListener(this);
 		
-		JButton refreshButton = new JButton("Refresh");
+		refreshButton = new JButton("Refresh");
 		refreshButton.setActionCommand("refresh");
 		refreshButton.addActionListener(this);
 		
@@ -103,7 +113,7 @@ public class GroupManager extends Manager
 		rhs.add(Box.createVerticalGlue());
 		rhs.add(buttonPanel);
 		
-		getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.LINE_AXIS));
+		getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.PAGE_AXIS));
 		getContentPane().add(lhs);
 		getContentPane().add(rhs);
 		
@@ -139,7 +149,11 @@ public class GroupManager extends Manager
 	
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
-		if(command.equals("apply")) {
+		if(command.equals("activateGroup")) {
+			//System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
+			((ViewingPanel)windowManager.windowList.peek()).view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).name;
+			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage();
+		} else if(command.equals("apply")) {
 			Simulation.Group g = (Simulation.Group) sim.groups.get(groupList.getSelectedValue());
 			String oldName = g.name;
 			g.name = groupNameField.getText();

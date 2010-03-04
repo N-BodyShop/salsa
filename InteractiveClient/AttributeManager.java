@@ -129,7 +129,7 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		rhs.add(displayPanel, BorderLayout.CENTER);
 		rhs.add(buttonPanel, BorderLayout.SOUTH);
 		
-		getContentPane().add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(tree), rhs));
+		getContentPane().add(new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(tree), rhs));
 		
 		pack();
 		

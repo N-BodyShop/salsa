@@ -72,8 +72,8 @@ public class Salsa {
 			if(args.length > 2)
 				salsa.chooseSimulation(args[2]);
 			else {
-			//	salsa.getSimulationList();
-			//	salsa.displaySimulationList();
+				salsa.getSimulationList();
+				salsa.displaySimulationList();
 				salsa.connectSimulation();
 			}
 		} catch(UnknownHostException uhe) {            

@@ -43,9 +43,18 @@ public class ColoringManager extends Manager
 		coloringList.setVisibleRowCount(8);
 		coloringList.setPrototypeCellValue("Log Density Color");
 		
-		JPanel lhs = new JPanel();
+		JPanel lhs = new JPanel(new BorderLayout());
 		lhs.setBorder(BorderFactory.createTitledBorder("Colorings"));
-		lhs.add(new JScrollPane(coloringList));
+		lhs.add(new JScrollPane(coloringList), BorderLayout.WEST);
+		Box b2 = new Box(BoxLayout.LINE_AXIS);
+		b2.add(new JLabel("Active Coloring:"));
+		JComboBox coloringCombo = new JComboBox(windowManager.sim.createColoringModel());
+		coloringCombo.setPrototypeDisplayValue("Density");
+		coloringCombo.setSelectedIndex(0);
+		coloringCombo.setActionCommand("chooseColoring");
+		coloringCombo.addActionListener(this);
+		b2.add(coloringCombo);
+		lhs.add(b2, BorderLayout.NORTH);
 		
 		displayPanel = new JPanel();
 		displayPanel.setBorder(BorderFactory.createTitledBorder("Coloring information"));
@@ -128,7 +137,7 @@ public class ColoringManager extends Manager
 		rhs.add(Box.createVerticalGlue());
 		rhs.add(buttonPanel);
 		
-		getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.LINE_AXIS));
+		getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.PAGE_AXIS));
 		getContentPane().add(lhs);
 		getContentPane().add(rhs);
 		
@@ -188,7 +197,11 @@ public class ColoringManager extends Manager
 	
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
-		if(command.equals("swap")) {
+		if(command.equals("chooseColoring")) {
+			//System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
+			((ViewingPanel)windowManager.windowList.peek()).view.activeColoring = ((Simulation.Coloring) windowManager.sim.colorings.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
+			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage();
+		} else if(command.equals("swap")) {
 			double minValue = ((Number) minValField.getValue()).doubleValue();
 			double maxValue = ((Number) maxValField.getValue()).doubleValue();
 			minValField.setValue(new Double(maxValue));

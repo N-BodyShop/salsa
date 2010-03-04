@@ -18,9 +18,11 @@ public class GroupQuery extends JFrame
 	JPanel displayPanel;
 	
 	displayPanel = new JPanel();
-	Box b = new Box(BoxLayout.LINE_AXIS);
+	Box b = new Box(BoxLayout.PAGE_AXIS);
 	b.add(new JLabel("Group Name: "));
 	groupNameField = new JTextField(15);
+	groupNameField.setText("Default Name");
+	groupNameField.selectAll();
 	groupNameField.addKeyListener(this);
 	b.add(groupNameField);
 	displayPanel.add(b);
@@ -36,6 +38,7 @@ public class GroupQuery extends JFrame
 	System.out.println("Creating group: " + groupNameField.getText());
 	simulationView.request2D();
 	simulationView.makeBox(groupNameField.getText());
+	simulationView.windowManager.groupManager.refreshButton.doClick();
 	setVisible(false);
     }
 

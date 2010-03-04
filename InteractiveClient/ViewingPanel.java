@@ -12,6 +12,7 @@ public class ViewingPanel extends JFrame {
 	ColorBarPanel colorBar;
 	SimulationView view;
 	ToolBarPanel tools;
+	SideBar side;
 	
 	public ViewingPanel(WindowManager wm) {
 		super("Salsa: Simulation View");
@@ -26,11 +27,13 @@ public class ViewingPanel extends JFrame {
 		view = new SimulationView(windowManager, width, width, colorBar);
 		colorBar.setView(view);		
 		tools = new ToolBarPanel(windowManager, view);
+		side= new SideBar(windowManager, view);
 		
 		setJMenuBar(new MenuBar(windowManager,view));
 		c.add(colorBar, BorderLayout.NORTH);
 		c.add(view, BorderLayout.CENTER);
 		c.add(tools, BorderLayout.SOUTH);
+		c.add(side, BorderLayout.EAST);
 		
 /*		Action newViewAction = new AbstractAction() {
 			public void actionPerformed(ActionEvent e) {
