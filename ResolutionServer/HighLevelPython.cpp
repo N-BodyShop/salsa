@@ -19,11 +19,11 @@ void Main::loadSimulation(int handle) {
 	
     simListType::iterator chosen = simulationList.find(fileName);
     if(chosen != simulationList.end()) {
-	workers.loadSimulation(chosen->second, CkCallbackResumeThread());
+	workers.loadSimulation(chosen->second, CkCallbackPython());
 	}
     else if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
 	fclose(fp);
-	workers.loadSimulation(fileName, CkCallbackResumeThread());
+	workers.loadSimulation(fileName, CkCallbackPython());
 	}
     else {
 	PyErr_SetString(PyExc_NameError, "No such file");
@@ -189,7 +189,7 @@ void Main::writeGroupArray(int handle) {
     // The writing is done as a domino scheme.  Call the head node
     // and it calls all the other workers in sequence.
     this->workers[0].writeGroupArray(groupName, attributeName, fileName,
-				     CkCallbackResumeThread());
+				     CkCallbackPython());
 
     pythonReturn(handle);
     }
@@ -804,7 +804,7 @@ void Main::createGroupAttributeSphere(int handle) {
     // pythonSleep(handle);
     workers.createGroup_AttributeSphere(sGroupName, sParentName,
 					sAttributeName, v3dCenter, dSize,
-					CkCallbackResumeThread());
+					CkCallbackPython());
     // pythonAwake(handle);
     pythonReturn(handle);
 }
@@ -835,12 +835,10 @@ void Main::createGroupAttributeBox(int handle) {
     string sParentName(parentName);
     string sAttributeName(attributeName);
     
-    // pythonSleep(handle);
     workers.createGroup_AttributeBox(sGroupName, sParentName,
 					sAttributeName, v3dCorner,
 					v3dEdge1, v3dEdge2,v3dEdge3,
-					CkCallbackResumeThread());
-    // pythonAwake(handle);
+					CkCallbackPython());
     pythonReturn(handle);
 }
 
@@ -888,14 +886,8 @@ void Main::runLocalParticleCodeGroup(int handle) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    PyThreadState *_save = PyThreadState_Swap(NULL);
-    PyEval_ReleaseLock();
-    // PyGILState_STATE state = PyGILState_Ensure();
     workers.localParticleCodeGroup(g, s, PyObjectMarshal(global),
-				   CkCallbackResumeThread());
-    // PyGILState_Release(state);
-    PyEval_AcquireLock();
-    PyThreadState_Swap(_save);
+				   CkCallbackPython());
 
     pythonReturn(handle);
 }
