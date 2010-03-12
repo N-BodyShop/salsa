@@ -216,17 +216,12 @@ CkReductionMsg* pythonReduce(int nMsg, CkReductionMsg** msgs) {
 
     PyObject *listReduce = PySequence_GetItem(tupleFirst.obj, 2);
     
-    cerr << "[" << CkMyPe() << "]: reducing " << nMsg << " messages" << endl;
-    cerr << "[" << CkMyPe() << "]: message 0 " << PyList_Size(listReduce) << " items\n";
-    
     for(int i = 1; i < nMsg; ++i) {
 	PyObjectMarshal tupleNext;
 	PUP::fromMemBuf(tupleNext, msgs[i]->getData(), msgs[i]->getSize());
 	// Concatenate to first list
 	listReduce = PySequence_InPlaceConcat(listReduce,
 					      PySequence_GetItem(tupleNext.obj, 2));
-	cerr << "[" << CkMyPe() << "]: message " << i << " " << PyList_Size(listReduce)
-	      << " items\n";
 	Py_DECREF(tupleNext.obj);
 	}
     // Reduce the local list using code and globals
