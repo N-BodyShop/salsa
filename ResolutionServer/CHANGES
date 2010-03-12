@@ -1,0 +1,46 @@
+What's new in Salsa 1.0 (Since 0.3)
+
+===============================================================================
+
+New Python methods:
+
+- loadSimulation()
+
+- readTipsyArray()
+
+- getTime()
+
+- saveSimulation()
+
+- writeGroupArray()
+
+- importData()
+
+- getAttributeRangeGroup()
+
+- createVectorAttribute()
+
+- runLocalParticleGroupCode()
+
+- reduceParticle()
+
+-------------------------------------------------------------------------------
+
+Other Python Changes:
+
+- Better error handling
+
+- A map-reduce infrastructure (see reduceParticle())
+
+- Update to track changes in PythonCCS interface in charm++ 6.2
+
+- Detect Python 2.5 and 2.6
+
+- More python samples, including implementation of some Tipsy commands.
+
+-------------------------------------------------------------------------------
+
+Rendering Changes:
+
+- Volume rendering to improve interactive performance on GL capable machines.
+
