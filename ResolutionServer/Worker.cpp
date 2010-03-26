@@ -1705,7 +1705,7 @@ public:
 // Run python code over all particles in a group
 // Deprecated in favor of the next function
 //
-void Worker::localParticleCode(std::string s, const CkCallback &cb) 
+void Worker::localParticleCode(std::string const &s, const CkCallback &cb) 
 {
     
     GroupMap::iterator gIter = groups.find("All");
@@ -1728,8 +1728,9 @@ void Worker::localParticleCode(std::string s, const CkCallback &cb)
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
 
-void Worker::localParticleCodeGroup(std::string g, std::string s,
-				    PyObjectMarshal global,
+void Worker::localParticleCodeGroup(std::string const &g, // Group
+				    std::string const &s, // Code
+				    PyObjectMarshal &global, // Globals
 				    const CkCallback &cb)
 {
     GroupMap::iterator gIter = groups.find(g);
@@ -1738,7 +1739,9 @@ void Worker::localParticleCodeGroup(std::string g, std::string s,
 	PythonLocalParticle pyLocalPart;
 	pyLocalPart.sim = sim;
 	pyLocalPart.localPartG = gIter->second;
-	pyLocalPart.localPartPyGlob = global.obj;
+	PyGILState_STATE pyState = PyGILState_Ensure();
+	pyLocalPart.localPartPyGlob = global.getObj();
+	PyGILState_Release(pyState);
 	pyLocalPart.isReducing = false;
 	
 	PythonIterator info;	// XXX should this be initialized?
@@ -1746,20 +1749,26 @@ void Worker::localParticleCodeGroup(std::string g, std::string s,
 
 	pyLocalPart.execute(&wrapper);
 
+	pyState = PyGILState_Ensure();
 	Py_DECREF(pyLocalPart.localPartPyGlob);
+	PyGILState_Release(pyState);
 	}
     contribute(0, 0, CkReduction::concat, cb); // barrier
     }
 
-void Worker::reduceParticle(std::string g, std::string sParticleCode,
-			    std::string sReduceCode, PyObjectMarshal global,
+void Worker::reduceParticle(std::string const &g, // Group
+			    std::string const &sParticleCode, // Map code
+			    std::string const &sReduceCode, // Reduce code
+			    PyObjectMarshal &global,
 			    const CkCallback &cb)
 {
     GroupMap::iterator gIter = groups.find(g);
 
     PythonLocalParticle pyLocalPart;
+    PyGILState_STATE pyState = PyGILState_Ensure();
     pyLocalPart.localReduceList = PyList_New(0);
-    pyLocalPart.localPartPyGlob = global.obj;
+    pyLocalPart.localPartPyGlob = global.getObj();
+    PyGILState_Release(pyState);
 
     if(gIter != groups.end()) {
 	// First apply the "map" function.
@@ -1780,16 +1789,20 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
 			      &info);
 	reducer.execute(&wrapperreduce);
 	
+	pyState = PyGILState_Ensure();
 	Py_DECREF(pyLocalPart.localReduceList);
 	if(reducer.listResult)
 	    pyLocalPart.localReduceList = reducer.listResult;
 	else
 	    pyLocalPart.localReduceList = PyList_New(0);
+	PyGILState_Release(pyState);
 	}
-    PyGILState_STATE state = PyGILState_Ensure();
+    pyState = PyGILState_Ensure();
     // Send the local list to the contribute function
-    PyObject *result = Py_BuildValue("(sOO)", sReduceCode.c_str(), global.obj,
-				    pyLocalPart.localReduceList);
+    
+    PyObject *result = Py_BuildValue("(sOO)", sReduceCode.c_str(),
+				     pyLocalPart.localPartPyGlob,
+				     pyLocalPart.localReduceList);
     
     PyObjectMarshal resultMarshal(result);
     int nBuf = PUP::size(resultMarshal);
@@ -1798,9 +1811,9 @@ void Worker::reduceParticle(std::string g, std::string sParticleCode,
     contribute(nBuf, buf, pythonReduction, cb);
 
     Py_DECREF(pyLocalPart.localPartPyGlob);
-    // Py_DECREF(localReduceList);
+    Py_DECREF(pyLocalPart.localReduceList);
     Py_DECREF(result);
-    PyGILState_Release(state);
+    PyGILState_Release(pyState);
     delete[] buf;
     }
 

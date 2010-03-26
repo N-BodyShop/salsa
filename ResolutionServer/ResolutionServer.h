@@ -354,11 +354,13 @@ public:
 				      Vector3D<double> edge3,
 				      CkCallback const& cb);
 	
-	void localParticleCode(std::string s, const CkCallback &cb);
-	void localParticleCodeGroup(std::string g, std::string s,
-				    PyObjectMarshal obj, const CkCallback &cb);
-	void reduceParticle(std::string g, std::string sParticleCode,
-			    std::string sReduceCode, PyObjectMarshal global,
+	void localParticleCode(std::string const &s, const CkCallback &cb);
+	void localParticleCodeGroup(std::string const &g, std::string const &s,
+				    PyObjectMarshal &obj, const CkCallback &cb);
+	void reduceParticle(std::string const &g,
+			    std::string const &sParticleCode,
+			    std::string const &sReduceCode,
+			    PyObjectMarshal &global,
 			    const CkCallback &cb);
 };
 

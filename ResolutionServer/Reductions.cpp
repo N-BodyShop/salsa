@@ -210,33 +210,37 @@ int PythonReducer::nextIteratorUpdate(PyObject*& arg, PyObject* result,
 // Tuples with common keys will be reduced using the given code.
 
 CkReductionMsg* pythonReduce(int nMsg, CkReductionMsg** msgs) {
-    PyGILState_STATE state = PyGILState_Ensure();
     PyObjectMarshal tupleFirst;
     PUP::fromMemBuf(tupleFirst, msgs[0]->getData(), msgs[0]->getSize());
 
-    PyObject *listReduce = PySequence_GetItem(tupleFirst.obj, 2);
+    PyGILState_STATE pyState = PyGILState_Ensure();
+
+    PyObject *objTupleFirst = tupleFirst.getObj();
+    PyObject *listReduce = PySequence_GetItem(objTupleFirst, 2);
     
     for(int i = 1; i < nMsg; ++i) {
 	PyObjectMarshal tupleNext;
 	PUP::fromMemBuf(tupleNext, msgs[i]->getData(), msgs[i]->getSize());
+	PyObject *obj = tupleNext.getObj();
 	// Concatenate to first list
 	listReduce = PySequence_InPlaceConcat(listReduce,
-					      PySequence_GetItem(tupleNext.obj, 2));
-	Py_DECREF(tupleNext.obj);
+					      PySequence_GetItem(obj, 2));
+	Py_DECREF(obj);
 	}
     // Reduce the local list using code and globals
     // code is first item
-    char *sReduceCode = PyString_AsString(PyTuple_GetItem(tupleFirst.obj, 0));
+    char *sReduceCode = PyString_AsString(PyTuple_GetItem(objTupleFirst, 0));
     // globals is second
-    PyObject *global = PySequence_GetItem(tupleFirst.obj, 1);
-    PyGILState_Release(state);
+    PyObject *global = PySequence_GetItem(objTupleFirst, 1);
+    PyGILState_Release(pyState);
+
     PythonReducer reducer(listReduce, global);
     PythonIterator info;
     PythonExecute wrapperreduce(sReduceCode, "localparticle", &info);
 
     int interp = reducer.execute(&wrapperreduce);
 
-    state = PyGILState_Ensure();
+    pyState = PyGILState_Ensure();
     if(reducer.listResult == NULL)
 	reducer.listResult = PyList_New(0);
     // Send the resulting list onward
@@ -248,9 +252,9 @@ CkReductionMsg* pythonReduce(int nMsg, CkReductionMsg** msgs) {
     char *buf = new char[nBuf];
     PUP::toMemBuf(resultMarshal, buf, nBuf);
 
-    Py_DECREF(tupleFirst.obj);
+    Py_DECREF(objTupleFirst);
     Py_DECREF(listReduce);
-    PyGILState_Release(state);
+    PyGILState_Release(pyState);
 
     CkReductionMsg *msgRed = CkReductionMsg::buildNew(nBuf, buf);
     delete [] buf;
