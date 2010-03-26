@@ -567,6 +567,19 @@ void Main::createScalarAttribute(int handle) {
 	return;
 	}
 
+    Worker* w = workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end()) {
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
     workers.createScalarAttribute(familyName, attributeName,
 			       createCallbackResumeThread(mesg, result));
     delete mesg;
@@ -577,13 +590,27 @@ void Main::createScalarAttribute(int handle) {
 //CC 4/1/07
 void Main::createVectorAttribute(int handle) {
     char *familyName, *attributeName;
+    CkReductionMsg* mesg;
+    int result;
+
     PyObject *arg = PythonObject::pythonGetArg(handle);
     if(PyArg_ParseTuple(arg, "ss", &familyName, &attributeName) == false) {
 	pythonReturn(handle, NULL);
 	return;
 	}
-    CkReductionMsg* mesg;
-    int result;
+
+    Worker* w = workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end()) {
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
+	}
 
     workers.createVectorAttribute(familyName, attributeName,
 			       createCallbackResumeThread(mesg, result));
