@@ -1690,6 +1690,7 @@ public:
     SimulationHandling::Simulation* sim;
     boost::shared_ptr<SimulationHandling::Group> localPartG;
     SimulationHandling::Group::GroupFamilies::iterator localPartFamIter;
+    SimulationHandling::ParticleFamily family;
     SimulationHandling::GroupIterator localPartIter;
     SimulationHandling::GroupIterator localPartEnd;
 
@@ -1831,7 +1832,7 @@ int PythonLocalParticle::buildIterator(PyObject *&arg, void *iter) {
     if(*localPartIter == *localPartEnd)
 	return 0;
 
-    ParticleFamily& family = (*sim)[*localPartFamIter];
+    family = (*sim)[*localPartFamIter];
     
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
@@ -1885,9 +1886,8 @@ int PythonLocalParticle::buildIterator(PyObject *&arg, void *iter) {
 
 int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, void *iter) {
     // Copy out from Python object
+    u_int64_t index = *localPartIter; // Optimize dereference
 
-    ParticleFamily family = (*sim)[*localPartFamIter];
-    
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
@@ -1898,14 +1898,14 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	    switch(arr.code) {
 	    case TypeHandling::int32:
 		pythonGetInt(arg, (char *) attrIter->first.c_str(), &lvalue);
-		arr.getArray(Type2Type<int>())[*localPartIter] = lvalue;
+		arr.getArray(Type2Type<int>())[index] = lvalue;
 		break;
 	    case float32:
 		pythonGetFloat(arg, (char *) attrIter->first.c_str(), &dvalue);
-		arr.getArray(Type2Type<float>())[*localPartIter] = dvalue;
+		arr.getArray(Type2Type<float>())[index] = dvalue;
 		break;
 	    case float64:
-		pythonGetFloat(arg, (char *) attrIter->first.c_str(), &arr.getArray(Type2Type<double>())[*localPartIter]);
+		pythonGetFloat(arg, (char *) attrIter->first.c_str(), &arr.getArray(Type2Type<double>())[index]);
 		break;
 	    default:
 		assert(0);
@@ -1914,10 +1914,10 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	if(arr.dimensions == 3) {
 	    PyObject *tmp = PyObject_GetAttrString(arg,
 					(char *) attrIter->first.c_str());
-	    CkAssert(PyTuple_Check(tmp));
-	    PyObject *tmpItemX = PyTuple_GetItem(tmp, 0);
-	    PyObject *tmpItemY = PyTuple_GetItem(tmp, 1);
-	    PyObject *tmpItemZ = PyTuple_GetItem(tmp, 2);
+	    // CkAssert(PyTuple_Check(tmp));
+	    PyObject *tmpItemX = PyTuple_GET_ITEM(tmp, 0);
+	    PyObject *tmpItemY = PyTuple_GET_ITEM(tmp, 1);
+	    PyObject *tmpItemZ = PyTuple_GET_ITEM(tmp, 2);
 	    
 	    Vector3D<int> lvalue;
 	    Vector3D<float> fvalue;
@@ -1928,21 +1928,21 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 		lvalue.x = PyInt_AsLong(tmpItemX);
 		lvalue.y = PyInt_AsLong(tmpItemY);
 		lvalue.z = PyInt_AsLong(tmpItemZ);
-		arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter]
+		arr.getArray(Type2Type<Vector3D<int> >())[index]
 		    = lvalue;
 		break;
 	    case float32:
 		fvalue.x = PyFloat_AsDouble(tmpItemX);
 		fvalue.y = PyFloat_AsDouble(tmpItemY);
 		fvalue.z = PyFloat_AsDouble(tmpItemZ);
-		arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter]
+		arr.getArray(Type2Type<Vector3D<float> >())[index]
 		    = fvalue;
 		break;
 	    case float64:
 		dvalue.x = PyFloat_AsDouble(tmpItemX);
 		dvalue.y = PyFloat_AsDouble(tmpItemY);
 		dvalue.z = PyFloat_AsDouble(tmpItemZ);
-		arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter]
+		arr.getArray(Type2Type<Vector3D<double> >())[index]
 		    = dvalue;
 		break;
 	    default:
@@ -1953,7 +1953,6 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	}
     if(isReducing && (result != Py_None)) {
 	PyList_Append(localReduceList, result);
-	Py_INCREF(result);
 	}
     
     // Increment
@@ -1967,6 +1966,7 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
 	family = (*sim)[*localPartFamIter];
 	}
+    index = *localPartIter; // Optimize dereference
 
     for(AttributeMap::iterator attrIter = family.attributes.begin();
 	attrIter != family.attributes.end(); attrIter++) {
@@ -1974,13 +1974,13 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	if(arr.dimensions == 1) {
 	    switch(arr.code) {
 	    case TypeHandling::int32:
-		pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[*localPartIter]);
+		pythonSetInt(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<int>())[index]);
 		break;
 	    case float32:
-		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[*localPartIter]);
+		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<float>())[index]);
 		break;
 	    case float64:
-		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[*localPartIter]);
+		pythonSetFloat(arg, (char *) attrIter->first.c_str(), arr.getArray(Type2Type<double>())[index]);
 		break;
 	    default:
 		assert(0);
@@ -1994,15 +1994,15 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 
 	    switch(arr.code) {
 	    case TypeHandling::int32:
-		vl = arr.getArray(Type2Type<Vector3D<int> >())[*localPartIter];
+		vl = arr.getArray(Type2Type<Vector3D<int> >())[index];
 		pyVec = Py_BuildValue("(iii)", vl.x, vl.y, vl.z);
 		break;
 	    case float32:
-		vf = arr.getArray(Type2Type<Vector3D<float> >())[*localPartIter];
+		vf = arr.getArray(Type2Type<Vector3D<float> >())[index];
 		pyVec = Py_BuildValue("(ddd)", vf.x, vf.y, vf.z);
 		break;
 	    case float64:
-		vd = arr.getArray(Type2Type<Vector3D<double> >())[*localPartIter];
+		vd = arr.getArray(Type2Type<Vector3D<double> >())[index];
 		pyVec = Py_BuildValue("(ddd)", vd.x, vd.y, vd.z);
 		break;
 	    default:
