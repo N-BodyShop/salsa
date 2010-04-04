@@ -17,9 +17,9 @@ SIGMAES   = 6.665e-25      # Thomson cross section
 ME        = 9.11e-28       # electron mass in grams
 C         = 2.998e10       # speed of light in cm/sec
 
-# system constants
-
+# system constants, TIPSY constants
 HUGE      = 1e308          # a really big number
+MAXDIM    = 3              # the number of spatial dimensions
 
 # derived constants
 time_unit = math.sqrt(pow(kpcunit*KPCCM, 3.) / (GCGS*msolunit*MSOLG)) / GYRSEC

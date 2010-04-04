@@ -2,7 +2,7 @@
 # This file imports the modules containing each command or class of commands
 # for Tipsy, and is also used to define widely useful, simple helper methods
 # such as cross_product().
-import charm, math
+import math, config
 
 def strlist(oldlist) :
     """Change the elements of a list into strings."""
@@ -70,12 +70,13 @@ def sub_vec(a, b) :
         x[i] = a[i] - b[i]
     return x
 
-def matrix_vector_mult(mat, a) :
-    b = [0.0] * 3
-    for i in range(3) :
-        for j in range(3) :
+def matrix_vector_mult(mat,a,b) :
+    # matrix-vector mulitipliciation
+    # b = mat * a
+    for i in range(config.MAXDIM) :
+        b[i] = 0.
+        for j in range(config.MAXDIM) :
             b[i] += mat[i][j] * a[j]
-    return b
 
 def add_const_mult_vec(a, constant, b) :
     for i in range(len(a)) :

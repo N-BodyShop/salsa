@@ -1,25 +1,19 @@
-import traceback, config, charm, tipsyf, math, spline
+import traceback, config, charm, tipsyf, math, spline, elliptical
 # loading of meanmwt is here temporarily for ease of testing, it should NOT stay here!
 
 def safeprofile() :
     try :
         profile()
-        print '\nSAFE: Method \'profile()\' completed with no errors.'
+        print '\nMethod \'profile()\' completed with no errors.'
     except :
         print traceback.format_exc()
 
-def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family='all', center='pot', projection='cyl', WRITE_TO = 'profile.DAT', fit_radius=0., debug_flag = 1) :
+def profile(group='All', center='pot', family='all', projection='ell', bin_type='log', nbins=30, filename='profile.DAT', min_radius=0.0, fit_radius=0.) :
     """Perform the Tipsy profile() function.
     
-    elliptial binning not yet implemented.
-    some rarer configurations not implemented e.g. non-uniform UV for star luminosity calculation
+    Note: some rarer configuration options are not implemented e.g. non-uniform UV for star luminosity calculation.
     """
-    if debug_flag == 1 :
-        import load_meanmwt
-        load_meanmwt.safeload()
     
-    # min_radius default should be 0., changed for comparison against tipsy
-    # parameters should be reordered at completion of function
     print '\n'
     # these should be moved to tipsyf
     # fn to take the dot product of two vectors in R3
@@ -131,17 +125,25 @@ def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family=
     # for an elliptical projection, use Katz to get shape & then find vel, mom
     # when restoring this, find out what happened to center_ell?
     if projection == 'ell' :
-    #    shape = tipsyf.find_shape(group, family, center, fit_radius)
-    #    if len(shape) < 6 :
-    #        print 'Katz algorithm failed to find shape for elliptical projection!'
-    #        return
-    #    else :
-    #        ba, ca, phi, theta, psi, ell_matrix = shape
-    #        print 'b/a = ' + str(ba) + ' c/a = ' + str(ca)
-    #    center_vel, center_angular_mom = tipsyf.find_vel(group, family, center, fit_radius, ell_matrix, ba, ca)
-        print 'projection == ell for some reason'
+        ell_matrix = [[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]]
+        center_ell = [0., 0., 0.]
+        ba = ca = phi = theta = psi = 0.
+        center = list(center)
+        shape_data = elliptical.find_shape(famgroups, center, fit_radius, ell_matrix, center_ell)
+        center = tuple(center)
+        if type(shape_data) == type(None) :
+            print 'find_shape() did not succeed'
+            return
+            # raise StandardError('Problem in elliptical.find_shape(): no fit found.')
+        else :
+            ba, ca, phi, theta, psi = shape_data
+            print 'b/a = %g, c/a = %g' % (ba, ca)
+        center = [0.]*config.MAXDIM
+        center_vel = [0.]*config.MAXDIM
+        center_angular_mom = [0.]*config.MAXDIM
+        vel_data = elliptical.find_vel(famgroups,center,center_vel,center_angular_mom, ell_matrix, center_ell, ba, ca, fit_radius)
     else :
-        ba, ca, phi, theta, psi, center_ell, ell_matrix = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        ba, ca, phi, theta, psi, center_ell, ell_matrix = (0., 0., 0., 0., 0., [0.]*config.MAXDIM, [[0.]*config.MAXDIM]*config.MAXDIM)
 
     # find max_radius
     # maxradmap iterates over all particles and compares each radius to the previous max found
@@ -155,10 +157,8 @@ def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family=
             max_radius = max(max_radius, fam_radius)
     
     # TIPSY uses an approximation for max_radius which can't be adequately emulated here.
-    # for the run99 data file, the value of max_radius is known; set it manually.
-    # remove when done debugging.
-    if debug_flag == 1 :
-        max_radius = 8.18829
+    # for the run99 data file, the value of max_radius is 8.18829; set it manually.
+    # max_radius = 8.18829
     
     # determine bin_size
     # if min_radius > 0, then bin 0 should have the specified radius.
@@ -230,16 +230,17 @@ def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family=
     
     # do calculations which must see individual particles.
     # the set of attributes on a particle varies by family, so each family must be processed seperately
-    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom]
+    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ell_matrix, center_ell, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom]
     fam_data = [None] * len(famgroups)
     for i in range(len(famgroups)) :
         params[0] = families[i]
         fam_data[i] = charm.reduceParticle(famgroups[i], basemap, basereduce, tuple(params))
         
-        if debug_flag == 1 :
-            print '\nThe current family is: ' + families[i]
-            for line in fam_data[i] :
-                print line
+    # shows per-family result of MapReduce, sometimes useful for debugging
+    #    if debug_flag == 1 :
+    #        print '\nThe current family is: ' + families[i]
+    #        for line in fam_data[i] :
+    #            print line
     if len(fam_data) < 1 or fam_data == None :
         raise StandardException('MapReduce for fam_data has length zero or is NoneType.')
     
@@ -307,7 +308,7 @@ def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family=
             # star stuff
             lum_den = data[i][7] / volume
             # gas stuff
-            if 'gas' in families :
+            if 'gas' in families and data[i][12] > 0 :
                 density  = data[i][8]  / data[i][12]
                 temp     = data[i][9]  / data[i][12]
                 pressure = data[i][10] / data[i][12]
@@ -327,13 +328,8 @@ def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family=
     gasheaders = ('mmwg_density', 'mwg_temp', 'mwg_pres', 'mwg_entr')
     starheaders = ('lum_V')
     
-    if debug_flag == 1 :
-        print '\nFinal data'
-        for line in data :
-            print line
-    
     # write output to file
-    f = open(WRITE_TO, 'w')
+    f = open(filename, 'w')
     # write headers according to families present
     # ADD ME
     # write data according to families present
@@ -346,10 +342,8 @@ def profile(nbins=10, min_radius=0.0195578, bin_type='log', group='All', family=
         f.write('\n')
     f.close()
 
-    # clean up created groups
-    # *** requires adding a charm.deleteGroup() method ***
-    # for each in famgroups :
-    #     charm.deleteGroup(each)
+    # there is no current mechanism to delete groups.
+    # if one is added, delete temporary working groups here.
 
 vmmap = """def localparticle(p):
     # map code to find the per-particle contribution to the system's mass, velocity, and angular momentum
@@ -429,20 +423,46 @@ basemap = """def localparticle(p):
     # fn to find distance from a line.
     # sqrt(dot(cross(pos - cen, ang_mom), cross(pos - cen, ang_mom)) / dot(ang_mom, ang_mom))
     def perp_distance(cen, ang_mom, pos) :
+        import math
         return math.sqrt( ( ((pos[1] - cen[1])*ang_mom[2] - (pos[2] - cen[2])*ang_mom[1])**2
                           + ((pos[2] - cen[2])*ang_mom[0] - (pos[0] - cen[0])*ang_mom[2])**2
                           + ((pos[0] - cen[0])*ang_mom[1] - (pos[1] - cen[1])*ang_mom[0])**2 )
                           / ( ang_mom[0]**2 + ang_mom[1]**2 + ang_mom[2]**2 ) )
+    # multiply a matrix and a vector
+    def matrix_vector_mult(mat,a,b) :
+        for i in range(3) :
+            b[i] = 0.
+            for j in range(3) :
+                b[i] += mat[i][j] * a[j]
+    # find distance with respect to elliptical parameters
+    def ell_distance(x1, ell_matrix, center_ell, ba, ca) :
+        import math
+        dx = [0.]*3
+        dx_rot = [0.]*3
+        for i in range(3) :
+            dx[i] = x1[i] - center_ell[i]
+        matrix_vector_mult(ell_matrix,dx,dx_rot)
+        if (ca != 0.0) :
+            invca2 = 1.0/(ca*ca)
+        else :
+            invca2 = config.HUGE
+        if (ba != 0.0) :
+            invba2 = 1.0/(ba*ba)
+        else :
+            invba2 = config.HUGE
+        seperation = dx_rot[0] * dx_rot[0] + dx_rot[1] * dx_rot[1] * invba2 + dx_rot[2] * dx_rot[2] * invca2
+        return math.sqrt(seperation)
     # import necessary packages & unpack values passed on p._param
     import math, spline
-    fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ba, ca, msolunit, gasconst, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom = p._param
+    fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ell_matrix, center_ell, ba, ca, msolunit, gasconst, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom = p._param
     # find radius and bin number
     radius = 0.
     if projection == 'sph' :
         radius = vlength(subvec(p.position, center))
     elif projection == 'cyl' :
         radius = perp_distance(center, center_angular_mom, p.position)
-    # --> need to add distance algorithms for other projections here <--
+    elif projection == 'ell' :
+        radius = ell_distance(p.position, ell_matrix, center_ell, ba, ca)
     # deal with out-of-bounds conditions as a result of precision
     if radius > max_radius :
         return (nbins - 1, 0, 0., 0., 0., 0., [0., 0., 0.], 0., 0., 0., 0., 0., 0.)
