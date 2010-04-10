@@ -969,6 +969,8 @@ void Main::reduceParticle(int handle) {
 			   createCallbackResumeThread(mesg, data));
 
     PUP::fromMemBuf(result, mesg->getData(), mesg->getSize());
-    pythonReturn(handle, PySequence_GetItem(result.getObj(), 2));
+    PyObject *objResult = result.getObj();
+    pythonReturn(handle, PySequence_GetItem(objResult, 2));
+    Py_DECREF(objResult);
     delete mesg;
 }

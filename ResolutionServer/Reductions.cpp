@@ -143,18 +143,18 @@ PythonReducer::getSubList()
 	    cerr << "Bad list" << endl;
 	    return listSub;
 	    }
-	PyList_Append(listSub, PySequence_GetItem(listReduce, iCurrent));
+	PyList_Append(listSub, PyList_GetItem(listReduce, iCurrent));
 	PyObject *objKey = PyTuple_GetItem(tuple, 0);
 	iCurrent++;
 	while(iCurrent < PyList_Size(listReduce)
 	      && PyObject_Compare(objKey, PyTuple_GetItem(PyList_GetItem(listReduce, iCurrent), 0)) == 0) {
-	    PyList_Append(listSub, PySequence_GetItem(listReduce, iCurrent));
+	    PyList_Append(listSub, PyList_GetItem(listReduce, iCurrent));
 	    iCurrent++;
 	    }
 	// if this list is of length 1, append to result list, and
 	// start again
 	if(PyList_Size(listSub) == 1) {
-	    PyList_Append(listResult, PySequence_GetItem(listSub, 0));
+	    PyList_Append(listResult, PyList_GetItem(listSub, 0));
 	    listSub = PyList_New(0);
 	    }
 	else {
@@ -183,6 +183,7 @@ PythonReducer::buildIterator(PyObject*& arg, void* iter) {
 	PyObject_SetAttrString(arg, "_param", objGlobals);
 	}
     PyObject_SetAttrString(arg, "list", listSub);
+    Py_DECREF(listSub);
     return 1;
     }
 
@@ -190,7 +191,6 @@ int PythonReducer::nextIteratorUpdate(PyObject*& arg, PyObject* result,
 				      void* iter) {
     // Append this result to result list
     PyList_Append(listResult, result);
-    Py_INCREF(result);
 
     PyObject *listSub = getSubList();
 
@@ -199,6 +199,7 @@ int PythonReducer::nextIteratorUpdate(PyObject*& arg, PyObject* result,
     
     // Build new iterator argument with globals and list
     PyObject_SetAttrString(arg, "list", listSub);
+    Py_DECREF(listSub);
     return 1;
     }
 
@@ -224,14 +225,15 @@ CkReductionMsg* pythonReduce(int nMsg, CkReductionMsg** msgs) {
 	PyObject *obj = tupleNext.getObj();
 	// Concatenate to first list
 	listReduce = PySequence_InPlaceConcat(listReduce,
-					      PySequence_GetItem(obj, 2));
+					      PyTuple_GetItem(obj, 2));
+	CkAssert(listReduce != NULL);
 	Py_DECREF(obj);
 	}
     // Reduce the local list using code and globals
     // code is first item
     char *sReduceCode = PyString_AsString(PyTuple_GetItem(objTupleFirst, 0));
     // globals is second
-    PyObject *global = PySequence_GetItem(objTupleFirst, 1);
+    PyObject *global = PyTuple_GetItem(objTupleFirst, 1);
     PyGILState_Release(pyState);
 
     PythonReducer reducer(listReduce, global);
@@ -254,6 +256,8 @@ CkReductionMsg* pythonReduce(int nMsg, CkReductionMsg** msgs) {
 
     Py_DECREF(objTupleFirst);
     Py_DECREF(listReduce);
+    Py_DECREF(reducer.listResult);
+    Py_DECREF(result);
     PyGILState_Release(pyState);
 
     CkReductionMsg *msgRed = CkReductionMsg::buildNew(nBuf, buf);
