@@ -8,11 +8,17 @@ def safeprofile() :
     except :
         print traceback.format_exc()
 
-def profile(group='All', center='pot', family='all', projection='ell', bin_type='log', nbins=30, filename='profile.DAT', min_radius=0.0, fit_radius=0.) :
+def profile(group='All', center='pot', family='all', projection='sph', bin_type='log', nbins=30, filename='profile.DAT', min_radius=0., fit_radius=0.) :
     """Perform the Tipsy profile() function.
     
     Note: some rarer configuration options are not implemented e.g. non-uniform UV for star luminosity calculation.
     """
+    
+    # check initialization state of meanmwt attribute
+    if family in ['all', 'gas', 'baryon'] and not 'meanmwt' in charm.getAttributes('gas') :
+        print 'Attribute meanmwt not initialized. Initializing...'
+        import load_meanmwt
+        load_meanmwt.do_meanmwt()
     
     print '\n'
     # these should be moved to tipsyf
@@ -125,6 +131,8 @@ def profile(group='All', center='pot', family='all', projection='ell', bin_type=
     # for an elliptical projection, use Katz to get shape & then find vel, mom
     # when restoring this, find out what happened to center_ell?
     if projection == 'ell' :
+        if fit_radius == 0. :
+            print 'fit_radius = 0 in an elliptical projection.\nusing all particles in batch to find shape of ellipses.'
         ell_matrix = [[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]]
         center_ell = [0., 0., 0.]
         ba = ca = phi = theta = psi = 0.

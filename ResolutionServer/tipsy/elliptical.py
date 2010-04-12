@@ -496,7 +496,7 @@ shape_map = """def localparticle(p):
         radius = ell_distance(p.position, ell_matrix, center_ell, ba, ca)
     else :
         radius = math.sqrt(pow(center[0] - p.position[0], 2) + pow(center[1] - p.position[1], 2) + pow(center[2] - p.position[2], 2))
-    if radius >= fit_radius :
+    if fit_radius > 0. and radius >= fit_radius :
         return (0, 0., [0.] * 3, [[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]])
     cm_r = [p.mass * p.position[0], p.mass * p.position[1], p.mass * p.position[2]]
     inertia_r = [[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]]
