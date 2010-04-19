@@ -55,7 +55,7 @@ int main (int argc, char** argv) {
       CcsSendRequest (&server, "ExecutePythonCode", 0, wrapper.size(), wrapper.pack());
       char data[4];
             
-      CcsRecvResponse (&server, 4, data, 1000);
+      CcsRecvResponse (&server, 4, data, 100000);
       if(interpreterHandle == 0)
 	  interpreterHandle = ntohl(*((int *) data));
       
