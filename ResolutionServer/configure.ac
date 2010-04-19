@@ -53,7 +53,7 @@ AC_CONFIG_HEADER([config.h])
 
 AC_ARG_VAR([CHARMC], "Charm compiler")
 # Checks for programs.
-AC_PATH_PROG([CHARMC], [charmc], [no], [$PATH:$CHARM_DIR/bin:../charm/bin:../../charm/bin])
+AC_PATH_PROG([CHARMC], [charmc], [no], [$PATH:$CHARM_DIR/bin:../charm/bin:../../charm/bin:../charm-6.2.0/bin:../../charm-6.2.0/bin])
 AC_PROG_CXX ($CHARMC)
 AC_PROG_CC ($CHARMC)
 
