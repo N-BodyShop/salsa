@@ -7,19 +7,13 @@ java development environment is required.
 1) Make sure all the "salsa" modules are checked out.  "cvs checkout
 salsa" should do this.
 OR
-Unpack files from ResolutionServer-xxx.tar.gz distribution.
+Unpack files from Salsa-xxx.tgz distribution.
 
-2) Install Charm (charm.cs.uiuc.edu).  Note that you will need the "nightly
-build" or the CVS version.
+2) Install Charm (charm.cs.uiuc.edu).  Note that you will need Charm++ 6.2.0
+or later.
 
-After building "charm++", build the "liveViz" and the "pythonCCS" modules:
-cd tmp/libs/ck-libs/liveViz; make
-
-A link to the include files for your Python developement is required
-before building pythonCCS.  For example on Fedora Core 4 you would
-need to type the following:
-
-cd tmp/libs/ck-libs/pythonCCS; ln -s /usr/include/python2.4 ./python; make
+Build "LIBS" in the charm distribution to be sure all the needed modules are
+compiled.
 
 Set the CHARM_DIR environment variable to point at the source directory
 for Charm.
@@ -31,9 +25,9 @@ need to build) boost (www.boost.org) in the parent directory.
 
     wget http://puzzle.dl.sourceforge.net/sourceforge/boost/boost_1_33_0.tar.gz
 
-5) Install and build the Apache Xerces C++ XML Parser (xml.apache.org) in
-the parent directory.  Set the XERCESCROOT environment variable to point
-at this directory.
+5) If your linux distribution does not have xerces-c installed, install and
+build the Apache Xerces C++ XML Parser (xml.apache.org) in the parent directory.
+Set the XERCESCROOT environment variable to point at this directory.
 
     wget ftp://www.ibiblio.org/pub/mirrors/apache/xml/xerces-c/source/xerces-c-src_2_7_0.tar.gz
     export XERCESCROOT=<full path to xerces-c-src2_7_0>
@@ -42,14 +36,13 @@ at this directory.
     runConfigure -plinux -cgcc -xg++ -minmem -nsocket -tnative -rpthread
     gmake
 
-6) Type "configure" and "make" in the ../structures directory.  This will
-build libTipsy.a
-
-7) Type "configure".  Hopefully this will find everything.  One difficulty is
-finding the python include files.  If "python" isn't a symbolic link to the
-include files, see the directions under pythonCCS above.
+6) Type "configure" in the ResolutionServer directory.  Hopefully this will find
+everything. 
 
 Type "make"
+
+7) Type "configure" and "make" in the CommandClient directory for the command 
+line based client.
 
 To run:
 
@@ -60,6 +53,10 @@ the server can be run on a remote host.
 
 To start the client, use "java -jar ../InteractiveClient/Salsa.jar
 HOSTNAME PORT_NUMBER" where these are printed out by the server.
+
+There is a script "Salsa.sh" which will attempt to run the server, the GUI and the
+command client.  The variable BINDIR needs to be set to point at where all the
+executables are located.
 
 --------------------
 Using Salsa on a batch queue system (eg. PBS):
@@ -75,7 +72,7 @@ lemieux front end.  "ssh -L<lport>:<IP>:<port> lemieux.psc.edu" on
 your desktop will set this up, where <IP>:<port> are what is reported
 by ResolutionServer and <lport> will be used locally.  Start the
 client with "java -jar Salsa.jar localhost <lport> filename" to
-connect to this tunnel.  The filename is relativ e to where charmrun
+connect to this tunnel.  The filename is relative to where charmrun
 is started on lemieux.
 
 --------------------
