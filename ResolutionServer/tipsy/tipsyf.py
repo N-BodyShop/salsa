@@ -79,7 +79,37 @@ def matrix_vector_mult(mat,a,b) :
             b[i] += mat[i][j] * a[j]
 
 def add_const_mult_vec(a, constant, b) :
+    # scale vector b by a constant and add to vector a
     for i in range(len(a)) :
         a[i] += constant * b[i]
     return a
+
+def mass_add_vec(a, b, mass_b, c, mass_c) :
+    # mass-weighted vector addition
+    for i in range(3) :
+        a[i] = (mass_b * b[i] + mass_c * c[i]) / (mass_b + mass_c)
+
+def add_vec(a, b, c) :
+    for i in range(3) :
+        a[i] = b[i] + c[i]
+
+def vec_add_const_mult_vec(a, b, constant, c) :
+    for i in range(3) :
+        a[i] = b[i] + constant * c[i]
+
+def acc_load() :
+    # initialize acsmooth
+    deldrg = 2./config.NINTERP 
+    for i in range(config.NINTERP + 2) :
+        xw = i * deldrg
+        xw2 = xw * xw
+        xw3 = xw2 * xw
+        xw4 = xw2 * xw2
+        if xw <= 1. :
+            config.acsmooth[i] = xw3*(4./3.-6.*xw2/5.+0.5*xw3)
+        elif xw > 1. and xw < 2. :
+            config.acsmooth[i] = -1./15.+8.*xw3/3.-3.*xw4+6.*xw3*xw2/5.-xw4*xw2/6.
+        else :
+            config.acsmooth[i] = 1.
+    config.acc_loaded = True
 

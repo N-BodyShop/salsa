@@ -1,5 +1,4 @@
 import traceback, config, charm, tipsyf, math, spline, elliptical
-# loading of meanmwt is here temporarily for ease of testing, it should NOT stay here!
 
 def safeprofile() :
     try :
@@ -11,8 +10,41 @@ def safeprofile() :
 def profile(group='All', center='pot', family='all', projection='sph', bin_type='log', nbins=30, filename='profile.DAT', min_radius=0., fit_radius=0.) :
     """Perform the Tipsy profile() function.
     
-    Note: some rarer configuration options are not implemented e.g. non-uniform UV for star luminosity calculation.
-    """
+    profile is a command that produces a file of  name,  file-
+    name,  that  contains various physical profiles as a func-
+    tion of radius for particles of type particle in group.
+
+    The  center  of the radial distribution is taken to be the
+    center of mass of the particles of the  type  particle  in
+    group center. If  the  string  "pot"  is given  instead of
+    a  group  name for  the  argument center, the  particle in
+    group  with  the  lowest  potential  energy is used as the
+    center of the radial bins.
+
+    The projection argument refers to the shape  of  the  bins
+    and  the bin_type argument refers to how the particles are
+    binned, either linearly or log in radius.  There are nbins
+    bins  distributed  equally  in either radius or log radius
+    between min_radius and the size of group.
+
+    The  output file has the following columns: radius, number
+    in bin, density, cumulative mass (M(<r)), circular  veloc-
+    ity (sqrt(M(<r)/r)), radial velocity, radial velocity dis-
+    persion, tangential velocity, tangential velocity  disper-
+    sion,  specific  angular momentum (j),j_theta, j_phi.  The
+    j_theta and j_phi angles specify the direction of the spe-
+    cific  angular  momentum vector (in degrees). If family is
+    is either gas,  baryon, or all,  four  additional  columns
+    containing the mean mass weighted gas density, mass weigh-
+    ted gas temperature, mass weighted gas pressure, and  mass
+    weighted  gas  entropy  are  added.  If particle is either
+    star, baryon, or  all  an additional column containing the
+    stellar  luminosity  in the Johnson V band is added.  This
+    is  calculated  using  the  ages  of  the  star  particles
+    as in Katz (Ap.J. 391: 502, 1992).
+    
+    Note: some rarer configuration options are not implemented
+    e.g. non-uniform UV for star luminosity calculation."""
     
     # check initialization state of meanmwt attribute
     if family in ['all', 'gas', 'baryon'] and not 'meanmwt' in charm.getAttributes('gas') :
@@ -44,8 +76,6 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     # fn to combine two vectors, weighting by their corresponding mass scalars
     def weightvecs(m1, x1, m2, x2) :
         return [(x1[0]*m1 + x2[0]*m2)/(m1+m2), (x1[1]*m1 + x2[1]*m2)/(m1+m2), (x1[2]*m1 + x2[2]*m2)/(m1+m2)]
-    # constants (fake since it's Python)
-    LOG_MIN = 0.01 # alternate min_radius to use if bin_type == 'log' and min_radius == 0
     
     # scrub input
     # check if simulation loaded, store group list
@@ -98,7 +128,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     if not min_radius >= 0 :
         raise StandardError('Value of min_radius cannot be negative.')
     if min_radius == 0 and bin_type == 'log' :
-        min_radius = LOG_MIN
+        min_radius = config.LOG_MIN
         print 'Parameter min_radius set to ' + str(LOG_MIN) + ' to accomodate logarithmic binning.'
     if not fit_radius >= 0 :
         raise StandardError('Value of fit_radius cannot be negative.')
@@ -333,13 +363,18 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     # build header row
     # may need to update the exact text used for clarity or for consistency with TIPSY
     headers = ('radius', 'number', 'rho', 'mass_r', 'c_vel', 'vel_radial', 'vel_radial_sigma', 'vel_circ', 'vel_tang_sigma', 'ang', 'ang_theta', 'ang_phi')
-    gasheaders = ('mmwg_density', 'mwg_temp', 'mwg_pres', 'mwg_entr')
-    starheaders = ('lum_V')
+    if family in ['gas', 'baryon', 'all'] :
+        headers += ('mmwg_density', 'mwg_temp', 'mwg_pres', 'mwg_entr')
+    if family in ['star', 'baryon', 'all'] :
+        headers += ('lum_V')
     
     # write output to file
     f = open(filename, 'w')
     # write headers according to families present
-    # ADD ME
+    f.write('#')
+    for i in range(len(headers)) :
+        f.write(' ' + headers(i))
+    f.write('\n')
     # write data according to families present
     for i in range(nbins) :
         f.write('%g %d %g %g %g %g %g %g %g %g %g %g' % tuple(data[i][0:12]))
