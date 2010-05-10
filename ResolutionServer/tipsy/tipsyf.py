@@ -113,3 +113,14 @@ def acc_load() :
             config.acsmooth[i] = 1.
     config.acc_loaded = True
 
+def acsmooth_val(i) :
+    # returns the acsmooth value for a given index
+    # replaces acsmooth array created by acc_load in TIPSY
+    xw = i * 2. / config.NINTERP
+    if xw <= 1. :
+        return pow(xw,3) * (4./3. - 1.2*pow(xw,2) + 0.5*pow(xw,3))
+    elif xw > 1. and xw < 2. :
+        return -1./15. + 8./3.*pow(xw,3) - 3.*pow(xw,4) + 1.2*pow(xw,5) - pow(xw,6)/6.
+    else :
+        return 1.
+

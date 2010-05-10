@@ -4,8 +4,6 @@ import traceback, math
 msolunit    = 1.e12          # mass scale
 kpcunit     = 1.             # distance scale
 fhydrogen   = 0.76           # fraction of gas as hydrogen
-eps_grav    = 0.
-epsgas_grav = 0.
 
 # physical constants
 KPCCM       = 3.085678e21    # kiloparsec in centimeters
@@ -28,6 +26,4 @@ LOG_MIN     = 0.01           # alternate min_radius to use if bin_type == 'log' 
 # derived constants
 time_unit   = math.sqrt(pow(kpcunit*KPCCM, 3.) / (GCGS*msolunit*MSOLG)) / GYRSEC
 gasconst    = kpcunit*KPCCM*KBOLTZ/MHYDR/GCGS/msolunit/MSOLG
-acsmooth    = [0.] * (NINTERP+2)
-acc_loaded  = False
 

@@ -56,24 +56,31 @@ def rotationcurve(group='All', center_group='All', center_type='com', center_fam
         max_radius = math.log10(max_radius)
     bin_size = (max_radius - min_radius) / number_bins
     
+    # make famgroups
+    gasgroup = center_group + 'FAMgas'
+    stargroup = center_group + 'FAMstar'
+    darkgroup = center_group + 'FAMdark'
+    charm.createGroup_Family(gasgroup, center_group, 'gas')
+    charm.createGroup_Family(stargroup, center_group, 'star')
+    charm.createGroup_Family(darkgroup, center_group, 'dark')
+    
     # find center and center_angular_mom
     center = [0., 0., 0.]
     center_angular_mom = [0., 0., 0.]
     if center_type == 'pot' :
         center = charm.findAttributeMin(group, 'potential')
     if center_family in ['dark', 'star', 'gas'] :
-        charm.createGroup_Family(center_group + 'FAM' + center_family, center_group, center_family)
         if center_type == 'com' :
             center = charm.getCenterOfMass(center_group + 'FAM' + center_family)
         center_angular_mom = charm.reduceParticle(center_group + 'FAM' + center_family, angmommap, angmomreduce, None)[2]
     elif center_family == 'baryon' :
-        charm.createGroup_Family(center_group + 'FAMstar', center_group, 'star')
-        charm.createGroup_Family(center_group + 'FAMgas', center_group, 'gas')
-        stardata = charm.reduceParticle(enter_group + 'FAMstar', angmommap, angmomreduce, None)
-        gasdata = charm.reduceParticle(center_group + 'FAMgas', angmommap, angmomreduce, None)
+        charm.createGroup_Family(stargroup, center_group, 'star')
+        charm.createGroup_Family(gasgroup, center_group, 'gas')
+        stardata = charm.reduceParticle(stargroup, angmommap, angmomreduce, None)
+        gasdata = charm.reduceParticle(gasgroup, angmommap, angmomreduce, None)
         if center_type == 'com' :
-            censtar = charm.getCenterOfMass(center_group + 'FAMstar')
-            cengas = charm.getCenterOfMass(center_group + 'FAMgas')
+            censtar = charm.getCenterOfMass(stargroup)
+            cengas = charm.getCenterOfMass(gasgroup)
             tipsyf.mass_add_vec(center, censtar, stardata[1], cengas, gasdata[1])
         tipsyf.mass_add_vec(center_angular_mom, stardata[2], stardata[1], gasdata[2], gasdata[1])
     else :
@@ -121,7 +128,7 @@ def rotationcurve(group='All', center_group='All', center_type='com', center_fam
         if bin_type == 'log' :
             radius = pow(10.,radius)
         tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit1)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,group)
+        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
         tipsyf.add_vec(acc_bar,acc_gas,acc_star)
         tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
         acc_rad_bar = tipsyf.dot_product(acc_bar,unit1)
@@ -131,7 +138,7 @@ def rotationcurve(group='All', center_group='All', center_type='com', center_fam
         rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
         rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
         tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit2)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,group)
+        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
         tipsyf.add_vec(acc_bar,acc_gas,acc_star)
         tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
         acc_rad_bar = tipsyf.dot_product(acc_bar,unit2)
@@ -141,7 +148,7 @@ def rotationcurve(group='All', center_group='All', center_type='com', center_fam
         rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
         rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
         tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit3)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,group)
+        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
         tipsyf.add_vec(acc_bar,acc_gas,acc_star)
         tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
         acc_rad_bar = tipsyf.dot_product(acc_bar,unit3)
@@ -151,7 +158,7 @@ def rotationcurve(group='All', center_group='All', center_type='com', center_fam
         rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
         rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
         tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit4)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,group)
+        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
         tipsyf.add_vec(acc_bar,acc_gas,acc_star)
         tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
         acc_rad_bar = tipsyf.dot_product(acc_bar,unit4)
