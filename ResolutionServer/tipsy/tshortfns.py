@@ -148,10 +148,7 @@ def markgal(group, maxTemp, minRho) :
 
 def markbox(group) :
     """Mark the contents of group. Marked particles are stored in a group
-    called "mark" which will be replaced every time a marking command is run.
-
-    Under Salsa, the effect of this command is to make the group mark have
-    the same contents as group."""
+    called "mark" which will be replaced every time a marking command is run."""
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
@@ -173,4 +170,26 @@ def markbox(group) :
         mass = charm.getAttributeSum(group, family, 'mass')
         bBox = charm.getAttributeRangeGroup(group, family, 'position')
     charm.createGroupAttributeSphere('mark', group, 'position', bBox[0], bBox[1])
+
+def markgal(group, max_temp, min_rho) :
+    """Mark all the gas particles in group that have temperatures less
+    than or equal to max_temp and densities greater than or equal to
+    min_rho. This command can be used to mark those gas particles that
+    are likely to be in galaxies. Marked particles are stored in a group
+    called "mark" which will be replaced every time a marking command is
+    run."""
+    # check if simulation loaded
+    if charm.getGroups() == None :
+        raise StandardError('Simulation not loaded')
+    
+    # get opposing boundaries from simulation values
+    max_rho = charm.getAttributeRange('gas', 'density')[1]
+    min_temp = charm.getAttributeRange('gas', 'temperature')[0]
+    
+    # play the createGroup shuffle
+    # cannot create groups in place so use tmp_group as a workspace
+    # no delete group method, so tmp_group hangs around afterwords
+    charm.createGroup_Family('mark', group, 'gas')
+    charm.createGroup_AttributeRange('tmp_group', 'mark', 'density', min_rho, max_rho)
+    charm.createGroup_AttributeRange('mark', 'tmp_group', 'temperature', min_temp, max_temp)
 
