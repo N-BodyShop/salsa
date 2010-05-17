@@ -112,65 +112,102 @@ def rotationcurve(group='All', center_group='All', center_type='com', center_fam
         unit3[i] /= norm
         unit4[i] = -unit3[i]
     
-    # calculate and record output
+    # calculate output
+    
+    index = range(number_bins)
+    
+    acc_rad_bar = [0.] * number_bins
+    acc_rad_dark = [0.] * number_bins
+    acc_rad_tot = [0.] * number_bins
+    rot_vel_bar = [0.] * number_bins
+    rot_vel_dark = [0.] * number_bins
+    rot_vel_tot = [0.] * number_bins
+    test_particle = [None] * number_bins
+    acc_dark = [None] * number_bins
+    acc_star = [None] * number_bins
+    acc_gas = [None] * number_bins
+    acc_bar = [None] * number_bins
+    acc_tot = [None] * number_bins
+    radius = [None] * number_bins
+        
+    for i in index :
+        radius[i] = (i+1) * bin_size + min_radius
+        test_particle[i] = [0., 0., 0.]
+        # acc_dark[i] = [0., 0., 0.]
+        # acc_star[i] = [0., 0., 0.]
+        # acc_gas[i] = [0., 0., 0.]
+        acc_bar[i] = [0., 0., 0.]
+        acc_tot[i] = [0., 0., 0.]
+
+    if bin_type == 'log' :
+        for i in index :
+            radius[i] = pow(10.,radius[i])
+        
+    for i in index :
+        tipsyf.vec_add_const_mult_vec(test_particle[i],center,radius[i],unit1)
+        
+    # first grav call
+    grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
+    
+    for i in index :
+        tipsyf.add_vec(acc_bar[i],acc_gas[i],acc_star[i])
+        tipsyf.add_vec(acc_tot[i],acc_bar[i],acc_dark[i])
+        acc_rad_bar[i] = tipsyf.dot_product(acc_bar[i],unit1)
+        acc_rad_dark[i] = tipsyf.dot_product(acc_dark[i],unit1)
+        acc_rad_tot[i] = tipsyf.dot_product(acc_tot[i],unit1)
+        rot_vel_bar[i] += math.sqrt(abs(radius[i]*acc_rad_bar[i]))
+        rot_vel_dark[i] += math.sqrt(abs(radius[i]*acc_rad_dark[i]))
+        rot_vel_tot[i] += math.sqrt(abs(radius[i]*acc_rad_tot[i]))
+        tipsyf.vec_add_const_mult_vec(test_particle[i],center,radius[i],unit2)
+    
+    # second grav call
+    grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
+    
+    for i in index :
+        tipsyf.add_vec(acc_bar[i],acc_gas[i],acc_star[i])
+        tipsyf.add_vec(acc_tot[i],acc_bar[i],acc_dark[i])
+        acc_rad_bar[i] = tipsyf.dot_product(acc_bar[i],unit2)
+        acc_rad_dark[i] = tipsyf.dot_product(acc_dark[i],unit2)
+        acc_rad_tot[i] = tipsyf.dot_product(acc_tot[i],unit2)
+        rot_vel_bar[i] += math.sqrt(abs(radius[i]*acc_rad_bar[i]))
+        rot_vel_dark[i] += math.sqrt(abs(radius[i]*acc_rad_dark[i]))
+        rot_vel_tot[i] += math.sqrt(abs(radius[i]*acc_rad_tot[i]))
+        tipsyf.vec_add_const_mult_vec(test_particle[i],center,radius[i],unit3)
+    
+    # third grav call
+    grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
+    
+    for i in index :
+        tipsyf.add_vec(acc_bar[i],acc_gas[i],acc_star[i])
+        tipsyf.add_vec(acc_tot[i],acc_bar[i],acc_dark[i])
+        acc_rad_bar[i] = tipsyf.dot_product(acc_bar[i],unit3)
+        acc_rad_dark[i] = tipsyf.dot_product(acc_dark[i],unit3)
+        acc_rad_tot[i] = tipsyf.dot_product(acc_tot[i],unit3)
+        rot_vel_bar[i] += math.sqrt(abs(radius[i]*acc_rad_bar[i]))
+        rot_vel_dark[i] += math.sqrt(abs(radius[i]*acc_rad_dark[i]))
+        rot_vel_tot[i] += math.sqrt(abs(radius[i]*acc_rad_tot[i]))
+        tipsyf.vec_add_const_mult_vec(test_particle[i],center,radius[i],unit4)
+    
+    # fourth grav call
+    grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
+    
+    for i in index :
+        tipsyf.add_vec(acc_bar[i],acc_gas[i],acc_star[i])
+        tipsyf.add_vec(acc_tot[i],acc_bar[i],acc_dark[i])
+        acc_rad_bar[i] = tipsyf.dot_product(acc_bar[i],unit4)
+        acc_rad_dark[i] = tipsyf.dot_product(acc_dark[i],unit4)
+        acc_rad_tot[i] = tipsyf.dot_product(acc_tot[i],unit4)
+        rot_vel_bar[i] += math.sqrt(abs(radius[i]*acc_rad_bar[i]))
+        rot_vel_dark[i] += math.sqrt(abs(radius[i]*acc_rad_dark[i]))
+        rot_vel_tot[i] += math.sqrt(abs(radius[i]*acc_rad_tot[i]))
+        rot_vel_bar[i] /= 4.
+        rot_vel_dark[i] /= 4.
+        rot_vel_tot[i] /= 4.
+    
+    # record output to file
     f = open(filename, 'w')
-    for i in range(1, number_bins + 1) :
-        rot_vel_bar = 0.
-        rot_vel_dark = 0.
-        rot_vel_tot = 0.
-        test_particle = [0., 0., 0.]
-        acc_dark = [0., 0., 0.]
-        acc_star = [0., 0., 0.]
-        acc_gas = [0., 0., 0.]
-        acc_bar = [0., 0., 0.]
-        acc_tot = [0., 0., 0.]
-        radius = i * bin_size + min_radius
-        if bin_type == 'log' :
-            radius = pow(10.,radius)
-        tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit1)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
-        tipsyf.add_vec(acc_bar,acc_gas,acc_star)
-        tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
-        acc_rad_bar = tipsyf.dot_product(acc_bar,unit1)
-        acc_rad_dark = tipsyf.dot_product(acc_dark,unit1)
-        acc_rad_tot = tipsyf.dot_product(acc_tot,unit1)
-        rot_vel_bar += math.sqrt(abs(radius*acc_rad_bar))
-        rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
-        rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
-        tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit2)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
-        tipsyf.add_vec(acc_bar,acc_gas,acc_star)
-        tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
-        acc_rad_bar = tipsyf.dot_product(acc_bar,unit2)
-        acc_rad_dark = tipsyf.dot_product(acc_dark,unit2)
-        acc_rad_tot = tipsyf.dot_product(acc_tot,unit2)
-        rot_vel_bar += math.sqrt(abs(radius*acc_rad_bar))
-        rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
-        rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
-        tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit3)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
-        tipsyf.add_vec(acc_bar,acc_gas,acc_star)
-        tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
-        acc_rad_bar = tipsyf.dot_product(acc_bar,unit3)
-        acc_rad_dark = tipsyf.dot_product(acc_dark,unit3)
-        acc_rad_tot = tipsyf.dot_product(acc_tot,unit3)
-        rot_vel_bar += math.sqrt(abs(radius*acc_rad_bar))
-        rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
-        rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
-        tipsyf.vec_add_const_mult_vec(test_particle,center,radius,unit4)
-        grav.grav(test_particle,acc_gas,acc_star,acc_dark,gasgroup,stargroup,darkgroup)
-        tipsyf.add_vec(acc_bar,acc_gas,acc_star)
-        tipsyf.add_vec(acc_tot,acc_bar,acc_dark)
-        acc_rad_bar = tipsyf.dot_product(acc_bar,unit4)
-        acc_rad_dark = tipsyf.dot_product(acc_dark,unit4)
-        acc_rad_tot = tipsyf.dot_product(acc_tot,unit4)
-        rot_vel_bar += math.sqrt(abs(radius*acc_rad_bar))
-        rot_vel_dark += math.sqrt(abs(radius*acc_rad_dark))
-        rot_vel_tot += math.sqrt(abs(radius*acc_rad_tot))
-        rot_vel_bar /= 4.
-        rot_vel_dark /= 4.
-        rot_vel_tot /= 4.
-        f.write('%g %g %g %g\n' % (radius,rot_vel_tot,rot_vel_dark,rot_vel_bar))
+    for i in index :
+        f.write('%g %g %g %g\n' % (radius[i],rot_vel_tot[i],rot_vel_dark[i],rot_vel_bar[i]))
     f.close()
 
 angmommap = """def localparticle(p):
