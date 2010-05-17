@@ -201,6 +201,7 @@ public:
 	void getFamilies(int handle);
 	void getAttributes(int handle);
 	void getGroups(int handle);
+	void deleteGroup(int handle);
 	void getNumParticles(int);
 	void getAttributeRange(int handle);
 	void getAttributeRangeGroup(int handle);

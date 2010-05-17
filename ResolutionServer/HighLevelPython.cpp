@@ -143,6 +143,29 @@ void Main::getGroups(int handle) {
     pythonReturn(handle, lGroup);
     }
 
+void Main::deleteGroup(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    Worker* w = this->workers[0].ckLocal();
+    
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+	
+	char *groupName;
+	
+	if (PyArg_ParseTuple(arg, "s", &groupName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    w->groups.erase(groupName);
+    
+    pythonReturn(handle);
+    return;
+    }
+
 /* usage: saveSimulation('savepath') */
 void Main::saveSimulation(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);

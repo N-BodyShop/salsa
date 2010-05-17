@@ -41,6 +41,8 @@ mainmodule ResolutionServer {
 			void getAttributes(int handle);
 		entry [python "return list of groups"]
 			void getGroups(int handle);
+		entry [python "delete a group"]
+			void deleteGroup(int handle);
 		entry [python "return number of particles in a family"]
 			void getNumParticles(int);
 		entry [python] void getAttributeRange(int handle);
