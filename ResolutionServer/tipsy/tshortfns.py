@@ -187,9 +187,10 @@ def markgal(group, max_temp, min_rho) :
     min_temp = charm.getAttributeRange('gas', 'temperature')[0]
     
     # play the createGroup shuffle
-    # cannot create groups in place so use tmp_group as a workspace
-    # no delete group method, so tmp_group hangs around afterwords
     charm.createGroup_Family('mark', group, 'gas')
     charm.createGroup_AttributeRange('tmp_group', 'mark', 'density', min_rho, max_rho)
     charm.createGroup_AttributeRange('mark', 'tmp_group', 'temperature', min_temp, max_temp)
+    
+    # remove the temporary group to avoid clutter
+    charm.deleteGroup('tmp_group')
 
