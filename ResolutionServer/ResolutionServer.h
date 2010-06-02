@@ -195,6 +195,7 @@ public:
 	void loadSimulation(int handle);
 	void saveSimulation(int handle);
 	void readTipsyArray(int handle);
+	void writeIndexes(int handle);
 	void writeGroupArray(int handle);
 	void findAttributeMin(int handle);
 	void getTime(int handle);
@@ -291,6 +292,10 @@ public:
 	
 	void loadSimulation(const std::string& simulationName, const CkCallback& cb);
 	void saveSimulation(const std::string& simulationName, const CkCallback& cb);
+	void writeIndexes(const std::string& groupName,
+			     const std::string& familyName,
+			     const std::string& fileName,
+			     const CkCallback& cb);
 	void writeGroupArray(const std::string& groupName,
 			     const std::string& attributeName,
 			     const std::string& fileName,

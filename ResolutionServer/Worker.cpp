@@ -285,6 +285,47 @@ void Worker::readTipsyArray(const std::string& fileName,
     fclose(fp);
     }
 
+void Worker::writeIndexes(const std::string& groupName,
+                 const std::string& familyName,
+			     const std::string& fileName,
+			     const CkCallback& cb)
+{
+    GroupMap::iterator gIter = groups.find(groupName);
+    
+    FILE *fp;
+    fp = fopen(fileName.c_str(), "a");
+    
+    StatusMsg *msg;
+    
+    if (gIter != groups.end()) {
+        shared_ptr<SimulationHandling::Group>& g = gIter->second;
+	    // write out index values
+        ParticleFamily& family = (*sim)[familyName];
+		AttributeMap::iterator attrIter = family.attributes.find("index");
+		if(attrIter == family.attributes.end())
+			cerr << "No Indexes!" << endl;
+		if(attrIter->second.length == 0)
+			sim->loadAttribute(familyName, "index", family.count.numParticles, family.count.startParticle);
+		int64_t* indexes = family.getAttribute("index", Type2Type<int64_t>());
+		if(indexes == 0)
+			cerr << "Indexes pointer null!" << endl;
+		GroupIterator iter = g->make_begin_iterator(familyName);
+		GroupIterator end = g->make_end_iterator(familyName);
+		for(; *iter != *end; ++iter) {
+			fprintf(fp, "%lld\n", indexes[*iter]);
+		}
+	}
+	fclose(fp);
+	
+    if (thisIndex+1 < CkNumPes()) {
+        CProxy_Worker workers(thisArrayID);
+        workers[thisIndex+1].writeIndexes(groupName, familyName, fileName, cb);
+    } else {
+        msg = new StatusMsg(1); // Success
+    	cb.send(msg);
+    }
+}
+
 void Worker::writeGroupArray(const std::string& groupName,
 			     const std::string& attributeName,
 			     const std::string& fileName,

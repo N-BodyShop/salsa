@@ -12,4 +12,5 @@ from tshortfns import setsphere
 from tshortfns import setbox
 from tshortfns import markgal
 from tshortfns import markbox
+from tshortfns import writemark
 

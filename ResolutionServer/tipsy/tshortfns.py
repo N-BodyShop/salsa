@@ -194,3 +194,32 @@ def markgal(group, max_temp, min_rho) :
     # remove the temporary group to avoid clutter
     charm.deleteGroup('tmp_group')
 
+def writemark(group, filename) :
+    """Write a file which contains the index values for all
+    particles in a group. This file is typically used to
+    export and import particle markings.
+    
+    The file has a header row with ntotal ngas nstar."""
+    
+    # check if simulation loaded
+    groups = charm.getGroups()
+    if groups == None :
+        raise StandardError('Simulation not loaded')
+    # check if group exists
+    if group not in groups :
+        raise StandardError('Group ' + group + ' does not exist')
+    
+    ngas = charm.getNumParticles(group, 'gas')
+    nstar = charm.getNumParticles(group, 'star')
+    ntotal = ngas + nstar + charm.getNumParticles(group, 'dark')
+    
+    # record header row to file
+    f = open(filename, 'w')
+    f.write('%d %d %d\n' % (ntotal, ngas, nstar))
+    f.close()
+    
+    # record index values
+    charm.writeIndexes(group, 'gas', filename)
+    charm.writeIndexes(group, 'dark', filename)
+    charm.writeIndexes(group, 'star', filename)
+

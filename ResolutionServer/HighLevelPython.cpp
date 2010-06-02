@@ -189,6 +189,50 @@ void Main::saveSimulation(int handle) {
     delete mesg;
     }
 
+/* usage: writeIndexes('Group', 'family', 'savepath') */
+void Main::writeIndexes(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    Worker* w = this->workers[0].ckLocal();
+    if(w->sim == NULL) {
+	    PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+    
+    char *groupName;
+    char *familyName;
+    char *fileName;
+    
+    if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &fileName) == false) {
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+    
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	    PyErr_SetString(PyExc_NameError, "No such group");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end()) {
+	    PyErr_SetString(PyExc_NameError, "No such family");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+    AttributeMap::iterator attrIter	= simIter->second.attributes.find("index");
+    if(attrIter == simIter->second.attributes.end()) {
+	    PyErr_SetString(PyExc_NameError, "No such attribute");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+    
+    this->workers[0].writeIndexes(groupName, familyName, fileName, CkCallbackPython());
+
+    pythonReturn(handle);
+    return;
+    }
+
 /* usage: writeGroupArray('Group', 'attribute', 'savepath') */
 void Main::writeGroupArray(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
