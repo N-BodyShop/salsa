@@ -558,6 +558,7 @@ void Main::getAttributeRangeGroup(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &attributeName)
        == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: getAttributeRangeGroup(group, family, attribute)");
 	pythonReturn(handle,NULL);
 	return;
 	}
