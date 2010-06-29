@@ -129,7 +129,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
         raise StandardError('Value of min_radius cannot be negative.')
     if min_radius == 0 and bin_type == 'log' :
         min_radius = config.LOG_MIN
-        print 'Parameter min_radius set to ' + str(LOG_MIN) + ' to accomodate logarithmic binning.'
+        print 'Parameter min_radius set to ' + str(min_radius) + ' to accomodate logarithmic binning.'
     if not fit_radius >= 0 :
         raise StandardError('Value of fit_radius cannot be negative.')
 
@@ -373,7 +373,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     # write headers according to families present
     f.write('#')
     for i in range(len(headers)) :
-        f.write(' ' + headers(i))
+        f.write(' ' + headers[i])
     f.write('\n')
     # write data according to families present
     for i in range(nbins) :
