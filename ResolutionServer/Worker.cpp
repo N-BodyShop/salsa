@@ -312,7 +312,7 @@ void Worker::writeIndexes(const std::string& groupName,
 		GroupIterator iter = g->make_begin_iterator(familyName);
 		GroupIterator end = g->make_end_iterator(familyName);
 		for(; *iter != *end; ++iter) {
-			fprintf(fp, "%lld\n", indexes[*iter]);
+			fprintf(fp, "%ld\n", indexes[*iter]);
 		}
 	}
 	fclose(fp);
@@ -332,6 +332,7 @@ void Worker::writeGroupArray(const std::string& groupName,
 			     const CkCallback& cb)
 {
     FILE *fp;
+    StatusMsg *msg;
     
     if(thisIndex == 0) {
 	fp = fopen(fileName.c_str(), "w");
@@ -340,26 +341,38 @@ void Worker::writeGroupArray(const std::string& groupName,
     else {
 	fp = fopen(fileName.c_str(), "a");
 	}
+    GroupMap::iterator gIter = groups.find(groupName);
+    if (gIter != groups.end()) {
+        shared_ptr<SimulationHandling::Group>& g = gIter->second;
     
-    for(Simulation::iterator family = sim->begin(); family != sim->end();
-	++family) {
-	AttributeMap::iterator attrIter = family->second.attributes.find(attributeName);
-	if(attrIter == family->second.attributes.end()) {
-	    for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
+	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+	    GroupIterator iter = g->make_begin_iterator(*famIter);
+	    GroupIterator end = g->make_end_iterator(*famIter);
+	    ParticleFamily& family = (*sim)[*famIter];
+	    float* array = family.getAttribute(attributeName,
+					       Type2Type<float >());
+	    if(array == NULL) {
+		for(unsigned int i = 0; i < family.count.numParticles; i++) {
 		fprintf(fp, "0\n");  // zero fill if no values
 		}
-	    
 	    }
-	else {
+	    else {
 	    // XXX take care of type handling
-	    float* array = attrIter->second.getArray(Type2Type<float >());
-	    for(unsigned int i = 0; i < family->second.count.numParticles; i++) {
-		fprintf(fp, "%g\n", array[i]);
-		}
+		for(; *iter != *end; ++iter) {
+		    fprintf(fp, "%g\n", array[*iter]);
+		    }
+	    }
 	    }
 	}
     fclose(fp);
+    if (thisIndex+1 < CkNumPes()) {
+        CProxy_Worker workers(thisArrayID);
+        workers[thisIndex+1].writeGroupArray(groupName, attributeName, fileName, cb);
+    } else {
+        msg = new StatusMsg(1); // Success
+    	cb.send(msg);
     }
+}
 
 
 const byte lineColor = 1;

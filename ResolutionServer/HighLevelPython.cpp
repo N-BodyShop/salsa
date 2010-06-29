@@ -249,10 +249,18 @@ void Main::writeGroupArray(int handle) {
     
     if(PyArg_ParseTuple(arg, "sss", &groupName, &attributeName, &fileName)
        == false) {
+	PyErr_SetString(PyExc_TypeError,
+			"Usage: writeGroupArray(group, attribute,filename)");
 	pythonReturn(handle, NULL);
 	return;
 	}
 
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	    PyErr_SetString(PyExc_NameError, "No such group");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
     // The writing is done as a domino scheme.  Call the head node
     // and it calls all the other workers in sequence.
     this->workers[0].writeGroupArray(groupName, attributeName, fileName,
