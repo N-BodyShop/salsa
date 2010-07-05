@@ -345,23 +345,24 @@ void Worker::writeGroupArray(const std::string& groupName,
     if (gIter != groups.end()) {
         shared_ptr<SimulationHandling::Group>& g = gIter->second;
     
-	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin();
+	    famIter != g->families.end(); ++famIter) {
 	    GroupIterator iter = g->make_begin_iterator(*famIter);
 	    GroupIterator end = g->make_end_iterator(*famIter);
 	    ParticleFamily& family = (*sim)[*famIter];
 	    float* array = family.getAttribute(attributeName,
 					       Type2Type<float >());
 	    if(array == NULL) {
-		for(unsigned int i = 0; i < family.count.numParticles; i++) {
-		fprintf(fp, "0\n");  // zero fill if no values
+		for(; *iter != *end; ++iter) {
+		    fprintf(fp, "0\n");  // zero fill if no values
+		    }
 		}
-	    }
 	    else {
 	    // XXX take care of type handling
 		for(; *iter != *end; ++iter) {
 		    fprintf(fp, "%g\n", array[*iter]);
 		    }
-	    }
+		}
 	    }
 	}
     fclose(fp);
