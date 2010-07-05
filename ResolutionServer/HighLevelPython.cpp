@@ -156,9 +156,9 @@ void Main::deleteGroup(int handle) {
 	char *groupName;
 	
 	if (PyArg_ParseTuple(arg, "s", &groupName) == false) {
-	pythonReturn(handle, NULL);
-	return;
-	}
+	    pythonReturn(handle, NULL);
+	    return;
+	    }
 
     w->groups.erase(groupName);
     
@@ -279,6 +279,7 @@ void Main::getNumParticles(int handle) {
     if(PyArg_ParseTuple(arg, "ss", &groupName, &familyName) == false) {
 	PyErr_Clear();
 	if(PyArg_ParseTuple(arg, "s", &familyName) == false) {
+	    PyErr_SetString(PyExc_TypeError, "Usage: getNumParticles(group, family)");
 	    pythonReturn(handle, NULL);
 	    return;
 	    }
