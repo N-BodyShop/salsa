@@ -1884,8 +1884,14 @@ int PythonLocalParticle::buildIterator(PyObject *&arg, void *iter) {
 	return 0;
     localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
     localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
-    if(*localPartIter == *localPartEnd)
-	return 0;
+    while(*localPartIter == *localPartEnd) { // End of particles in family
+	localPartFamIter++;
+	if(localPartFamIter == localPartG->families.end()) {
+	    return 0;		// Done!
+	    }
+	localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
+	localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
+	}
 
     family = (*sim)[*localPartFamIter];
     
@@ -2013,7 +2019,7 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
     
     // Increment
     localPartIter++;
-    if(*localPartIter == *localPartEnd) { // End of particles in family
+    while(*localPartIter == *localPartEnd) { // End of particles in family
 	localPartFamIter++;
 	if(localPartFamIter == localPartG->families.end()) {
 	    return 0;		// Done!
