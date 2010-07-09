@@ -63,9 +63,10 @@ mainmodule ResolutionServer {
 		entry [python "create a new vector attribute in a family"]
 			void createVectorAttribute(int handle);
 		entry [python] void createGroup_Family(int handle);
-		entry [python] void createGroup_AttributeRange(int handle);
-		entry [python] void createGroupAttributeSphere(int handle);
-		entry [python] void createGroupAttributeBox(int handle);
+		entry [python "create a group based on a range in an attribute"]			void createGroup_AttributeRange(int handle);
+		entry [python "create a spherical group" ] void createGroupAttributeSphere(int handle);
+		entry [python "create a spherical shell" ] void createGroupAttributeShell(int handle);
+		entry [python "create a rectangular box" ] void createGroupAttributeBox(int handle);
 		entry [python] void runLocalParticleCode(int handle);
 		entry [python "run code over all particles in a group"]
 		      	      void runLocalParticleCodeGroup(int handle);
@@ -137,6 +138,7 @@ mainmodule ResolutionServer {
 		entry void createGroup_Family(std::string const& groupName, std::string const& parentGroupName, std::string const& familyName, CkCallback const& cb);
 		entry void createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb);
 		entry void createGroup_AttributeSphere(const std::string& groupName, const std::string& parentName, const std::string& attributeName, Vector3D<double> center, double size, const CkCallback& cb);
+		entry void createGroup_AttributeShell(const std::string& groupName, const std::string& parentName, const std::string& attributeName, Vector3D<double> center, double dMin, double dMax, const CkCallback& cb);
 		entry void createGroup_AttributeBox(std::string const& groupName,
 				      std::string const& parentGroupName,
 				      std::string const& attributeName,

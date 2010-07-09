@@ -913,6 +913,32 @@ void Main::createGroupAttributeSphere(int handle) {
     pythonReturn(handle);
 }
 
+void Main::createGroupAttributeShell(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *achGroupName, *parentName, *attributeName;
+    double xCenter, yCenter, zCenter, dMin, dMax;
+    
+    if(PyArg_ParseTuple(arg, "sssddddd", &achGroupName, &parentName,
+			&attributeName, &xCenter, &yCenter, &zCenter,
+			&dMin, &dMax) == false) {
+	
+	PyErr_SetString(PyExc_TypeError, "Usage: createGroupAttributeShell(group, parent_group, attribute, xcenter, ycenter, zcenter, min radius, max radius)");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Vector3D<double> v3dCenter(xCenter, yCenter, zCenter);
+    string sGroupName(achGroupName);
+    string sParentName(parentName);
+    string sAttributeName(attributeName);
+    
+    // pythonSleep(handle);
+    workers.createGroup_AttributeShell(sGroupName, sParentName,
+					sAttributeName, v3dCenter, dMin, dMax,
+					CkCallbackPython());
+    // pythonAwake(handle);
+    pythonReturn(handle);
+}
+
 void Main::createGroupAttributeBox(int handle) {
     PyObject *arg = PythonObject::pythonGetArg(handle);
     char *achGroupName, *parentName, *attributeName;

@@ -218,6 +218,7 @@ public:
 	void createGroup_Family(int handle);
 	void createGroup_AttributeRange(int handle);
 	void createGroupAttributeSphere(int handle);
+	void createGroupAttributeShell(int handle);
 	void createGroupAttributeBox(int handle);
 	void runLocalParticleCode(int handle);
 	void runLocalParticleCodeGroup(int handle);
@@ -351,6 +352,11 @@ public:
 					 std::string const& attributeName,
 					 Vector3D<double> center, double size,
 					 CkCallback const& cb);
+	void createGroup_AttributeShell(std::string const& groupName,
+					 std::string const& parentName,
+					 std::string const& attributeName,
+					 Vector3D<double> center, double dMin,
+					double dMax, CkCallback const& cb);
 	void createGroup_AttributeBox(std::string const& groupName,
 				      std::string const& parentGroupName,
 				      std::string const& attributeName,

@@ -1719,6 +1719,21 @@ void Worker::createGroup_AttributeSphere(std::string const& groupName,
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
+void Worker::createGroup_AttributeShell(std::string const& groupName,
+					 std::string const& parentGroupName,
+					 std::string const& attributeName,
+					 Vector3D<double> center, double dMin,
+					 double dMax, CkCallback const& cb) {
+	int result = 0;
+	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	boost::shared_ptr<SimulationHandling::Group> g = make_ShellGroup(*sim, parentGroup, attributeName, center, dMin, dMax);
+	if(g) {
+		groups[groupName] = g;
+		result = 1;
+	}
+	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
 void Worker::createGroup_AttributeBox(std::string const& groupName,
 				      std::string const& parentGroupName,
 				      std::string const& attributeName,
