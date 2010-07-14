@@ -74,6 +74,46 @@ void Main::readTipsyArray(int handle) {
     pythonReturn(handle);
     }
 
+// usage: charm.readMark('filename', 'markattribute',
+// 'compare_attribute'), where mark_attribute gets set based on a
+// comparison of the numbers (which, e.g. are either indices or
+// iOrders) with compare_attribute.
+
+void Main::readMark(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    Worker* w = this->workers[0].ckLocal();
+
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle);
+	return;
+	}
+    
+    char *fileName;
+    char *attributeMark;
+    char *attributeCmp;
+    FILE *fp;
+
+    if(PyArg_ParseTuple(arg, "sss", &fileName, &attributeMark, &attributeCmp)
+       == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: readMark(file, mark_attribute, compare_attribute)");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
+	fclose(fp);
+	StatusMsg *mesg;
+	workers.readMark(fileName, attributeMark, attributeCmp,
+			 CkCallbackPython());
+	}
+    else {
+	PyErr_SetString(PyExc_NameError, "No such file");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    pythonReturn(handle);
+    }
+
 void Main::getTime(int handle) {
     Worker* w = this->workers[0].ckLocal();
 

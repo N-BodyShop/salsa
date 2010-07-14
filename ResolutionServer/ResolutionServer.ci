@@ -56,6 +56,8 @@ mainmodule ResolutionServer {
 			void writeIndexes(int handle);
 		entry [python "write group attribute as tipsy array"]
 			void writeGroupArray(int handle);
+		entry [python "set attribute based on mark file"]
+			void readMark(int handle);
 		entry [python] void getDataType(int handle);
 		entry [python] void getCenterOfMass(int handle);
 		entry [python "create a new scalar attribute in a family"]
@@ -94,6 +96,10 @@ mainmodule ResolutionServer {
 			    const std::string& attributeName,
 			    const std::string& fileName,
 			    const CkCallback& cb);
+		entry void readMark(const std::string& fileName,
+		      const std::string& attributeMark,
+		      const std::string& attributeCmp,
+		      const CkCallback& cb);
 		
 		entry void generateImage(liveVizRequestMsg* m);
 		

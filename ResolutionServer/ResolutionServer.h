@@ -197,6 +197,7 @@ public:
 	void readTipsyArray(int handle);
 	void writeIndexes(int handle);
 	void writeGroupArray(int handle);
+	void readMark(int handle);
 	void findAttributeMin(int handle);
 	void getTime(int handle);
 	void getFamilies(int handle);
@@ -304,6 +305,11 @@ public:
 	void readTipsyArray(const std::string& fileName,
 			    const std::string& attributeName,
 			    long off, int iType, const CkCallback& cb);
+	void readMark(const std::string& fileName,
+		      const std::string& attributeMark, // Attribute
+							// to "mark"
+		      const std::string& attributeCmp,	// index or iOrder
+		      const CkCallback& cb);
 	
 	void generateImage(liveVizRequestMsg* m);
 	

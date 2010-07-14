@@ -326,20 +326,40 @@ void Worker::writeIndexes(const std::string& groupName,
     }
 }
 
+/*
+ * fancy double macro to do the switch amoung types.  It gives us a
+ * constant to use for the template instantiation.
+ * To use, first define a caseCode2Type macro whose first argument is
+ * a variable of type TypeHandling::DataTypeCode, the second is the
+ * actual type it maps to.
+ */
+#define casesCode2Types \
+    caseCode2Type(int8, char)	\
+    caseCode2Type(uint8, unsigned char)	\
+    caseCode2Type(int16, short)	\
+    caseCode2Type(uint16, unsigned short)	\
+    caseCode2Type(int32, int)	\
+    caseCode2Type(uint32, unsigned int)	\
+    caseCode2Type(int64, int64_t)	\
+    caseCode2Type(uint64, u_int64_t)	\
+    caseCode2Type(float32, float)	\
+    caseCode2Type(float64, double)	\
+    default: assert(0);
+    
 void Worker::writeGroupArray(const std::string& groupName,
 			     const std::string& attributeName,
 			     const std::string& fileName,
 			     const CkCallback& cb)
 {
-    FILE *fp;
+    ofstream fp;
     StatusMsg *msg;
     
     if(thisIndex == 0) {
-	fp = fopen(fileName.c_str(), "w");
-	fprintf(fp, "%ld\n", sim->totalNumParticles());
+	fp.open(fileName.c_str(), fstream::out|fstream::trunc);
+	fp << sim->totalNumParticles() << endl;
 	}
     else {
-	fp = fopen(fileName.c_str(), "a");
+	fp.open(fileName.c_str(), fstream::out|fstream::app);
 	}
     GroupMap::iterator gIter = groups.find(groupName);
     if (gIter != groups.end()) {
@@ -350,22 +370,30 @@ void Worker::writeGroupArray(const std::string& groupName,
 	    GroupIterator iter = g->make_begin_iterator(*famIter);
 	    GroupIterator end = g->make_end_iterator(*famIter);
 	    ParticleFamily& family = (*sim)[*famIter];
-	    float* array = family.getAttribute(attributeName,
-					       Type2Type<float >());
-	    if(array == NULL) {
-		for(; *iter != *end; ++iter) {
-		    fprintf(fp, "0\n");  // zero fill if no values
-		    }
-		}
-	    else {
-	    // XXX take care of type handling
-		for(; *iter != *end; ++iter) {
-		    fprintf(fp, "%g\n", array[*iter]);
-		    }
+	    TypedArray& tarray = family.attributes[attributeName];
+	    
+	    switch(tarray.code) {
+#undef caseCode2Type
+#define caseCode2Type(enumName,typeName) \
+	    case enumName: \
+		{ \
+		typeName *array = tarray.getArray(Type2Type<typeName>()); \
+	    if(array == NULL) { \
+		for(; *iter != *end; ++iter) \
+		    fp << "0\n";  /* zero fill if no values */	\
+		} \
+	    else { \
+		for(; *iter != *end; ++iter) \
+		    fp << array[*iter] << "\n";	\
+		}				\
+		    }				\
+	    break;
+
+	    casesCode2Types
 		}
 	    }
 	}
-    fclose(fp);
+    fp.close();
     if (thisIndex+1 < CkNumPes()) {
         CProxy_Worker workers(thisArrayID);
         workers[thisIndex+1].writeGroupArray(groupName, attributeName, fileName, cb);
@@ -375,6 +403,84 @@ void Worker::writeGroupArray(const std::string& groupName,
     }
 }
 
+void Worker::readMark(const std::string& fileName,
+		      const std::string& attributeMark, // Attribute
+							// to "mark"
+		      const std::string& attributeCmp,	// index or iOrder
+		      const CkCallback& cb) {
+    FILE *fp = fopen(fileName.c_str(), "r");
+    CkAssert(fp != NULL);
+    unsigned int nTotal;
+    int count = fscanf(fp, "%d%*[, \t]%*d%*[, \t]%*d",&nTotal) ;
+    if ( (count == EOF) || (count==0) ){
+	    ckerr << "<Sorry, file format is wrong>\n" ;
+	    fclose(fp);
+	    contribute(0, 0, CkReduction::concat, cb);
+	    return;
+	    }
+    ckout << "[" << thisIndex << "]: reading Array ... ";
+    int nFamilies = sim->size();
+    TypedArray* aArrCmp[nFamilies];
+    short* aArrMark[nFamilies];
+    int aIter[nFamilies];
+    
+    int i = 0;
+
+    /* Find comparison arrays in each family */
+    for(Simulation::iterator iFam = sim->begin(); iFam != sim->end(); iFam++) {
+	aArrCmp[i] = &iFam->second.attributes[attributeCmp];
+	if(aArrCmp[i]->dimensions != 1) {
+	    continue;
+	    nFamilies--;
+	    }
+	if(aArrCmp[i]->data == 0)
+	    sim->loadAttribute(iFam->first, attributeCmp,
+			       iFam->second.count.numParticles,
+			       iFam->second.count.startParticle);
+	AttributeMap::iterator iAttr = iFam->second.attributes.find(attributeMark);
+	if(iAttr == iFam->second.attributes.end()) {
+	    // add attribute to family
+	    short *array = new short[iFam->second.count.numParticles];
+	    for(unsigned int ia = 0; ia < iFam->second.count.numParticles; ia++)
+		array[ia] = 0;
+	    iFam->second.addAttribute(attributeMark, array);
+	    iAttr = iFam->second.attributes.find(attributeMark);
+	    }
+	aArrMark[i] = iAttr->second.getArray(Type2Type<short>());
+	aIter[i] = 0;
+	i++;
+	}
+    
+    while(1) {
+	double value;
+	if(fscanf(fp, "%lf", &value) != 1) break;
+	for(int i = 0; i < nFamilies; i++) {
+	    if(aIter[i] >= aArrCmp[i]->length)
+		continue;
+	    switch(aArrCmp[i]->code) {
+#undef caseCode2Type
+#define caseCode2Type(enumName,typeName) \
+	    case enumName: \
+		{ \
+		typeName x = aArrCmp[i]->getArray(Type2Type<typeName>())[aIter[i]]; \
+	    while(x < value && aIter[i] < aArrCmp[i]->length) { \
+		aIter[i]++;						\
+		x = aArrCmp[i]->getArray(Type2Type<typeName>())[aIter[i]]; \
+		}							\
+	    if(x == value)						\
+		aArrMark[i][aIter[i]]++;				\
+		    }							\
+	    break;
+
+	    casesCode2Types
+		}
+	    }
+	}
+    
+    ckout << "Done\n";
+    contribute(0, 0, CkReduction::concat, cb);
+    fclose(fp);
+    }
 
 const byte lineColor = 1;
 
@@ -1409,26 +1515,6 @@ void Worker::saveSimulation(const std::string& path, const CkCallback& cb)
   contribute(sizeof(result),&result,CkReduction::logical_and,cb);
 }
 
-/*
- * fancy double macro to do the switch amoung types.  It gives us a
- * constant to use for the template instantiation.
- * To use, first define a caseCode2Type macro whose first argument is
- * a variable of type TypeHandling::DataTypeCode, the second is the
- * actual type it maps to.
- */
-#define casesCode2Types \
-    caseCode2Type(int8, char)	\
-    caseCode2Type(uint8, unsigned char)	\
-    caseCode2Type(int16, short)	\
-    caseCode2Type(uint16, unsigned short)	\
-    caseCode2Type(int32, int)	\
-    caseCode2Type(uint32, unsigned int)	\
-    caseCode2Type(int64, int64_t)	\
-    caseCode2Type(uint64, u_int64_t)	\
-    caseCode2Type(float32, float)	\
-    caseCode2Type(float64, double)	\
-    default: assert(0);
-    
     
 void Worker::getAttributeRangeGroup(const std::string& groupName,
 				    const std::string& familyName,
@@ -1455,6 +1541,7 @@ void Worker::getAttributeRangeGroup(const std::string& groupName,
 	    GroupIterator iter = g->make_begin_iterator(familyName);
 	    GroupIterator end = g->make_end_iterator(familyName);
 	    switch(arr.code) {
+#undef caseCode2Type
 #define caseCode2Type(enumName,typeName) \
 	    case enumName: \
 		minmaxAttribute<typeName>(arr, iter, end, &minmax[0]); \
