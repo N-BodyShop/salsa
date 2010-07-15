@@ -1365,6 +1365,7 @@ double minAttribute(TypedArray const& arr, IteratorType begin, IteratorType end,
 void Worker::findAttributeMin(const string& groupName, const string& attributeName, const CkCallback& cb) {
     double aMin = HUGE_VAL;
     pair<double, Vector3D<double> > compair;
+    compair.first = aMin; // In case of no particles on this processor
     
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
