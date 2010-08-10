@@ -366,7 +366,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     if family in ['gas', 'baryon', 'all'] :
         headers += ('mmwg_density', 'mwg_temp', 'mwg_pres', 'mwg_entr')
     if family in ['star', 'baryon', 'all'] :
-        headers += ('lum_V')
+        headers += ('lum_V',)
     
     # write output to file
     f = open(filename, 'w')
