@@ -26,6 +26,8 @@ public class Simulation {
 	/// The original origin of the simulation
 	Vector3D origin;
 	double boxSize;
+        // max x,y and z of loaded simulation in sim coords
+    double maxX, maxY, maxZ, minX, minY, minZ;
 		
 	public Simulation() { }
 

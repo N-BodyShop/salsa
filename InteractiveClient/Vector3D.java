@@ -22,6 +22,10 @@ public class Vector3D {
 		 z = v.z;
 	}
 	
+	final public boolean equals(Vector3D src) {
+		return x==src.x && y==src.y && z==src.z;
+	}
+
 	final public double length() {
 		return Math.sqrt(x * x + y * y + z * z);
 	}

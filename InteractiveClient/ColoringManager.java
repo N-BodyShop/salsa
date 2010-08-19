@@ -200,7 +200,7 @@ public class ColoringManager extends Manager
 		if(command.equals("chooseColoring")) {
 			//System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
 			((ViewingPanel)windowManager.windowList.peek()).view.activeColoring = ((Simulation.Coloring) windowManager.sim.colorings.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
-			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage();
+			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
 		} else if(command.equals("swap")) {
 			double minValue = ((Number) minValField.getValue()).doubleValue();
 			double maxValue = ((Number) maxValField.getValue()).doubleValue();

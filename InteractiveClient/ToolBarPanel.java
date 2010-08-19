@@ -29,6 +29,7 @@ public class ToolBarPanel extends JPanel
 	JFormattedTextField minMassText;
 	JFormattedTextField maxMassText;
 	JCheckBox splatterCheck;
+	JCheckBox disable3D;
 	
 	
 	public ToolBarPanel(WindowManager wm, SimulationView v) {
@@ -100,6 +101,11 @@ public class ToolBarPanel extends JPanel
 		splatterCheck = new JCheckBox("Splatter Visual", false);
 		splatterCheck.setActionCommand("changeMassRange");
 		splatterCheck.addActionListener(this);
+		
+		disable3D = new JCheckBox("Disable 3D Volume Impostors", false);
+		disable3D.setActionCommand("change3D");
+		disable3D.addActionListener(this);
+		
 		//arrowCheck = new JCheckBox("Velocity Arrows", false);
 		//JButton butt = new JButton("Update mass range");
 		//butt.addActionListener(this);
@@ -107,9 +113,10 @@ public class ToolBarPanel extends JPanel
 		b3.add(minMassText);
 		b3.add(maxMassText);
 		b3.add(splatterCheck); 
+		b3.add(disable3D); 
+        b3.add(sliderBar);
 		Box b4 = new Box(BoxLayout.LINE_AXIS);
 		//b4.add(b);
-        //b4.add(sliderBar);
 		b4.add(b3);
 		
 		add(b4);
@@ -125,7 +132,10 @@ public class ToolBarPanel extends JPanel
 			System.out.println("Max mass: " + view.maxMass);
 			view.doSplatter = (splatterCheck.isSelected() ? 1 : 0);
 			System.out.println("Splatter? " + view.doSplatter);
-			view.getNewImage();
+			view.getNewImage(true);
+		}
+		if(command.equals("change3D")) {
+			view.disable3D = disable3D.isSelected();
 		}
     }
     
@@ -137,12 +147,12 @@ public class ToolBarPanel extends JPanel
         if(theta == 0)
 			return;
 		if(sliderName.equals("Down"))
-			view.rotateUp(theta);
+			view.coord.rotateUp(theta);
 		else if(sliderName.equals("Left"))
-			view.rotateRight(theta);
+			view.coord.rotateRight(theta);
 		else if(sliderName.equals("Cntr"))
-			view.rotateClock(theta);
-        view.getNewImage();
+			view.coord.rotateClock(theta);
+        view.getNewImage(false);
 		slider.oldAngle = slider.getValue();
 		
     }

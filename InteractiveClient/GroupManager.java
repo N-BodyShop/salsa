@@ -152,7 +152,7 @@ public class GroupManager extends Manager
 		if(command.equals("activateGroup")) {
 			//System.out.println("Activate group: " + ((JComboBox) e.getSource()).getSelectedItem());
 			((ViewingPanel)windowManager.windowList.peek()).view.activeGroup = ((Simulation.Group) windowManager.sim.groups.get((String) ((JComboBox) e.getSource()).getSelectedItem())).name;
-			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage();
+			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
 		} else if(command.equals("apply")) {
 			Simulation.Group g = (Simulation.Group) sim.groups.get(groupList.getSelectedValue());
 			String oldName = g.name;

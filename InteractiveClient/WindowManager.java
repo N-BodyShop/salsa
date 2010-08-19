@@ -92,6 +92,12 @@ public class WindowManager extends WindowAdapter {
 				quit();
 			}
 			Vector3D origin = config.max.plus(config.min).scalarMultiply(0.5);
+			double maxX = config.max.x;
+			double maxY = config.max.y;
+			double maxZ = config.max.z;
+			double minX = config.min.x;
+			double minY = config.min.y;
+			double minZ = config.min.z;
 			double boxSize = config.max.x - config.min.x;
 			double tempSize = config.max.y - config.min.y;
 			if(boxSize < tempSize)
@@ -101,6 +107,12 @@ public class WindowManager extends WindowAdapter {
 				boxSize = tempSize;
 			sim.origin = origin;
 			sim.boxSize = boxSize;
+			sim.maxX = maxX;
+			sim.maxY = maxY;
+			sim.maxZ = maxZ;
+			sim.minX = minX;
+			sim.minY = minY;
+			sim.minZ = minZ;
 		}
 	}
 	

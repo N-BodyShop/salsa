@@ -4,7 +4,7 @@ CLASSES = Vector3D.class \
 	WindowManager.class Manager.class NotifyingHashtable.class \
 	ToolBarPanel.class ViewListener.class ViewEvent.class \
 	AttributeManager.class RotateSlider.class ColoringManager.class \
-	SalsaRequests.class ChooseSimulationFrame.class \
+	SideBar.class SalsaRequests.class ChooseSimulationFrame.class \
 	Salsa.class DelimitedStringEnumeration.class GroupManager.class \
 	CodePanel.class GroupQuery.class MenuBar.class LocalParticle.class \
 	HighLevelPython.class PyPrintHandler.class 

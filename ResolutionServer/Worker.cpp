@@ -1095,6 +1095,10 @@ void Worker::makeColoring(const std::string& specification, const CkCallback& cb
 	//contribute(0, 0, CkReduction::concat, cb);
 }
 
+/*
+  Return the Z value that this rendering request should rotate around.
+  Currently, this is the minimum-potential depth.
+*/
 void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	//z component of the viewing frame
 	double z = 0;
@@ -1102,8 +1106,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 	if(verbosity > 2 && thisIndex == 0)
 		cout << "Got request for centering: " << req << endl;
 	
-	req.z = cross(req.x, req.y);
-	req.z.normalize();
+	req.z /= req.z.lengthSquared();
 	req.x /= req.x.lengthSquared();
 	req.y /= req.y.lengthSquared();
 	float x, y;
