@@ -1,3 +1,10 @@
+/*
+ New 2009 right-hand sidebar.
+ Written by Dain Harmon, from UAF.
+ 
+ Calls out to a captive tabbed GroupManager, 
+ ColoringManager, AttributeManager, ToolBarPanel.
+*/
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -12,16 +19,13 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 
-public class SideBar extends JPanel implements ActionListener, ChangeListener,  ViewListener
+public class SideBar extends JPanel implements ActionListener
 {
 	int numTools=7;
 	JButton toolbox []=new JButton[numTools];
 	
 	WindowManager windowManager;
 	SimulationView view;
-	RotateSlider upDownSlider;
-	RotateSlider leftRightSlider;
-	RotateSlider clockwiseSlider;
 	
 	public SideBar(WindowManager wm, SimulationView v)
 	{
@@ -73,23 +77,10 @@ public class SideBar extends JPanel implements ActionListener, ChangeListener,  
 		
 		JTabbedPane JTP=new JTabbedPane();
 		JTP.addTab("Groups", new GroupManager(windowManager).getContentPane());
-		JTP.addTab("Attributes", new AttributeManager(windowManager).getContentPane());
 		JTP.addTab("Color", new ColoringManager(windowManager).getContentPane());
+		JTP.addTab("Attributes", new AttributeManager(windowManager).getContentPane());
+		JTP.addTab("Rendering", new ToolBarPanel(windowManager,v));
 		this.add(JTP, BorderLayout.EAST);
-		
-		JToolBar sliderBar = new JToolBar();
-		sliderBar.setLayout(new GridLayout(3,1));
-		upDownSlider = new RotateSlider("Down", "Up   ");
-		upDownSlider.addChangeListener(this);
-		leftRightSlider = new RotateSlider("Left", "Right");
-		leftRightSlider.addChangeListener(this);
-		clockwiseSlider = new RotateSlider("Cntr", "Clock");
-		clockwiseSlider.addChangeListener(this);
-		sliderBar.add(upDownSlider);
-		sliderBar.add(leftRightSlider);
-		sliderBar.add(clockwiseSlider);
-		resetSliders();
-		this.add(sliderBar, BorderLayout.SOUTH);
 	}
 	
 	public void switchTool(int tool)
@@ -131,40 +122,8 @@ public class SideBar extends JPanel implements ActionListener, ChangeListener,  
 		}
 		else if (command.equals("Refresh"))
 		{
-			view.getNewImage();
+			view.getNewDepth(true); // blocking, so we're really centered nicely
+			view.getNewImage(true);
 		}
-	}
-	
-	public void stateChanged(ChangeEvent e) {
-        RotateSlider slider = (RotateSlider) e.getSource();
-        String sliderName = slider.leftLabel;
-        double theta = (Math.PI / 180.0) * (slider.getValue() - slider.oldAngle);
-        if(theta == 0)
-			return;
-		if(sliderName.equals("Down"))
-			view.rotateUp(theta);
-		else if(sliderName.equals("Left"))
-			view.rotateRight(theta);
-		else if(sliderName.equals("Cntr"))
-			view.rotateClock(theta);
-        view.getNewImage();
-		slider.oldAngle = slider.getValue();
-		
-    }
-	
-	public void resetSliders() {
-		//when setValue is called, it will fire a stateChanged.  So, must assign old value first so that theta == 0 is detected
-        clockwiseSlider.oldAngle = 0;
-        clockwiseSlider.setValue(0);
-        upDownSlider.oldAngle = 0;
-        upDownSlider.setValue(0);
-        leftRightSlider.oldAngle = 0;
-        leftRightSlider.setValue(0);
-    }
-	
-	public void rotationPerformed(ViewEvent e) { }
-	
-	public void viewReset(ViewEvent e) {
-		resetSliders();
 	}
 }

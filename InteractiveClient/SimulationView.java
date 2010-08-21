@@ -1,5 +1,17 @@
-//SimulationView.java
+/*
+SimulationView.java
 
+This is the central class of the client, and it:
+	- Displays the current simulation
+	- Queues, sends, and receives network render requests
+	- Manages the coordinate axes
+	- Handles the toolbar
+
+Original version by U. Washington student Grame Lufkin, 2004
+Bug fixes in 2004 by Tom Quinn.
+Extensive changes in 2009 by Dain Harmon, UAF grad student.
+Coordinate system fixes in 2010 by John Ruan, U. Washington and Orion Lawlor, UAF
+*/
 import charm.ccs.CcsThread;
 import charm.ccs.PythonAbstract;
 import charm.ccs.PythonExecute;
@@ -24,46 +36,150 @@ import com.sun.opengl.util.BufferUtil;
 import com.sun.gluegen.runtime.BufferFactory;
 import com.sun.image.codec.jpeg.*;
 
+
 public class SimulationView extends JPanel implements ActionListener, MouseInputListener, MouseMotionListener, MouseWheelListener, ComponentListener, GLEventListener
 {
 	WindowManager windowManager;
 	CcsThread ccs;
-	Vector3D x, y, z, origin;  // Axes directions and origin of simulation
-	double boxSize;
-	double zoomFactor;
+	
+	/* Represents a 3D-to-2D transform.*/
+	public class CoordinateSystem 
+	{
+		/*
+		  Origin is the vector from the origin of the simulation to the 
+	    	center of the screen (in simulation coordinates).
+		*/
+		public Vector3D origin;
+
+		/*
+		  Axes: gives orientation of our current screen, in simulation coordinates.
+		  X points to the right onscreen; Y points *up* (like OpenGL); Z points out of screen (right handed).
+		  These vectors *always* have length 1.0.
+		  To get to onscreen pixels, the simulation axes are scaled to length 1.0/factor, 
+		  then X and Y are scaled again by the window's aspect ratio.
+		*/
+		public Vector3D x, y, z; 
+
+		/* zoom factor: higher values mean more zoomed in.
+		*/
+		public double factor;
+		
+		/* Default constructor */
+		CoordinateSystem() {
+			origin=new Vector3D(0,0,0); 
+			x=new Vector3D(1,0,0); y=new Vector3D(0,1,0); z=new Vector3D(0,0,1);
+			factor=1.0;
+		}
+		
+		/* Deep copy constructor */
+		CoordinateSystem(CoordinateSystem src) {
+			origin=new Vector3D(src.origin); 
+			x=new Vector3D(src.x); y=new Vector3D(src.y); z=new Vector3D(src.z);
+			factor=src.factor;
+		}
+		/* Returns true if these are floating-point identical */
+		final public boolean equals(CoordinateSystem src) {
+			return origin.equals(src.origin) &&
+				x.equals(src.x) && y.equals(src.y) && z.equals(src.z) &&
+				factor==src.factor;
+		}
+		
+		
+		/* Make the x, y, and z axes mutually orthogonal, and have unit length. 
+		   z gets computed first. */
+		final public void orthoNormalize()
+		{
+		 // System.out.println("ORTHO: incoming vector lengths are "+x.length()+", "+y.length());
+			 z=(x.cross(y)).unitVector();
+			 y=(z.cross(x)).unitVector();
+			 x=(y.cross(z)).unitVector();
+		}
+		
+		
+		//rotate the top half toward you, bottom away
+		final public void rotateUp(double theta) {
+    		y.rotate(theta, x.unitVector());
+    		//z.rotate(-theta, x.unitVector());
+    		orthoNormalize();
+		}
+
+		//rotate the right half toward you, left away
+		final public void rotateRight(double theta) {
+    		x.rotate(theta, y.unitVector());
+    		z.rotate(theta, y.unitVector());
+    		orthoNormalize();
+		}
+
+		//rotate the axes clockwise
+		final public void rotateClock(double theta) {
+    		y.rotate(theta, z.unitVector());
+    		x.rotate(theta, z.unitVector());
+    		orthoNormalize();
+		}
+	};
+	
+	/* The current onscreen coordinate system.  Updated by the UI. */	
+	CoordinateSystem coord;
+	
+	/* Coordinate system for the last 2D render */
+	CoordinateSystem coord2D;
+	/* Coordinate system for the last 3D render */
+	CoordinateSystem coord3D;
+	
+	double delta;// 1.0/smaller of width2D and height2D; used to maintain aspect ratio
+	
+	/* Amount that one zoomtool-click zooms */
+	static final double clickZoomFactor=2.0;
+	
+	double maxX, maxY, maxZ, minX, minY, minZ; //dimensions of simulation, in sim coords
+	
+	
+	
 	int activeColoring = 0;
 	//int activeGroup = 0;
 	String activeGroup = "All";
 	int centeringMethod = 2;
 	int radius = 0;
+	
 	double minMass = 0;
 	double maxMass = 1;
-	int doSplatter = 0;
-	//0=none, 1=end of box xy, 2= in box z, 3=end box z, 4=sphere, 5=ruler,
-	int selectState = 0;	// State of box selection
-	Vector3D selectCorner, selectEdge1, // Box vectors
-	         selectEdge2, selectEdge3;
-	double selectRadius;	// sphere radius
-	int selStartX, selStartY;
-	int oldCurrentX, oldCurrentY;
+	int doSplatter = 0; /* accessed by ToolBarPanel */
+	boolean disable3D = false; /* accessed by ToolBarPanel */
 	
-	int height, width;
+	//Selection states: 0=none, 1=end of box xy, 2= in box z, 3=end box z, 4=sphere, 5=ruler,
+	static final int selectState_none=0;
+	static final int selectState_box_xy=1;
+	static final int selectState_box_zstart=2;
+	static final int selectState_box_zend=3;
+	static final int selectState_sphere=4;
+	static final int selectState_rulerstart=5;
+	static final int selectState_rulerend=6;
+	int selectState = selectState_none;	// State of selection
+	
+	// Simulation-space 3D click locations (for animating selection process)
+	Vector3D selCur=new Vector3D(0,0,0), selOld=new Vector3D(0,0,0); 
+	
+	Vector3D selectCorner; // selection box: simulation space corner
+	Vector3D selectEdge1, selectEdge2, selectEdge3; // selection box X, Y, Z (along original camera coords)
+	
+	double selectRadius;	// sphere radius
+
 	MemoryImageSource source;
 	byte[] pixels;
 	JLabel display;
-	
+
 	double angleLeft, angleCcw, angleUp;
 	Rectangle rect;
 
 	ColorModel colorModel;
 	RightClickMenu rcm;
 	GroupQuery gquery;
-	
+
 	EventListenerList listenerList = new EventListenerList();
 	ViewEvent viewEvent = null;
-	
+
 	ColorBarPanel colorBar;
-	
+
 	/* OpenGL variables */
 	int texture2D;
 	int texture3D; /* textures used for 3D rendering (only) */
@@ -72,486 +188,536 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	int texture[]=new int[1];
 	private boolean hasShaders=false;
 	boolean isNewImageData=true; /* need to regenerate texture3D */
-	boolean mode3D=false;
-	boolean requestOrigin3D=false;
-	
-	ByteBuffer b;
-	ByteBuffer b2;
-	ByteBuffer b3;
+	boolean networkBusy=false; // if true, the server is currently busy rendering already
+	boolean want2D=false, wantZ=false, want3D=false; /* we need to send off a request of this type (2D render, depth estimate, 3D render) */
+	boolean uptodate2D=false, uptodate3D=false; /* we have a good current image */
+
+	ByteBuffer b; // 3D greyscale volume texture upload buffer
+	ByteBuffer b2; // 2D RGB texture upload buffer
+	ByteBuffer b3; // 1D colortable texture upload buffer
 	Object bLock=new Object();
 	Object b2Lock=new Object();
 	Object GLLock=new Object();
-	int width3D, height3D, depth3D;
-	int width2D, height2D;
+	int width3D, height3D, depth3D; // number of voxels in volume impostor image
+	int width2D, height2D; //size of screen in pixel coords
 	int cwidth2D, cheight2D;
-	
-	float factor=1.0f;
-	float factorFor3D=1.0f;
+
 	boolean maxMode=true;
 	Point rotationPoint;
-	int reget3DImageCounter=0;
-	int reget3DImageLimit=6;
-	
-	boolean requestLock=false;
-	CcsThread.request nextRequest=null;
-	boolean requestLock3D=false;
-	CcsThread.request nextRequest3D=null;
-	boolean waiting=false;
-	
-	Vector3D ox, oy, oz;
-	
+
+	// 3D coordinate system used for 3D request volume rendering
+
 	int my_program;
 	GLJPanel glcanvas;
-	
+
 	//0=No Compression, 1=JPEG, 2=RunLength
-	int encoding2D=2;
-	int encoding3D=2;
+	static final int encoding_raw=0;
+	static final int encoding_jpeg=1;
+	static final int encoding_rle=2;
+	int encoding2D=encoding_rle;
+	int encoding3D=encoding_rle;
 	int compression2D=0;
 	int compression3D=60;
-	
+
 	//0=Rotate, 1=Zoom+, 2=Zoom-, 3=Select Sphere, 4=Select Box, 5=Ruler
-	public int activeTool=0;
-	
+	static final int tool_rotate=0;
+	static final int tool_zoomin=1;
+	static final int tool_zoomout=2;
+	static final int tool_sphere=3;
+	static final int tool_box=4;
+	static final int tool_ruler=5;
+	public int activeTool=tool_rotate;
+
 	public SimulationView(WindowManager wm, int w, int h, ColorBarPanel cbp)
 	{
 		super(new BorderLayout());
 		windowManager = wm;
-		width = w;
-		height = h;
-		
-		boxSize = windowManager.sim.boxSize;
-		zoomFactor = 2;
-		
+
+		maxX = windowManager.sim.maxX;
+		maxY = windowManager.sim.maxY;
+		maxZ = windowManager.sim.maxZ;
+		minX = windowManager.sim.minX;
+		minY = windowManager.sim.minY;
+		minZ = windowManager.sim.minZ;
+		System.out.println("Loading simulation: dimensions X="+(maxX-minX)+" Y="+(maxY-minY)+" Z="+(maxZ-minZ));
+
 		//a viewing window gets its own CcsThread, so the queues can operate independently
 		ccs = new CcsThread(windowManager.ccs);
-		
+
 		//this.setMaximumSize(new Dimension(w, h));
 		//this.setMinimumSize(new Dimension(w, h));
-		
+
 		colorBar=cbp;
-		//Quick Hack
+		// FIXME: volume render dimensions should be autodetermined based on graphics card.
+		//  512 is fine for high-end cards, but way too much for low-end!
 		width3D=height3D=depth3D=512;
 		width2D=w;
 		height2D=h;
+		delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
 		pixels = new byte[width2D*height2D];
 		b=BufferUtil.newByteBuffer(width3D*height3D*depth3D);
 		b2=BufferUtil.newByteBuffer(width2D*height2D*3);
 		b3=BufferUtil.newByteBuffer(256*3);
+
+		coord=new CoordinateSystem();
+		coord2D=new CoordinateSystem();
+		coord3D=new CoordinateSystem();
+		coord3D.x=new Vector3D(1,0,0);
+		coord3D.y=new Vector3D(0,1,0);
+		coord3D.z=new Vector3D(0,0,1);
 		
 		zall();
-		ox=x.scalarMultiply(1);
-		oy=y.scalarMultiply(1);
-		oz=z.scalarMultiply(1);
-		ccs.addRequest(new Image3DRequest(), true);
 		
 		GLCapabilities glcaps = new GLCapabilities();
-	    glcaps.setDoubleBuffered(true);
-	    glcaps.setHardwareAccelerated(true);
+		glcaps.setDoubleBuffered(true);
+		glcaps.setHardwareAccelerated(true);
 		glcanvas=new GLJPanel(glcaps);
-		glcanvas.setSize(new Dimension(width,height));
-		glcanvas.setPreferredSize(new Dimension(width,height));
-	    glcanvas.addGLEventListener(this);
-	    glcanvas.addMouseListener(this);
-	    glcanvas.addMouseMotionListener(this);
-	    glcanvas.addMouseWheelListener(this);
-	    
-	    /*GLCanvas glcanvas2=new GLCanvas(glcaps);
-	    glcanvas2.setPreferredSize(new Dimension(width,height));
-	    glcanvas2.setName("3D");
-	    glcanvas2.addGLEventListener(this);
-	    glcanvas2.addMouseListener(this);
-	    glcanvas2.addMouseMotionListener(this);
-	    glcanvas2.addMouseWheelListener(this);
-	    this.add(glcanvas2, BorderLayout.EAST);*/
-	    this.add(glcanvas, BorderLayout.WEST);
-	    
-        addComponentListener(this);
-		
-        rcm = new RightClickMenu(windowManager, this);
-        gquery = new GroupQuery(this);
+		glcanvas.setSize(new Dimension(width2D,height2D));
+		glcanvas.setPreferredSize(new Dimension(width2D,height2D));
+		glcanvas.addGLEventListener(this);
+		glcanvas.addMouseListener(this);
+		glcanvas.addMouseMotionListener(this);
+		glcanvas.addMouseWheelListener(this);
+
+		/*GLCanvas glcanvas2=new GLCanvas(glcaps);
+		glcanvas2.setPreferredSize(new Dimension(width2D,height2D));
+		glcanvas2.setName("3D");
+		glcanvas2.addGLEventListener(this);
+		glcanvas2.addMouseListener(this);
+		glcanvas2.addMouseMotionListener(this);
+		glcanvas2.addMouseWheelListener(this);
+		this.add(glcanvas2, BorderLayout.EAST);*/
+		this.add(glcanvas, BorderLayout.WEST);
+
+    	addComponentListener(this);
+
+    	rcm = new RightClickMenu(windowManager, this);
+    	gquery = new GroupQuery(this);
 	}
-	
+
 	public void redisplay(ColorModel cm) {
 		this.repaint();
 	}
-
-/* The ToolBarPanel calls this function when the user selects e.g. a new coloring */
-	public void getNewImage() {
-		request2D();
-		request3D();
-	}
-	
-	public void getNewDepth() {
-		ccs.doBlockingRequest(new CenterRequest());
-	}
-	
-	public void zoom(double fac) {
-		//zall();
-		x = x.scalarMultiply(fac);
-		y = y.scalarMultiply(fac);
-		z = z.scalarMultiply(fac);
-		getNewDepth();
-	}
-	
-	public void orthoNormalizeZVector()
+	private void displayImage()
 	{
-		 z=(((x.cross(y)).unitVector()).scalarMultiply((x.length()+y.length())/2));
-		 y=(((z.cross(x)).unitVector()).scalarMultiply((x.length()+z.length())/2));
-		 x=(((y.cross(z)).unitVector()).scalarMultiply((y.length()+z.length())/2));
+    	Component comp []=this.getComponents();
+    	for(int i=0; i<comp.length; i++)
+        	comp[i].repaint();
 	}
+
+/*********************** Coordinate System *************************/
+
+	/* Get 3D simulation coordinates of a 2D onscreen mouse click.
+	  Used during zooming, selection, etc.
+	*/
+	Vector3D coordEvent(MouseEvent e)
+	{
+		Vector3D ret=coord.origin.plus(
+			coord.x.scalarMultiply(delta/coord.factor*2.0*(e.getX() - width2D*0.5)).plus(
+			coord.y.scalarMultiply(delta/coord.factor*2.0*(height2D*0.5 - e.getY()))
+		));
+		
+		/*
+		Point back=screenFm3D(ret); // round-trip coordinate transform check: works!
+		System.out.println("2D "+e.getX()+","+e.getY()+" to 3D "+ret+" to 2D "+back);
+		*/
+		
+		return ret;
+	}
+	
+	/* Get 2D screen coordinates of a simulation-coordinates 3D location.
+	   Used for onscreen feedback during selection process. */
+	Point screenFm3D(Vector3D sim) {
+		sim=sim.minus(coord.origin);
+		Point ret=new Point(
+			(int)(coord.x.dot(sim)/(delta/coord.factor*2.0)+width2D*0.5),
+			(int)(height2D*0.5-coord.y.dot(sim)/(delta/coord.factor*2.0))
+		);
+		return ret;
+	}
+
+	public void xall() { // down X axis: +Y and +Z
+    	coord.origin = new Vector3D(windowManager.sim.origin);
+		coord.x = new Vector3D(0, 1, 0);
+		coord.y = new Vector3D(0, 0, 1);
+		
+		/* Set initial zoom factor based on whether the simulation in X-Y view 
+		   has no extra space along the X or Y dimension, calculate the sim coord to pixel ratio*/  
+		if ((maxY-minY)/(maxZ-minZ) < width2D/height2D){
+			coord.factor = 2.0/(maxY-minY);
+		}
+		else{
+			coord.factor = 2.0/(maxZ-minZ);
+		}
+	    coord.orthoNormalize();
+		fireViewReset();
+	}
+
+	public void yall() { // down Y axis: -X and +Z
+    	coord.origin = new Vector3D(windowManager.sim.origin);
+		coord.x = new Vector3D(-1, 0, 0);
+		coord.y = new Vector3D(0, 0, 1);
+		if ((maxX-minX)/(maxZ-minZ)< width2D/height2D){
+			coord.factor = 2.0/(maxX-minX);
+		}
+		else{
+			coord.factor = 2.0/(maxZ-minZ);
+		}
+    	coord.orthoNormalize();
+		fireViewReset();
+	}
+
+	public void zall() { // down Z axis: +X and +Y
+		coord.origin = new Vector3D(windowManager.sim.origin);
+		coord.x = new Vector3D(1, 0, 0);
+		coord.y = new Vector3D(0, 1, 0);
+		if ((maxX-minX)/(maxY-minY) < width2D/height2D){
+			coord.factor = 2.0/(maxX-minX);
+		}
+		else{
+			coord.factor = 2.0/(maxY-minY);
+		}
+    	coord.orthoNormalize();
+		fireViewReset();
+	}
+	
+/*********************** Selection ***********************/
+	/* Draw a line between these two simulation-space locations */
+	private void drawLine(Graphics g,Vector3D start,Vector3D end) {
+		Point s=screenFm3D(start), e=screenFm3D(end);
+		g.drawLine(s.x,s.y, e.x,e.y);
+	}
+	/* Draw a 2D box with corners at these two simulation-space locations */
+	private void drawBox(Graphics g,Vector3D start,Vector3D end) {
+		Point s=screenFm3D(start), e=screenFm3D(end);
+		g.drawLine(s.x,s.y, s.x,e.y);
+		g.drawLine(s.x,e.y, e.x,e.y);
+		g.drawLine(e.x,e.y, e.x,s.y);
+		g.drawLine(e.x,s.y, s.x,s.y);
+	}
+
+	/* Draw the currently selected region onscreen.
+	   The XOR mode allows us to *erase* the currently selected region using this same function call!
+	*/
+	private void drawSelection() 
+	{
+		Graphics g = glcanvas.getGraphics();
+		g.setXORMode(Color.green);
+		Point cur=screenFm3D(selCur), old=screenFm3D(selOld);
+		switch(selectState)
+		{
+		case selectState_box_xy: 
+			drawBox(g,selectCorner,selectCorner.plus(selectEdge1).plus(selectEdge2));
+			break;
+		case selectState_box_zstart:
+			drawLine(g,selCur,selCur.plus(selectEdge1).plus(selectEdge2)); 
+			//^ Line, because flat XOR box will erase itself!
+			break;
+		case selectState_box_zend: 
+			drawBox(g,selectCorner,selectCorner.plus(selectEdge1).plus(selectEdge2).plus(selectEdge3));
+			break;
+		
+		case selectState_sphere: { /* draw a circle */
+			int size = (int) Math.sqrt((cur.x - old.x) // cur determines radius
+					 *(cur.x - old.x)
+					 + (cur.y - old.y)
+					 *(cur.y - old.y));
+			g.drawArc(old.x-size, old.y-size, 2*size, 2*size, 0, 360); // old determines origin
+			} break;
+		
+		case selectState_rulerend: 
+			drawLine(g,selCur,selOld);
+			g.drawString(new java.text.DecimalFormat("####.####").format(selCur.minus(selOld).length()),
+				(cur.x+old.x)/2,(cur.y+old.y)/2);
+			break;
+		default: // e.g., selectState_none
+			break;
+		};
+	}
+	/* Update the current selection state to reflect this new mouse event. 
+	  This is called repeatedly as the mouse is dragged or moved around.
+	*/
+	private void updateSelection(MouseEvent e) {
+		selCur=coordEvent(e);
+		switch (selectState) {
+		case selectState_box_xy:
+			selectEdge1 = selCur;
+			// Turn corners into direction vectors
+			Vector3D d = selectEdge1.minus(selectCorner);
+			selectEdge1 = coord.x.scalarMultiply(coord.x.dot(d));
+			selectEdge2 = coord.y.scalarMultiply(coord.y.dot(d));
+			break;
+		case selectState_box_zstart:
+			selCur=selectCorner.plus(coord.y.scalarMultiply(coord.y.dot(selCur.minus(selectCorner))));
+			break;
+		case selectState_box_zend: 
+			selectEdge3 = coord.y.scalarMultiply(coord.y.dot(selCur.minus(selOld)));
+			break;
+		};
+	}
+	
+	/*
+	 Box selection needs a "corner" and three "edges" (X, Y, Z axes of box)
+	1.) Mouse pressed.  Sets selectCorner.
+	2.) Mouse dragged.  Updates selectEdge1 and Edge2 (X and Y axes)
+	3.) Mouse released.  View rotates 90 degrees.
+	4.) Mouse hovers.  Shows selectCorner with new Z (onscreen Y)
+	5.) Mouse pressed.  Updates selectCorner.
+	6.) Mouse dragged.  Updates Edge3.
+	7.) Mouse released.  Give the new box a name in the dialog.
+	Whew!
+	*/
+	private void boxSelectStart(MouseEvent e) // mouse going down during box select
+	{
+    	// box selection
+		switch(selectState)
+		{
+			case selectState_none:	// starting box selection
+				selCur = selOld = coordEvent(e);
+				selectCorner = selCur; selectEdge1=selectEdge2=selectEdge3=new Vector3D(0,0,0);
+				selectState = selectState_box_xy;
+				System.out.println("Corner 1: " + selectCorner.toString());
+				break;
+			case selectState_box_zstart:
+				drawSelection(); /* erase original line */
+				updateSelection(e);
+				selectCorner = selOld = selCur;
+				selectState = selectState_box_zend;
+				break;
+			default:
+		    	System.out.println("Bad state in press: " + selectState);
+		}
+		drawSelection(); /* so we've got one to start with! */
+	}
+
+	private void sphereSelectStart(MouseEvent e) // mouse going down during sphere select
+	{
+    	// sphere selection
+		switch(selectState)
+		{
+			case selectState_none:
+				selCur = selOld = coordEvent(e);
+				selectState = selectState_sphere;
+				drawSelection();
+				break;
+			default:
+		    	System.out.println("Bad state in press: " + selectState);
+		}
+	}
+	
+	private void rulerSelectStart(MouseEvent e) // mouse going down during sphere select
+	{
+		drawSelection(); // erases any old selection
+		selCur=coordEvent(e); 
+		if (selectState==selectState_rulerend) {
+			drawSelection(); // draws final selection
+			System.out.println("Distance is " +selCur.minus(selOld).length());
+			selectState=selectState_rulerstart;
+		} else {
+			selOld=selCur;
+			selectState=selectState_rulerend;
+			drawSelection(); // draws initial selection
+		}
+	}
+	
+	
+/****************************** User Interface ************************************/
+	private void mouseDebug(String what,MouseEvent e) {
+		//System.out.println("------ "+what+" ----- at "+e.getX()+","+e.getY());
+	}
+	
+	/* Begin rotating at this mouse click */
+	private void rotateStart(MouseEvent e)
+	{
+    	rotationPoint=e.getPoint();
+		uptodate2D=false; /* we're rotating, so 2D is now out of date */
+		displayImage();
+	}
+	
+	/* Zoom at this mouse location */
+	private void zoomBy(MouseEvent e,double zoomFactor)
+	{
+		coord.origin = coordEvent(e);
+		coord.factor*=zoomFactor;
+		request2D(true); /* need a 2D image for new viewpoint */
+		getNewDepth(false); /* eventually, pick up new depth */
+		request3D(false); /* eventually, pick up new 3D too */
+		displayImage(); /* draw new viewpoint */
+	}
+	/* Zoom in at this mouse location */
+	private void zoomIn(MouseEvent e)
+	{
+		zoomBy(e,clickZoomFactor);
+	}
+	/* Zoom out at this mouse location */
+	private void zoomOut(MouseEvent e)
+	{
+		zoomBy(e,1.0/clickZoomFactor);
+	}
+
 	
 	public void mousePressed(MouseEvent e) {
-	    if(e.isPopupTrigger()) {
-            //rcm.refresh();
+		mouseDebug("PRESS",e);
+		if(e.isPopupTrigger()) {
+        	//rcm.refresh();
 		rcm.show(e.getComponent(), e.getX(), e.getY());
 		return;
 		}
-	    else if(e.getModifiers()== (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK))
-	    {
-			boxSelect(e);
-		}
-	    else if(e.getModifiers()== (MouseEvent.BUTTON1_MASK|InputEvent.CTRL_MASK))
-	    {
-	    	sphereSelect(e);
-		}
-	    else if(e.getModifiers() == (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK))
-	    {
-	    	rotate(e);
-	    }
-	    else
-	    {
+		switch (e.getModifiers()) {
+		case (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK):
+	    	rotateStart(e);
+		case (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK|InputEvent.CTRL_MASK):  // Zoom in.
+			zoomIn(e);
+			break;
+		case (MouseEvent.BUTTON3_MASK|InputEvent.ALT_MASK|InputEvent.CTRL_MASK):  // Zoom out
+			zoomOut(e);
+			break;
+		case (MouseEvent.BUTTON1_MASK|InputEvent.SHIFT_MASK):
+			boxSelectStart(e);
+			break;
+		case (MouseEvent.BUTTON1_MASK|InputEvent.CTRL_MASK):
+	    	sphereSelectStart(e);
+			break;
+		default: /* no modifiers--check the active tool */
 	    	switch(activeTool)
 	    	{
-	    		case 0:
-	    			rotate(e);
-	    			break;
-	    		case 3:
-	    			sphereSelect(e);
-	    			break;
-	    		case 4:
-	    			boxSelect(e);
-	    			break;
+	    	case tool_rotate:
+	    		rotateStart(e);
+	    		break;
+			case tool_zoomin:
+				zoomIn(e);
+				break;  
+			case tool_zoomout:
+				zoomOut(e);
+				break;
+	    	case tool_sphere:
+	    		sphereSelectStart(e);
+	    		break;
+	    	case tool_box:
+	    		boxSelectStart(e);
+	    		break;
+	    	case tool_ruler:
+				rulerSelectStart(e);
+	    		break;
 	    	}
-	    }
+		}
 	}
-	
-    public void mouseReleased(MouseEvent e) {
-	    switch(selectState) {
-		    case 0:
-			break;
+
+	public void mouseDragged(MouseEvent e)
+	{
+		mouseDebug("DRAG",e);
+    	if(activeTool==tool_rotate)
+    	{
+		/* Rotation is a "spaceball" controller in 3D: to rotate, just
+		   nudge the onscreen x and y axes around by z, and re-orthonormalize. */
+	    	double yDis=(Math.PI/height2D)*(rotationPoint.getY()-e.getPoint().getY());
+	    	double xDis=(Math.PI/height2D)*(rotationPoint.getX()-e.getPoint().getX());
+	    	double xLength=coord.x.length();
+	    	double yLength=coord.y.length();
+	    	coord.x=coord.x.minus(coord.z.scalarMultiply(xDis)).unitVector().scalarMultiply(xLength);
+	    	coord.y=coord.y.plus(coord.z.scalarMultiply(yDis)).unitVector().scalarMultiply(yLength);
+	    	coord.orthoNormalize();
+	    	rotationPoint=e.getPoint();
+			if (disable3D) request2D(true); /* gotta request series of 2D frames if we don't have impostors */
+	    	displayImage();
+    	}
+
+		if(selectState == selectState_none) return;
 		
-		    case 1:	// end of X-Y box selection
-			selectEdge1 = coordEvent(e);
-			selectState = 2;
-			// Turn corners into direction vectors
-			Vector3D d = selectEdge1.minus(selectCorner);
-			selectEdge1 = x.scalarMultiply(x.dot(d)
-							 /x.lengthSquared());
-			selectEdge2 = y.scalarMultiply(y.dot(d)
-							 /y.lengthSquared());
-			
+		drawSelection(); // erases old selection
+		updateSelection(e);
+		drawSelection(); // draws new selection
+	}
+
+	public void mouseReleased(MouseEvent e) {
+		mouseDebug("RELEASE",e);
+		updateSelection(e); /* update positions to this new position */
+		switch(selectState) {
+		case selectState_none:
+			break;
+
+		case selectState_box_xy:	// end of X-Y box selection
+			selectState = selectState_box_zstart;
 			System.out.println("Corner 2: " + selectEdge1.toString());
 			System.out.println("Corner 3: " + selectEdge2.toString());
-			rotateUp(-0.5*Math.PI);
-			//getNewImage();
-			request2D();
-			getNewDepth();
-			selStartX = xCoord(selectCorner);
-			selStartY = -1;
-			oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
-			oldCurrentY = -1;
+			coord.rotateUp(-0.5*Math.PI); /* rotate view by 90 degrees, so we can see box's Z axis */
+			request2D(true);
+			getNewDepth(false);
 			break;
-		    case 3:	// end of Z box selection
-			selectEdge3 = y.scalarMultiply(y.dot(coordEvent(e).minus(selectEdge3))
-						      /y.lengthSquared());
+		case selectState_box_zend:	// end of Z box selection
 			System.out.println("Corner: " + selectCorner.toString());
 			System.out.println("Dir 1: " + selectEdge1.toString());
 			System.out.println("Dir 2: " + selectEdge2.toString());
 			System.out.println("Dir 3: " + selectEdge3.toString());
 			gquery.setVisible(true);
 			break;
-		    case 4:	// end of Sphere
-			selectRadius = (coordEvent(e).minus(selectCorner)).length();
-			System.out.println("Center: " + selectCorner.toString());
-			System.out.println("Edge: " + coordEvent(e));
+		case selectState_sphere:	// end of Sphere
+			selectRadius = (selCur.minus(selOld)).length();
+			System.out.println("Center: " + selOld);
+			System.out.println("Edge: " + selCur);
 			System.out.println("Radius: " + selectRadius);
-			gquery.setVisible(true);
+			gquery.setVisible(true); // see "makeBox"
 			break;
-		    case 5:
-		    	break;
-		    default:
+			
+		case selectState_rulerstart:
+		case selectState_rulerend:
+			/* nothing to do here */
+		    break;
+		default:
 			System.out.println("Bad state in release: " + selectState);
 		}
-	    if (mode3D)
-	    {
-	    	//mode3D=false;
-	    	requestOrigin3D=true;
-	    	request2D();
-	    	displayImage();
-	    }
-    }
-    
-    private void rotate(MouseEvent e)
-    {
-    	rotationPoint=e.getPoint();
-    	mode3D=true;
-	    if((reget3DImageCounter>=reget3DImageLimit||reget3DImageCounter<=-reget3DImageLimit)&&mode3D)
-		{
-			request3D();
-		}
-	    displayImage();
-    }
-    
-    private void boxSelect(MouseEvent e)
-    {
-    	// box selection
-	    switch(selectState)
-	    {
-		    case 0:	// starting box selection
-				selectCorner = coordEvent(e);
-				selStartX = e.getX();
-				selStartY = e.getY();
-				oldCurrentX = selStartX;
-				oldCurrentY = selStartY;
-				selectState = 1;
-				System.out.println("Corner 1: " + selectCorner.toString());
-				break;
-			    case 2:
-				// get 3rd component of box origin
-				Vector3D dz = y.scalarMultiply(y.dot(coordEvent(e).minus(origin))/y.lengthSquared());
-				selectCorner = selectCorner.plus(dz);
-				
-				selectEdge3 = coordEvent(e);
-				selectState = 3;
-				selStartY = e.getY();
-				oldCurrentY = selStartY;
-				System.out.println("Corner 3: " + selectEdge3.toString());
-				break;
-		    default:
-		    	System.out.println("Bad state in press: " + selectState);
-		}
-    }
-    
-    private void sphereSelect(MouseEvent e)
-    {
-    	// sphere selection
-	    switch(selectState)
-	    {
-		    case 0:
-				selectCorner = coordEvent(e);
-				selStartX = e.getX();
-				selStartY = e.getY();
-				oldCurrentX = selStartX;
-				oldCurrentY = selStartY;
-				selectState = 4;
-				System.out.println("Center: " + selectCorner.toString());
-				break;
-		    default:
-		    	System.out.println("Bad state in press: " + selectState);
-		}
-    }
-
-    Vector3D coordEvent(MouseEvent e) // get simulation coordinates of
-				      // mouse click
-    {
-    	double delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
-    	return origin.plus(x.scalarMultiply(width2D*delta/factor*2.0 * (e.getX() - (width - 1) / 2.0) / (width - 1))).plus(y.scalarMultiply(width2D*delta/factor*2.0 * ((height - 1) / 2.0 - e.getY()) / (height - 1)));
-    }
-    
-    public void mouseDragged(MouseEvent e)
-    {
-    	if(e!=null&&mode3D)
-    	{
-	    	double yDis=(Math.PI/height)*(rotationPoint.getY()-e.getPoint().getY());
-	    	double xDis=(Math.PI/height)*(rotationPoint.getX()-e.getPoint().getX());
-	    	double xLength=x.length();
-	    	double yLength=y.length();
-	        x=x.minus(z.scalarMultiply(xDis)).unitVector().scalarMultiply(xLength);
-	        y=y.plus(z.scalarMultiply(yDis)).unitVector().scalarMultiply(yLength);
-	        orthoNormalizeZVector();
-	    	rotationPoint=e.getPoint();
-	    	displayImage();
-    	}
-    	
-		if(selectState == 0) return;
 		
-		Graphics g = glcanvas.getGraphics();
-		g.setXORMode(Color.green);
-		g.drawRect(0, 0, 1, 1);
-	
-		if(selectState == 3) {	// selecting "z" bounds
-		    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
-		    int deltaX = Math.abs(oldCurrentX - selStartX);
-		    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
-		    int deltaY = Math.abs(oldCurrentY - selStartY);
-		    g.drawRect(rectX, rectY, deltaX, deltaY);
-	
-		    int currentY = e.getY();
-		    rectY = selStartY < currentY ? selStartY : currentY;
-		    deltaY = Math.abs(currentY - selStartY);
-		    g.drawRect(rectX, rectY, deltaX, deltaY);
-		    oldCurrentY = currentY;
-		    }
-		else if(selectState == 1) { // selecting x and y bounds
-		    int rectX = selStartX < oldCurrentX ? selStartX : oldCurrentX;
-		    int deltaX = Math.abs(oldCurrentX - selStartX);
-		    int rectY = selStartY < oldCurrentY ? selStartY : oldCurrentY;
-		    int deltaY = Math.abs(oldCurrentY - selStartY);
-		    g.drawRect(rectX, rectY, deltaX, deltaY);
-	
-		    int currentX = e.getX();
-		    int currentY = e.getY();
-		    rectX = selStartX < currentX ? selStartX : currentX;
-		    deltaX = Math.abs(currentX - selStartX);
-		    rectY = selStartY < currentY ? selStartY : currentY;
-		    deltaY = Math.abs(currentY - selStartY);
-		    g.drawRect(rectX, rectY, deltaX, deltaY);
-		    oldCurrentX = currentX;
-		    oldCurrentY = currentY;
-		    }
-		else { // selecting sphere
-		    int size = (int) Math.sqrt((selStartX - oldCurrentX)
-					 *(selStartX - oldCurrentX)
-					 + (selStartY - oldCurrentY)
-					 *(selStartY - oldCurrentY));
-		    
-		    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
-		    int currentX = e.getX();
-		    int currentY = e.getY();
-		    size = (int) Math.sqrt((selStartX - currentX)
-					 *(selStartX - currentX)
-					 + (selStartY - currentY)
-					 *(selStartY - currentY));
-		    g.drawArc(selStartX-size, selStartY-size, 2*size, 2*size, 0, 360);
-		    oldCurrentX = currentX;
-		    oldCurrentY = currentY;
-	    }
-    }
-    
-    public void mouseMoved(MouseEvent e)
-    { 
-		if(selectState == 0) return;
-		
-		if(selectState == 2)
-		{	// box is rotated, now draw a line
-		    Graphics g = glcanvas.getGraphics();
-		    g.setXORMode(Color.green);
-		    g.drawLine(selStartX, oldCurrentY, oldCurrentX, oldCurrentY);
-		    int currentY = e.getY();
-		    g.drawLine(selStartX, currentY, oldCurrentX, currentY);
-		    oldCurrentY = currentY;
-		    
-		    return;
-		}
-		else if (selectState == 5)
-		{
-			Graphics g = glcanvas.getGraphics();
-		    g.setXORMode(Color.green);
-		    g.drawLine(selStartX, selStartY, oldCurrentX, oldCurrentY);
-		    oldCurrentX=e.getX(); 
-		    oldCurrentY=e.getY();
-		    g.drawLine(selStartX, selStartY, oldCurrentX, oldCurrentY);
-		}
-    }
-
-    int xCoord(Vector3D c) 	// Return x pixel value for a
-				// simulation coordinate
-    {
-	double xval = x.dot(c.minus(origin))/x.lengthSquared();
-	return (new Double(width*(xval + 1.0)*.5)).intValue();
-    }
-    int yCoord(Vector3D c) 	// Return a y pixel value for a
-				// simulation coordinate
-    {
-	double yval = y.dot(c.minus(origin))/y.lengthSquared();
-	return (new Double(width*(yval + 1.0)*.5)).intValue();
-    }
-	
-    public void mouseClicked(MouseEvent e)
-    {
- 		switch(e.getModifiers()) {
-		case (MouseEvent.BUTTON1_MASK|InputEvent.ALT_MASK|InputEvent.CTRL_MASK):  // Zoom in.
-		    zoomIn(e);
-		    break;
-		case (MouseEvent.BUTTON3_MASK|InputEvent.ALT_MASK|InputEvent.CTRL_MASK):  // Zoom out
-		    zoomOut(e);
-		    break;
-		case MouseEvent.BUTTON1_MASK:
-			switch(activeTool)
-			{
-				case 1:
-					zoomIn(e);
-					break;  
-				case 2:
-					zoomOut(e);
-					break;
-				case 5:
-					switch(selectState)
-					{
-						case 0:
-							selectCorner=coordEvent(e);
-							selectState=5;
-							oldCurrentX=selStartX=e.getX();
-							oldCurrentY=selStartY=e.getY();
-							break;
-						case 5:
-							System.out.println("Distance is " +selectCorner.minus(coordEvent(e)).length());
-							selectState=0;
-							Graphics g = glcanvas.getGraphics();
-						    g.setXORMode(Color.green);
-						    g.drawLine(selStartX, selStartY, oldCurrentX, oldCurrentY);
-							break;
-					}
-			}
-			break;
-		default:
-		    break;
+		if (activeTool==tool_rotate) 
+		{ // New viewpoint--need new 2D image if possible...
+			request2D(true); 
 		}
 	}
-    
-    private void zoomIn(MouseEvent e)
-    {
-    	if(selectState == 1 || selectState == 3)
-			return;
-		System.out.println(origin);
-	    origin = coordEvent(e);
-	    ccs.doBlockingRequest(new CenterRequest());
-	    System.out.println(origin);
-	    factor*=(32.0f)/16.0f;
-	    //getNewDepth();
-	    getNewImage();
-	    if(selectState == 2) {
-		selStartX = xCoord(selectCorner);
-		selStartY = -1;
-		oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
-		oldCurrentY = -1;
+	
+	
+	public void mouseMoved(MouseEvent e)
+	{ 
+		mouseDebug("MOVE",e);
+		if(selectState == selectState_none) return;
+
+		if (selectState == selectState_rulerend || selectState == selectState_box_zstart)
+		{
+			drawSelection(); // erases old selection
+			updateSelection(e); // updates new selection
+			drawSelection();
 		}
-    }
-    
-    private void zoomOut(MouseEvent e)
-    {
-    	if(selectState == 1 || selectState == 3)
-			return;
-	    System.out.println(origin);
-	    origin = coordEvent(e);
-	    ccs.doBlockingRequest(new CenterRequest());
-	    System.out.println(origin);
-	    factor*=(8.0f)/16.0f;
-	    //getNewDepth();
-	    getNewImage();
-	    if(selectState == 2) {
-		selStartX = xCoord(selectCorner);
-		selStartY = -1;
-		oldCurrentX = xCoord(selectCorner.plus(selectEdge1));
-		oldCurrentY = -1;
-	    }
-    }
-			
+	}
+
+	public void mouseClicked(MouseEvent e)
+	{
+		mouseDebug("CLICK",e);
+	}
+	
+    /* The mousewheel zooms in and out */
+	public void mouseWheelMoved(MouseWheelEvent e)
+	{
+
+		try /* slowly shift mouse pointer closer to center of screen */
+		{
+			Robot r = new Robot();
+			Point p=getLocationOnScreen();
+			r.mouseMove((int)(p.getX()+e.getX()+.1*(width2D/2.0-e.getX())),(int)(p.getY()+e.getY()+.1*(height2D/2.0-e.getY())));
+		} catch(Exception ex) {}
+
+		coord.factor*=(16.0f-(float)e.getWheelRotation())/16.0f;
+		/*if (factor <1.0f/16f)
+				factor=1.0f/16f;*/
+		coord.origin=coord.origin.plus((coordEvent(e).minus(coord.origin)).scalarMultiply((1+1.0/16.0)*1.1-1));
+		displayImage();
+		
+		request2D(true); // fire off requests; they may not actually finish in time, but they're good to have... 
+		request3D(false);
+	}
+
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
 		if(command.equals("refresh")) {
-			getNewImage();
-			getNewDepth();
+			getNewDepth(true); // blocking, so we're really centered nicely
+			getNewImage(true);
 		} else if(command.equals("xall"))
 			xall();
 		else if(command.equals("yall"))
@@ -571,101 +737,110 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		else if(command.equals("executeLocalCode"))
 			windowManager.addLocalCodeFrame();
 	}
-	
-	//rotate the top half toward you, bottom away
-    public void rotateUp(double theta) {
-        y.rotate(theta, x.unitVector());
-        //z.rotate(-theta, x.unitVector());
-        orthoNormalizeZVector();
-    }
-	
-	//rotate the right half toward you, left away
-    public void rotateRight(double theta) {
-        x.rotate(theta, y.unitVector());
-        z.rotate(theta, y.unitVector());
-        orthoNormalizeZVector();
-    }
-	
-	//rotate the axes clockwise
-    public void rotateClock(double theta) {
-        y.rotate(theta, z.unitVector());
-        x.rotate(theta, z.unitVector());
-        orthoNormalizeZVector();
-    }
-	
-	public void rotationPerformed(RotationEvent e) {
-		x.rotate(e.theta, e.rotationAxis);
-		y.rotate(e.theta, e.rotationAxis);
-		orthoNormalizeZVector();
+
+	public void mouseEntered(MouseEvent e) { }
+	public void mouseExited(MouseEvent e) { }
+	public void componentHidden(ComponentEvent e) { }
+	public void componentMoved(ComponentEvent e) { }
+	public void componentShown(ComponentEvent e) { }
+
+/********************************* Network *************************/
+	/* Called by GroupQuery when the user gives the new group a name */
+	public void makeGroup(String groupName) 
+	{
+		if(selectState == selectState_box_zend) {
+			PythonExecute code = new PythonExecute("charm.createGroupAttributeBox(\""
+			  + groupName + "\", \"All\", \"position\","
+			  + selectCorner.toPyString() + ","
+			  + selectEdge1.toPyString() + ","
+			  + selectEdge2.toPyString() + ","
+			  + selectEdge3.toPyString() + ")\n",
+							   false, true, 0);
+			windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+			}
+		else if(selectState == selectState_sphere) {
+			PythonExecute code = new PythonExecute("charm.createGroupAttributeSphere(\""
+			  + groupName + "\", \"All\", \"position\","
+			  + selOld.toPyString() + ","
+			  + selectRadius + ")\n",
+							   false, true, 0);
+			windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+			}
+		selectState = 0;
+	}
+	private class ExecutePythonCode extends CcsThread.request {
+		public ExecutePythonCode(byte[] s) {
+			super("ExecutePythonCode", s);
+		}
+		public void handleReply(byte[] data) {
+			String result = new String(data);
+			System.out.println("Return from code execution: \"" + result + "\"");
+		}
+	}
+
+	/* Various toolbars call this function when the user selects e.g. a new coloring, family, attribute, sliders, ... */
+	public void getNewImage(boolean flushOld3D) {
+		request2D(true);
+		request3D(flushOld3D);
+		if (!flushOld3D) displayImage();
 	}
 	
-    public void xall() {
-		//invariant: must keep \delta = x.length() / width = y.length()  / height fixed to maintain aspect ratio
-        origin = new Vector3D(windowManager.sim.origin);
-		double delta = boxSize / (height < width ? height : width);
-		x = new Vector3D(0, width * delta / 2.0, 0);
-		y = new Vector3D(0, 0, height * delta / 2.0);
-        z = x.cross(y);
-		request2D();
-		fireViewReset();
-    }
-	
-    public void yall() {
-        origin = new Vector3D(windowManager.sim.origin);
-		double delta = boxSize / (height < width ? height : width);
-        x = new Vector3D(-width * delta / 2.0, 0, 0);
-        y = new Vector3D(0, 0, height * delta / 2.0);
-        z = x.cross(y);
-		request2D();
-		fireViewReset();
-    }
-	
-    public void zall() {
-        origin = new Vector3D(windowManager.sim.origin);
-		double delta = boxSize;
-        x = new Vector3D(delta / 2.0, 0, 0);
-        y = new Vector3D(0, delta / 2.0, 0);
-        //z = x.cross(y);
-        orthoNormalizeZVector();
-		//request2D();
-		fireViewReset();
-    }
-	
-	public void componentResized(ComponentEvent e) {
-		int newWidth = getWidth();
-		int newHeight = getHeight();
-		/*x = x.scalarMultiply((double) newWidth *delta);
-		y = y.scalarMultiply((double) newHeight *delta);
-		orthoNormalizeZVector();*/
-		//z = x.cross(y);
-		width = newWidth;
-		height = newHeight;
-		width2D=width;
-		height2D=height;
-		if(!mode3D)
-			request2D();
-		//b=BufferUtil.newByteBuffer(width*height*height);
-		glcanvas.setPreferredSize(new Dimension(width,height));
-		glcanvas.setSize(new Dimension(width, height));
-		//System.out.println("SizeWin: "+width+", "+height);
-		displayImage();
+	/* Post a new network image request */
+	void request2D(boolean flushOldImage) {
+		if (flushOldImage) uptodate2D=false;
+		want2D=true;
+		networkPoll();
 	}
-	
+
+	void request3D(boolean flushOldImage) {
+		if (flushOldImage) uptodate3D=false;
+		want3D=true;
+		networkPoll();
+	}
+
+
+	/* Send out any pending image requests */
+	void networkPoll() {
+		if (networkBusy) return; /* don't bother me right now */
+		if (want2D) {
+			ccs.addRequest(new ImageRequest(), false);
+		}
+		else if (wantZ) {
+			ccs.addRequest(new CenterRequest(), false);
+		}
+		else if (want3D && !disable3D) {
+			ccs.addRequest(new Image3DRequest(), false);
+		}
+		else {
+				networkBusy=false;
+		}
+	}
+
+	private final void debugNetwork(String doingWhat) {
+		//System.out.println("Network "+doingWhat+" (busy="+networkBusy
+		//	+" want="+(want2D?"2D ":"")+(wantZ?"Z ":"")+(want3D?"3D":"")
+		//	+" uptodate="+(uptodate2D?"2D ":"")+(uptodate3D?"3D ":"")+")");
+	}
+
 	private class ImageRequest extends CcsThread.request {
+		CoordinateSystem mycoord;	
 		int w, h;
 		long reqStartTime=0;
 		public ImageRequest() {
 			// could be a while, lets wait
-			super("lvImage", encodeRequest2D());
+			super("lvImage", encodeRequest2D(coord.factor));
+			mycoord=new CoordinateSystem(coord);	
 			reqStartTime=System.currentTimeMillis();
 			w=width2D;
 			h=height2D;
-			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			requestLock=true;
+			//setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			networkBusy=true;
+			want2D=false;
+			debugNetwork("outgoing 2D image request");
 		}
 
 		public void handleReply(byte[] data) {
-			System.out.println("Request Time 2D (ms): "+(System.currentTimeMillis()-reqStartTime));
+			//System.out.println("Request Time 2D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			synchronized(b2Lock)
 			{
@@ -676,10 +851,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				long startTime=0;
 				switch(encoding2D)
 				{
-					case 0:
+					case encoding_raw:
 						pixels=data;
 						break;
-					case 1:
+					case encoding_jpeg:
 						startTime=System.currentTimeMillis();
 						DataBuffer db=null;
 						try {
@@ -696,7 +871,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 						System.out.println("Decompress time (ms) JPEG2D: "+(System.currentTimeMillis()-startTime));
 						System.out.println("JPEG Compression 2D: " +((double)data.length)/db.getSize()*100+"%\n Bytes: "+data.length);
 						break;
-					case 2:
+					case encoding_rle:
 						startTime=System.currentTimeMillis();
 						if(data.length%2==0)
 						{
@@ -711,62 +886,49 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 						}
 						else
 							System.err.println("Compression failure");
-						System.out.println("Decompress time (ms) RL2D: "+(System.currentTimeMillis()-startTime));
-						System.out.println("RunLength Compression 2D: " +((double)data.length)/(cwidth2D*cheight2D)*100+"%\n Bytes: "+data.length);
+				//		System.out.println("Decompress time (ms) RL2D: "+(System.currentTimeMillis()-startTime));
+				//		System.out.println("RunLength Compression 2D: " +((double)data.length)/(cwidth2D*cheight2D)*100+"%\n Bytes: "+data.length);
 						break;
 					default:
 						pixels=data;
 						break;
-						
+
 				}
 			}
+			coord2D=mycoord;
+			uptodate2D=true;
+			networkBusy=false;
+			networkPoll();
 			displayImage();
-			if (nextRequest!=null)
-			{
-				ccs.addRequest(nextRequest, false);
-				nextRequest=null;
-			}
-			else
-			{
-				if (nextRequest3D!=null)
-				{
-					ccs.addRequest(nextRequest3D, false);
-					nextRequest3D=null;
-				}
-				else
-					requestLock=false;
-			}
-			if(requestOrigin3D)
-				mode3D=false;
+			debugNetwork("incoming 2D image");
 		}
 	}
-	
+
 	private class Image3DRequest extends CcsThread.request {
-		float factorStore=0.0f;
+		CoordinateSystem mycoord;
 		long reqStartTime=0;
 		public Image3DRequest() {
-			// could be a while, lets wait
 			super("lvImage", encodeRequest3D());
+			mycoord=new CoordinateSystem(coord);			
 			reqStartTime=System.currentTimeMillis();
-			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			reget3DImageCounter=0;
-			factorStore=factor;
-			requestLock=true;
+			networkBusy=true;
+			want3D=false;
+			debugNetwork("outgoing 3D image request");
 		}
 
 		public void handleReply(byte[] data)
 		{
-			System.out.println("Request Time 3D (ms): "+(System.currentTimeMillis()-reqStartTime));
+			//System.out.println("Request Time 3D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			long startTime=0;
 			synchronized(bLock)
 			{
 				switch(encoding3D)
 				{
-					case 0:
+					case encoding_raw:
 						b.put(data);
 						break;
-					case 1:
+					case encoding_jpeg:
 						startTime=System.currentTimeMillis();
 						DataBuffer db=null;
 						try {
@@ -783,8 +945,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 						System.out.println("Decompress time (ms) JPEG3D: "+(System.currentTimeMillis()-startTime));
 						System.out.println("JPEG Compression 3D: " +((double)data.length)/db.getSize()*100+"%\n Bytes: "+data.length);
 						break;
-						
-					case 2:
+
+					case encoding_rle:
 						startTime=System.currentTimeMillis();
 						if(data.length%2==0)
 						{
@@ -795,58 +957,79 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 								for(int j=0; j<reps; j++, k++)
 									b.put(data[i+1]);
 							}
-							
+
 						}
 						else
 							System.err.println("Compression failure");
-						System.out.println("Decompress time (ms) RL3D: "+(System.currentTimeMillis()-startTime));
-						System.out.println("RunLength Compression 3D: " +((double)data.length)/b.capacity()*100+"%\n Bytes: "+data.length);
+						//System.out.println("Decompress time (ms) RL3D: "+(System.currentTimeMillis()-startTime));
+						//System.out.println("RunLength Compression 3D: " +((double)data.length)/b.capacity()*100+"%\n Bytes: "+data.length);
 						break;
-						
+
 					default:
 						b.put(data);
 						break;
 				}
 				b.flip();
 			}
-			factorFor3D=factorStore;
+			coord3D=mycoord;
 			isNewImageData=true;
-			if (nextRequest!=null)
-			{
-				ccs.addRequest(nextRequest, false);
-				nextRequest=null;
-			}
-			else
-			{
-				if (nextRequest3D!=null)
-				{
-					ccs.addRequest(nextRequest3D, false);
-					nextRequest3D=null;
-				}
-				else
-					requestLock=false;
-			}
+			uptodate3D=true;
+			networkBusy=false;
+			networkPoll();
+			displayImage();
+			debugNetwork("incoming 3D image");
 		}
 	}
-	
+
+
+	public void getNewDepth(boolean beBlocking) {
+		if (beBlocking) {
+			ccs.doBlockingRequest(new CenterRequest());
+		} else { /* non-blocking */
+			wantZ=true;
+			networkPoll();
+		}
+	}
+	/**
+	  A CenterRequest calls Worker::calculateDepth, to find the Z value
+	  that the simulation should rotate and zoom around.
+	*/
 	private class CenterRequest extends CcsThread.request {
+		// Our coordinate system is same as 2D render, but we act zoomed-in first--
+		//  this picks out the Z for the object in the middle of the screen, 
+		//  not some higher-potential object off on the side of the screen...
+	    static final double trimCenterFactor=2.0;
+		// Stash old coordinate system, in case we're rendered obsolete...
+		private CoordinateSystem mycoord;
 		public CenterRequest() {
-			super("Center", encodeRequest2D());
+			super("Center", encodeRequest2D(coord.factor*trimCenterFactor));
+			mycoord=new CoordinateSystem(coord);
+			mycoord.factor*=trimCenterFactor;
+			networkBusy=true;
+			wantZ=false;
+			debugNetwork("outgoing depth request");
 		}
 
 		public void handleReply(byte[] data) {
 			try {
 				double val = Double.parseDouble(new String(data));
-				origin = origin.plus(z.unitVector().scalarMultiply(val));
+			//	System.out.println("Server says z should shift by "+val);
+				/* FIXME: what happens if "coord" is drastically changed/reset while we're on the network?
+				   This line might cause popping... */
+				coord.origin = mycoord.origin.plus(mycoord.z.scalarMultiply(val/mycoord.factor));
 			} catch(NumberFormatException e) {
 				System.err.println("Problem decoding the z value.  String: " + (new String(data)));
 			}
+			networkBusy=false;
+			networkPoll();
+			debugNetwork("incoming depth request");
 		}
 	}
-	
-    private byte[] encodeRequest2D() {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
-        try {
+
+	/* Set up a CCS request structure ("MyVizRequest" on server) for a 2D render */
+	private byte[] encodeRequest2D(double renderzoomfactor) {
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
+    	try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			// These fields go into the liveVizRequest
 			dos.writeInt(2); /* version */
@@ -855,16 +1038,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeInt(height2D);
 			dos.writeInt(encoding2D);
 			dos.writeInt(compression2D);
-			
+
 			// These fields go into the MyVizRequest
 			dos.writeInt(activeColoring);
 			dos.writeInt(radius);
 			dos.writeInt(width2D); //encoded twice, for convenience
 			dos.writeInt(height2D);
-			double delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
-			Vector3D tx = x.scalarMultiply(width2D*delta/factor);
-			Vector3D ty = y.scalarMultiply(height2D*delta/factor);
-			Vector3D tz = (((x.cross(y)).unitVector()).scalarMultiply((x.length()+y.length())/2)).scalarMultiply(1/factor);
+			Vector3D tx = coord.x.scalarMultiply(width2D*delta/renderzoomfactor);
+			Vector3D ty = coord.y.scalarMultiply(height2D*delta/renderzoomfactor);
+			Vector3D tz = coord.z.scalarMultiply(1/renderzoomfactor);
 			dos.writeDouble(tx.x);
 			dos.writeDouble(tx.y);
 			dos.writeDouble(tx.z);
@@ -874,9 +1056,9 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeDouble(tz.x);
 			dos.writeDouble(tz.y);
 			dos.writeDouble(tz.z);
-			dos.writeDouble(origin.x);
-			dos.writeDouble(origin.y);
-			dos.writeDouble(origin.z);
+			dos.writeDouble(coord.origin.x);
+			dos.writeDouble(coord.origin.y);
+			dos.writeDouble(coord.origin.z);
 			dos.writeInt(centeringMethod);
 			//dos.writeInt(activeGroup);
 			dos.writeInt(activeGroup.length());
@@ -884,16 +1066,16 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeDouble(minMass);
 			dos.writeDouble(maxMass);
 			dos.writeInt(doSplatter);
-        } catch(IOException e) {
-            System.err.println("Couldn't encode request!");
-            e.printStackTrace();
-        }
-        return baos.toByteArray();
-    }
-    
-    private byte[] encodeRequest3D() {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
-        try {
+    	} catch(IOException e) {
+        	System.err.println("Couldn't encode request!");
+        	e.printStackTrace();
+    	}
+    	return baos.toByteArray();
+	}
+
+	private byte[] encodeRequest3D() {
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
+    	try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			// These fields go into the liveVizRequest
 			dos.writeInt(2); /* version */
@@ -902,15 +1084,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeInt(height3D*height3D);
 			dos.writeInt(encoding3D);
 			dos.writeInt(compression3D);
-			
+
 			// These fields go into the MyVizRequest
 			dos.writeInt(activeColoring);
 			dos.writeInt(radius);
 			dos.writeInt(width3D); //encoded twice, for convenience
 			dos.writeInt(height3D*height3D);
-			Vector3D tx = ox.scalarMultiply(1/factor);
-			Vector3D ty = oy.scalarMultiply(1/factor);
-			Vector3D tz = (((ox.cross(oy)).unitVector()).scalarMultiply((ox.length()+oy.length())/2)).scalarMultiply(1/factor);
+			Vector3D tx = new Vector3D(1/coord.factor,0,0); /* always use axis-aligned rendering for voxels (limitation of current 3D display code) */
+			Vector3D ty = new Vector3D(0,1/coord.factor,0);
+			Vector3D tz = new Vector3D(0,0,1/coord.factor);
 			dos.writeDouble(tx.x);
 			dos.writeDouble(tx.y);
 			dos.writeDouble(tx.z);
@@ -920,9 +1102,9 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeDouble(tz.x);
 			dos.writeDouble(tz.y);
 			dos.writeDouble(tz.z);
-			dos.writeDouble(origin.x);
-			dos.writeDouble(origin.y);
-			dos.writeDouble(origin.z);
+			dos.writeDouble(coord.origin.x);
+			dos.writeDouble(coord.origin.y);
+			dos.writeDouble(coord.origin.z);
 			dos.writeInt(centeringMethod);
 			//dos.writeInt(activeGroup);
 			dos.writeInt(activeGroup.length());
@@ -930,47 +1112,13 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeDouble(minMass);
 			dos.writeDouble(maxMass);
 			dos.writeInt(doSplatter);
-        } catch(IOException e) {
-            System.err.println("Couldn't encode request!");
-            e.printStackTrace();
-        }
-        return baos.toByteArray();
-    }
+    	} catch(IOException e) {
+        	System.err.println("Couldn't encode request!");
+        	e.printStackTrace();
+    	}
+    	return baos.toByteArray();
+	}
 
-    private void displayImage()
-    {
-        Component comp []=this.getComponents();
-        for(int i=0; i<comp.length; i++)
-        	comp[i].repaint();
-    }
-    
-    
-/* Post a new network image request */
-	void request2D() {
-		if(!requestLock)
-		{
-			ccs.addRequest(new ImageRequest(), true);
-			requestLock=true;
-		}
-		else
-			nextRequest=new ImageRequest();
-		displayImage();
-	}
-	
-	void request3D() {
-		displayImage();
-		if(!requestLock)
-		{
-			ccs.addRequest(new Image3DRequest(), false);
-			requestLock=true;
-		}
-		else
-			nextRequest3D=new Image3DRequest();
-		displayImage();
-	}
-    
-    
-	
 	public void addViewListener(ViewListener l) {
 		listenerList.add(ViewListener.class, l);
 	}
@@ -978,7 +1126,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	public void removeViewListener(ViewListener l) {
 		listenerList.remove(ViewListener.class, l);
 	}
-	
+
+    /* Called by xall, yall, zall */
 	protected void fireViewReset() {
 		// Guaranteed to return a non-null array
 		Object[] listeners = listenerList.getListenerList();
@@ -992,75 +1141,53 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				((ViewListener) listeners[i + 1]).viewReset(viewEvent);
 			}
 		}
+		request2D(true);
+		request3D(false);
 	}
-	
-    public void writePng() {
-        JFileChooser fc = new JFileChooser();
-        int returnVal = fc.showSaveDialog(this);
-        if(returnVal == JFileChooser.APPROVE_OPTION) {
-            File file = fc.getSelectedFile();
-            try {
-                FileOutputStream fos = new FileOutputStream(file);
-                
-                int pix[]=new int [pixels.length];
-                for(int i=0;i<pixels.length;i++)
+
+/*************************** Display **********************************/
+	public void componentResized(ComponentEvent e) {
+		width2D = getWidth();
+		height2D = getHeight();
+		delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
+		request2D(true); 
+		//b=BufferUtil.newByteBuffer(width2D*height2D*height2D);
+		glcanvas.setPreferredSize(new Dimension(width2D,height2D));
+		glcanvas.setSize(new Dimension(width2D, height2D));
+		//System.out.println("SizeWin: "+width2D+", "+height2D);
+		displayImage();
+	}
+
+    /* Save current 2D image to a PNG file, name chosen by user */
+	public void writePng() {
+    	JFileChooser fc = new JFileChooser();
+    	int returnVal = fc.showSaveDialog(this);
+    	if(returnVal == JFileChooser.APPROVE_OPTION) {
+        	File file = fc.getSelectedFile();
+        	try {
+            	FileOutputStream fos = new FileOutputStream(file);
+
+            	int pix[]=new int [pixels.length];
+            	for(int i=0;i<pixels.length;i++)
 				{
 					int index=0xff&(int)pixels[i];
 					pix[i]=((0xff&colorBar.cm_red[index])<<16)+((0xff&colorBar.cm_green[index])<<8)+((0xff&colorBar.cm_blue[index])<<0);
 				}
-                PngEncoder png = new PngEncoder(createImage(new MemoryImageSource(width, height, pix, 0, width)), false);
-                byte[] pngBytes = png.pngEncode();
-                fos.write(pngBytes);
-                fos.flush();
-                fos.close();
-            } catch(FileNotFoundException fnfe) {
+            	PngEncoder png = new PngEncoder(createImage(new MemoryImageSource(width2D, height2D, pix, 0, width2D)), false);
+            	byte[] pngBytes = png.pngEncode();
+            	fos.write(pngBytes);
+            	fos.flush();
+            	fos.close();
+        	} catch(FileNotFoundException fnfe) {
 				System.out.println(fnfe);
 			} catch(IOException ioe) {
 				System.out.println(ioe);
 			}
-        } else {
-            System.out.println("Screen capture cancelled by user.");
-        }
-    }
-
-	public void mouseEntered(MouseEvent e) { }
-	public void mouseExited(MouseEvent e) { }
-	public void componentHidden(ComponentEvent e) { }
-	public void componentMoved(ComponentEvent e) { }
-	public void componentShown(ComponentEvent e) { }
-    public void makeBox(String groupName) 
-    {
-	if(selectState == 3) {
-	    PythonExecute code = new PythonExecute("charm.createGroupAttributeBox(\""
-					   + groupName + "\", \"All\", \"position\","
-					   + selectCorner.toPyString() + ","
-					   + selectEdge1.toPyString() + ","
-					   + selectEdge2.toPyString() + ","
-					   + selectEdge3.toPyString() + ")\n",
-						   false, true, 0);
-	    windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
-	    }
-	else if(selectState == 4) {
-	    PythonExecute code = new PythonExecute("charm.createGroupAttributeSphere(\""
-					   + groupName + "\", \"All\", \"position\","
-					   + selectCorner.toPyString() + ","
-					   + selectRadius + ")\n",
-					       false, true, 0);
-	    windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
-	    }
-	selectState = 0;
-    }
-	private class ExecutePythonCode extends CcsThread.request {
-		public ExecutePythonCode(byte[] s) {
-			super("ExecutePythonCode", s);
-		}
-		
-		public void handleReply(byte[] data) {
-			String result = new String(data);
-			System.out.println("Return from code execution: \"" + result + "\"");
-		}
+    	} else {
+        	System.out.println("Screen capture cancelled by user.");
+    	}
 	}
-	
+
 	public void init(GLAutoDrawable arg0)
 	{
 		GL gl = arg0.getGL();
@@ -1069,7 +1196,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, GL.GL_ONE);
 		if (gl.isFunctionAvailable("glCompileShaderARB"))
 			hasShaders=true;
-		
+
 		if (hasShaders)
 		{
 			String shaderCode []=new String [1];
@@ -1116,7 +1243,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				System.out.print((char)bytes);
 			System.out.println();*/
 		}
-		
+
 		gl.glGenTextures(1, texture, 0);
 		screen=texture[0];
 		gl.glGenTextures(1, texture, 0);
@@ -1129,6 +1256,9 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		texture3D=texture[0];
 		isNewImageData=true;
 	}
+	
+	public void displayChanged(GLAutoDrawable arg0, boolean arg1, boolean arg2){}
+	public void reshape(GLAutoDrawable arg0, int arg1, int arg2, int arg3, int arg4) {}
 
 	public void display(GLAutoDrawable arg0)
 	{
@@ -1140,15 +1270,51 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT);
 		gl.glLoadIdentity();						// Reset The View
 		gl.glHint(GL.GL_PERSPECTIVE_CORRECTION_HINT, GL.GL_NICEST);			// Really Nice Perspective Calculation
-		if (mode3D)
+		
+		if (disable3D || (uptodate2D && coord.equals(coord2D))) 
+		{ /* 2D screen rendering: colorize on CPU, upload texture, draw. */
+			debugNetwork("--display2D--");
+			synchronized(b2Lock)
+			{
+				b2.clear();
+				for(int i=0;i<pixels.length;i++)
+				{
+					int index=0xff&(int)pixels[i];
+					b2.put(colorBar.cm_red[index]);
+					b2.put(colorBar.cm_green[index]);
+					b2.put(colorBar.cm_blue[index]);
+				}
+				b2.flip();
+				gl.glBindTexture(GL.GL_TEXTURE_2D, texture2D);
+				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, cwidth2D, cheight2D, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b2);
+			}
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_BORDER);
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_R, GL.GL_CLAMP_TO_BORDER);
+			gl.glDisable(GL.GL_ALPHA_TEST); /* too agressive--loses too many points */
+			gl.glDisable(GL.GL_BLEND);
+			gl.glColor4f(1f, 1f, 1f, 1f);
+			gl.glEnable(GL.GL_TEXTURE_2D);
+			gl.glBegin(GL.GL_QUADS);
+				gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f, 1.0f, 0.0f);
+				gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f, 1.0f, 0.0f);
+				gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
+				gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
+			gl.glEnd();
+			gl.glDisable(GL.GL_TEXTURE_2D);
+		}
+		else if (uptodate3D) /* Use 3D, at least until 2D arrives... */
 		{
+			debugNetwork("--display3D--");
 			gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
 			gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width2D, height2D, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, null);
-			
+
 			gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, framebuffer);
 			gl.glFramebufferTexture2DEXT(GL.GL_FRAMEBUFFER_EXT, GL.GL_COLOR_ATTACHMENT0_EXT, GL.GL_TEXTURE_2D, screen, 0);
 
-			
+
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
@@ -1159,8 +1325,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glLoadIdentity();
 			gl.glMatrixMode(GL.GL_MODELVIEW);
 			gl.glLoadIdentity();
-			
-			
+
+
 			if(isNewImageData)
 			{
 				texture[0]=texture3D;
@@ -1181,7 +1347,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			}
 			else
 				gl.glBindTexture(GL.GL_TEXTURE_3D, texture3D);
-			
+
 			gl.glLoadIdentity();
 			gl.glDisable(GL.GL_ALPHA_TEST); /* too agressive--loses too many points */
 			gl.glDisable(GL.GL_DEPTH_TEST); /* don't do Z buffer (screws up overlaps, esp. w/blending) */
@@ -1191,18 +1357,25 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				gl.glBlendEquation(GL.GL_MAX);
 			else
 				gl.glBlendEquation(GL.GL_FUNC_ADD);
+			
+			
 			//scale and rotate
-			double scale=factor/factorFor3D*2/boxSize;
+			double scale=coord.factor/coord3D.factor;
 			double matrix []=new double[16];
-			double delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
-			matrix[0]=x.x;	matrix[4]=x.y;	matrix[8]=x.z;	 matrix[12]=0;
-			matrix[1]=y.x;	matrix[5]=y.y;  matrix[9]=y.z;	 matrix[13]=0;
-			matrix[2]=z.x;	matrix[6]=z.y;	matrix[10]=z.z;  matrix[14]=0;
+			matrix[0]=coord.x.x; matrix[4]=coord.x.y; matrix[8]=coord.x.z;  matrix[12]=0;
+			matrix[1]=coord.y.x; matrix[5]=coord.y.y; matrix[9]=coord.y.z;  matrix[13]=0;
+			matrix[2]=coord.z.x; matrix[6]=coord.z.y; matrix[10]=coord.z.z; matrix[14]=0;
 			matrix[3]=0;	matrix[7]=0;	matrix[11]=0;	 matrix[15]=1;
 			gl.glScaled(scale /(width2D*delta), scale/(height2D*delta), scale*0);
 			gl.glMultMatrixd(matrix, 0);
 			
-			gl.glColor3d(2, 2, 2);
+			Vector3D o=coord3D.origin.minus(coord.origin); /* simulation-space distance between origins */
+			o=o.scalarMultiply(coord3D.factor);
+			gl.glTranslated(o.x,o.y,o.z); // shift so 3D data lines up with 2D coordinate system
+			
+	
+			/* Outline the 3D region with a box.  (Ugly!) */
+			gl.glColor3d(0.2, 0.2, 0.2);
 			gl.glBegin(GL.GL_LINE_LOOP);
 				gl.glVertex3d(-1, 1, 1);
 				gl.glVertex3d( 1, 1, 1);
@@ -1218,23 +1391,24 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glBegin(GL.GL_LINES);
 				gl.glVertex3d(-1, 1, 1);
 				gl.glVertex3d(-1, 1,-1);
-				
+
 				gl.glVertex3d( 1, 1, 1);
 				gl.glVertex3d( 1, 1,-1);
-				
+
 				gl.glVertex3d( 1,-1, 1);
 				gl.glVertex3d( 1,-1,-1);
-				
+
 				gl.glVertex3d(-1,-1, 1);
 				gl.glVertex3d(-1,-1,-1);
 			gl.glEnd();
-				
 
+		
+			/* Draw slices of the 3D volume */
 			gl.glEnable(GL.GL_TEXTURE_3D);
 			double intensity=1.0;
 			switch (getFacing())
 			{
-				case 1:
+				case facing_z:
 					gl.glScalef(1, 1, 2);
 					gl.glTranslatef(0, 0, -1.0f/2);
 					gl.glBegin(GL.GL_QUADS);
@@ -1253,7 +1427,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 					}
 					gl.glEnd();
 					break;
-				case 2:
+				case facing_y:
 					gl.glScalef(1, 2, 1);
 					gl.glTranslatef(0, -1.0f/2, 0);
 					gl.glBegin(GL.GL_QUADS);
@@ -1272,7 +1446,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 					}
 					gl.glEnd();
 					break;
-				case 3:
+				case facing_x:
 					gl.glScalef(2, 1, 1);
 					gl.glTranslatef(-1.0f/2, 0 ,0);
 					gl.glBegin(GL.GL_QUADS);
@@ -1295,7 +1469,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 					System.out.println("Facing Error");
 			}
 			gl.glDisable(GL.GL_TEXTURE_3D);
-			
+
 			if (hasShaders)
 			{
 				gl.glBindFramebufferEXT(GL.GL_FRAMEBUFFER_EXT, 0);
@@ -1335,10 +1509,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 				gl.glUseProgramObjectARB(0);
 			}
-			else //no shaders
+			else //no shaders--colorize rendered image on CPU
 			{
-				int w=width;
-				int h=height;
+				int w=width2D;
+				int h=height2D;
 				ByteBuffer temp=BufferFactory.newDirectByteBuffer(w*h);
 				ByteBuffer temp2=BufferFactory.newDirectByteBuffer(w*h*3);
 				gl.glReadPixels(0, 0, w, h, GL.GL_RED, GL.GL_UNSIGNED_BYTE, temp);
@@ -1373,96 +1547,56 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				gl.glDisable(GL.GL_TEXTURE_2D);
 			}
 		}
-		else
-		{
-			synchronized(b2Lock)
-			{
-				b2.clear();
-				for(int i=0;i<pixels.length;i++)
-				{
-					int index=0xff&(int)pixels[i];
-					b2.put(colorBar.cm_red[index]);
-					b2.put(colorBar.cm_green[index]);
-					b2.put(colorBar.cm_blue[index]);
-				}
-				b2.flip();
-				gl.glBindTexture(GL.GL_TEXTURE_2D, texture2D);
-				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, cwidth2D, cheight2D, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b2);
-			}
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_BORDER);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_R, GL.GL_CLAMP_TO_BORDER);
-			gl.glDisable(GL.GL_ALPHA_TEST); /* too agressive--loses too many points */
-			gl.glDisable(GL.GL_BLEND);
-			gl.glColor4f(1f, 1f, 1f, 1f);
-			gl.glEnable(GL.GL_TEXTURE_2D);
-			gl.glBegin(GL.GL_QUADS);
-				gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f, 1.0f, 0.0f);
-				gl.glTexCoord2f(1.0f, 1.0f); gl.glVertex3f( 1.0f, 1.0f, 0.0f);
-				gl.glTexCoord2f(1.0f, 0.0f); gl.glVertex3f( 1.0f, -1.0f, 0.0f);
-				gl.glTexCoord2f(0.0f, 0.0f); gl.glVertex3f(-1.0f, -1.0f, 0.0f);
+		else { /* no 2D image, no 3D image (yet).  Just wait! */
+			Graphics g= glcanvas.getGraphics();
+			g.setColor(Color.green);
+			g.drawString("Waiting for network...", 0, 80);
+			
+			/* Annoyingly, AWT text may not actually show up, so draw 
+			a big red yield sign... */
+			gl.glLineWidth(20.0f);
+			gl.glColor3d(0.8,0.0,0.0);
+			gl.glBegin(gl.GL_LINE_LOOP);
+			gl.glVertex2d(-0.3,0.2);
+			gl.glVertex2d(+0.3,0.2);
+			gl.glVertex2d(0.0,-0.3);
 			gl.glEnd();
-			gl.glDisable(GL.GL_TEXTURE_2D);
 		}
-		if(requestLock)
+		
+		if(networkBusy)
 		{
 			Graphics g= glcanvas.getGraphics();
 			g.setColor(Color.green);
 			g.drawString("Loading New Image...", 0, 20);
 		}
+		//drawSelection(); //<- doesn't seem to work.  Why?
 		gl.glPopAttrib();
 		j=gl.glGetError();
 		if(j!=0)
 			System.out.println("End of display: " + j);
 	}//end display
 	
-	//Pre: X, Y, and Z vectors are orthogonal to each other
-	//Post: Return 1 if the z axis is most parallel with camera, 2 if the Y axis is most parallel with camera, and 3 if the x axis is most parallel with camera, failure to compute returns a -1
+	static final int facing_z=1, facing_y=2, facing_x=3;
+
+	/* Decide the order to draw the slices of our 3D volume image.
+	  Pre: X, Y, and Z vectors are orthogonal to each other
+	  Post: Return 
+	      1 if the z axis is most parallel with camera 
+	      2 if the Y axis is most parallel with camera 
+		  3 if the x axis is most parallel with camera 
+		  failure to compute returns a -1
+	*/
 	public int getFacing()
 	{
+		Vector3D x=coord.x, y=coord.y, z=coord.z;
 		if (Math.abs(z.z)>=Math.abs(z.x)&&Math.abs(z.z)>=Math.abs(z.y))
-			return 1;
+			return facing_z;
 		else
 			if (Math.abs(z.y)>=Math.abs(z.x)&&Math.abs(z.y)>=Math.abs(z.z))
-				return 2;
+				return facing_y;
 			else
 				if (Math.abs(z.x)>=Math.abs(z.z)&&Math.abs(z.x)>=Math.abs(z.y))
-					return 3;
+					return facing_x;
 		return -1;
-	}
-
-	public void displayChanged(GLAutoDrawable arg0, boolean arg1, boolean arg2){}
-
-	public void reshape(GLAutoDrawable arg0, int arg1, int arg2, int arg3, int arg4) {}
-
-
-	public void mouseWheelMoved(MouseWheelEvent e)
-	{
-		
-		try
-		{
-			Robot r = new Robot();
-			Point p=getLocationOnScreen();
-			r.mouseMove((int)(p.getX()+e.getX()+.1*(width/2.0-e.getX())),(int)(p.getY()+e.getY()+.1*(height/2.0-e.getY())));
-		} catch(Exception ex) {}
-		
-		factor*=(16.0f-(float)e.getWheelRotation())/16.0f;
-		/*if (factor <1.0f/16f)
-				factor=1.0f/16f;*/
-		reget3DImageCounter-=e.getWheelRotation();
-		origin=origin.plus((coordEvent(e).minus(origin)).scalarMultiply((1+1.0/16.0)*1.1-1));
-		getNewDepth();
-		displayImage();
-		//System.out.println("reget3DImageCounter: " + reget3DImageCounter + "/" +reget3DImageLimit);
-		if(!mode3D)
-		{
-			request2D();
-		}
-		//if((reget3DImageCounter>=reget3DImageLimit||reget3DImageCounter<=-reget3DImageLimit))
-		//{
-			request3D();
-		//}
 	}
 }

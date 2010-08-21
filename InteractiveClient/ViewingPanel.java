@@ -11,7 +11,6 @@ public class ViewingPanel extends JFrame {
 	WindowManager windowManager;
 	ColorBarPanel colorBar;
 	SimulationView view;
-	ToolBarPanel tools;
 	SideBar side;
 	
 	public ViewingPanel(WindowManager wm) {
@@ -26,13 +25,11 @@ public class ViewingPanel extends JFrame {
 		colorBar = new ColorBarPanel(windowManager.sim, width, 20);
 		view = new SimulationView(windowManager, width, width, colorBar);
 		colorBar.setView(view);		
-		tools = new ToolBarPanel(windowManager, view);
 		side= new SideBar(windowManager, view);
 		
 		setJMenuBar(new MenuBar(windowManager,view));
 		c.add(colorBar, BorderLayout.NORTH);
 		c.add(view, BorderLayout.CENTER);
-		c.add(tools, BorderLayout.SOUTH);
 		c.add(side, BorderLayout.EAST);
 		
 /*		Action newViewAction = new AbstractAction() {

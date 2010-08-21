@@ -36,8 +36,8 @@ public class GroupQuery extends JFrame
     public void actionPerformed(ActionEvent e) {
 	
 	System.out.println("Creating group: " + groupNameField.getText());
-	simulationView.request2D();
-	simulationView.makeBox(groupNameField.getText());
+	simulationView.makeGroup(groupNameField.getText());
+	simulationView.request2D(true);
 	simulationView.windowManager.groupManager.refreshButton.doClick();
 	setVisible(false);
     }
@@ -46,10 +46,7 @@ public class GroupQuery extends JFrame
 	{
 		if (e.getKeyCode()==KeyEvent.VK_ENTER)
 		{
-			System.out.println("Creating group: " + groupNameField.getText());
-			simulationView.request2D();
-			simulationView.makeBox(groupNameField.getText());
-			setVisible(false);
+			actionPerformed(null);
 		}
 	}
 
