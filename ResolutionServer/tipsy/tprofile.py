@@ -304,8 +304,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
                 vel_radial_sigma = math.sqrt(vel_radial_sigma - pow(vel_radial, 2))
             else :
                 vel_radial_sigma = 0.
-            if mass > 0. :
-                vel_tang_sigma = math.sqrt(data[i][5] / mass)
+            vel_tang_sigma = data[i][5] / mass
             ang_mom = scalevec(1./mass, data[i][6])
             ang = vlength(ang_mom)
             if ang > 0.0 :
