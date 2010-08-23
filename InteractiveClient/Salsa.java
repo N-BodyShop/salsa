@@ -29,6 +29,7 @@ public class Salsa {
 			new WindowManager(ccs);
 	}
 	public void chooseSimulation(String name) {
+		System.out.println(" ----------- Loading simulation "+name+" on server --------- ");
 		SalsaRequests.ChooseSimulation cs = new SalsaRequests.ChooseSimulation(name);
 		ccs.doBlockingRequest(cs);
 		if(cs.status)
@@ -74,7 +75,14 @@ public class Salsa {
 			else {
 				salsa.getSimulationList();
 				salsa.displaySimulationList();
-				salsa.connectSimulation();
+				
+				/*
+				  Trying a speculative connection works if you've already
+				  chosen a simulation, but throws an exception on a new run.
+				  It leaves a "choose simulation" window open in any case, 
+				  so I'm getting rid of it.
+				*/
+				//salsa.connectSimulation();
 			}
 		} catch(UnknownHostException uhe) {            
 			System.err.println("Couldn't find host " + args[0] + ":" + args[1]);
