@@ -19,7 +19,7 @@ public class GroupManager extends Manager
 	Simulation sim;
 	int groupCount = 0;
 	
-	JList groupList;
+    JList groupList, markgroupList;
 	
 	Box infoPanel;
 	JTextField groupNameField;
@@ -40,10 +40,14 @@ public class GroupManager extends Manager
 		groupList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		groupList.setVisibleRowCount(8);
 		groupList.setPrototypeCellValue("Log Density Color");
+		markgroupList = new JList(sim.createGroupModel());
+		markgroupList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		markgroupList.setLayoutOrientation(JList.VERTICAL);
 		
 		JPanel lhs = new JPanel(new BorderLayout());
 		lhs.setBorder(BorderFactory.createTitledBorder("Groups"));
-		lhs.add(new JScrollPane(groupList), BorderLayout.WEST);
+                lhs.setLayout(new BoxLayout(lhs, BoxLayout.Y_AXIS));
+
 		Box b2 = new Box(BoxLayout.LINE_AXIS);
 		b2.add(new JLabel("Active Group:"));
 		JComboBox groupCombo = new JComboBox(windowManager.sim.createGroupModel());
@@ -53,7 +57,22 @@ public class GroupManager extends Manager
 		groupCombo.addActionListener(this);
 		b2.add(groupCombo);
 		lhs.add(b2, BorderLayout.NORTH);
+
+		Box b3 = new Box(BoxLayout.LINE_AXIS);
+	        b3.add(new JLabel("Marked groups: "), BorderLayout.WEST);
+		JScrollPane markPanel = new JScrollPane(markgroupList, 
+							ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+							ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+	
+		JButton markbutton = new JButton("Apply mark");
 		
+		markbutton.setActionCommand("applymark");
+		markbutton.addActionListener(this);
+		b3.add(markPanel);
+		b3.add(markbutton);
+	        lhs.add(b3);
+		lhs.add(new JScrollPane(groupList), BorderLayout.WEST);
+
 		displayPanel = new JPanel();
 		displayPanel.setBorder(BorderFactory.createTitledBorder("Group definition"));
 		displayPanel.setLayout(new BoxLayout(displayPanel, BoxLayout.PAGE_AXIS));
@@ -116,14 +135,14 @@ public class GroupManager extends Manager
 		getContentPane().setLayout(new BoxLayout(getContentPane(), BoxLayout.PAGE_AXIS));
 		getContentPane().add(lhs);
 		getContentPane().add(rhs);
-		
 		pack();
 		
 		groupList.addListSelectionListener(this);
 		groupList.setSelectedIndex(0);
+		markgroupList.addListSelectionListener(this);
 	}
 	
-	public void valueChanged(ListSelectionEvent e) {
+    	public void valueChanged(ListSelectionEvent e) {
 		if(e.getValueIsAdjusting() == false && groupList.getSelectedValue() != null) {
 			Simulation.Group g = (Simulation.Group) sim.groups.get(groupList.getSelectedValue());
 			groupNameField.setText(g.name);
@@ -202,9 +221,27 @@ public class GroupManager extends Manager
 			}
 			minValField.setValue(new Double(minVal));
 			maxValField.setValue(new Double(maxVal));
+
+	        } else if(command.equals("applymark")){
+		    int grouparraysize = groupList.getModel().getSize();
+		    for (int j=0;j<grouparraysize;j++){
+			String unmarkgroupscode
+			    = "ck.printclient(str(charm.unmarkParticlesGroup('"+groupList.getModel().getElementAt(j)+"')))";
+			PythonExecute unmarkcode = new PythonExecute(unmarkgroupscode,false, true, 0);
+		        HighLevelPython execute = new HighLevelPython(unmarkcode, windowManager.ccs, new MarkGroupsHandler());}
+		    ((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
+		    Object[] markedvalues = markgroupList.getSelectedValues();
+		    int markarraysize = markedvalues.length;
+		    for (int i=0;i<markarraysize;i++){
+		        String markgroupscode
+			    = "ck.printclient(str(charm.markParticlesGroup('"+markedvalues[i]+"')))";
+			PythonExecute markcode = new PythonExecute(markgroupscode,false, true, 0);
+		        HighLevelPython execute = new HighLevelPython(markcode, windowManager.ccs, new MarkGroupsHandler());}
+		    ((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
 		}
+			     
 	}
-	
+
 	public class CreateGroup extends CcsThread.request {
 		Simulation.Group g;
 		public CreateGroup(Simulation.Group group) {
@@ -232,5 +269,9 @@ public class GroupManager extends Manager
 			    sim.groups.put(g.name, g);
 			    }
 		}
+	}
+    
+	public class MarkGroupsHandler extends PyPrintHandler{
+	    public void handle(String result){}
 	}
 }
