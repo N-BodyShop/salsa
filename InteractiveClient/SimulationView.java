@@ -827,13 +827,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		int w, h;
 		long reqStartTime=0;
 		public ImageRequest() {
-			// could be a while, lets wait
 			super("lvImage", encodeRequest2D(coord.factor));
 			mycoord=new CoordinateSystem(coord);	
 			reqStartTime=System.currentTimeMillis();
 			w=width2D;
 			h=height2D;
-			//setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			networkBusy=true;
 			want2D=false;
 			debugNetwork("outgoing 2D image request");
@@ -1548,14 +1546,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			}
 		}
 		else { /* no 2D image, no 3D image (yet).  Just wait! */
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			Graphics g= glcanvas.getGraphics();
 			g.setColor(Color.green);
 			g.drawString("Waiting for network...", 0, 80);
 			
 			/* Annoyingly, AWT text may not actually show up, so draw 
-			a big red yield sign... */
+			   a big red yield sign... */
 			gl.glLineWidth(20.0f);
-			gl.glColor3d(0.8,0.0,0.0);
+			gl.glColor3d(0.9,0.2,0.0);
 			gl.glBegin(gl.GL_LINE_LOOP);
 			gl.glVertex2d(-0.3,0.2);
 			gl.glVertex2d(+0.3,0.2);
