@@ -832,6 +832,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			reqStartTime=System.currentTimeMillis();
 			w=width2D;
 			h=height2D;
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 			networkBusy=true;
 			want2D=false;
 			debugNetwork("outgoing 2D image request");
