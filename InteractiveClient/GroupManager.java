@@ -223,13 +223,12 @@ public class GroupManager extends Manager
 			maxValField.setValue(new Double(maxVal));
 
 	        } else if(command.equals("applymark")){
-		    int grouparraysize = groupList.getModel().getSize();
-		    for (int j=0;j<grouparraysize;j++){
+		    {
 			String unmarkgroupscode
-			    = "ck.printclient(str(charm.unmarkParticlesGroup('"+groupList.getModel().getElementAt(j)+"')))";
+			    = "ck.printclient(str(charm.unmarkParticlesGroup('All')))";
 			PythonExecute unmarkcode = new PythonExecute(unmarkgroupscode,false, true, 0);
-		        HighLevelPython execute = new HighLevelPython(unmarkcode, windowManager.ccs, new MarkGroupsHandler());}
-		    ((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
+		        HighLevelPython execute = new HighLevelPython(unmarkcode, windowManager.ccs, new MarkGroupsHandler());
+			}
 		    Object[] markedvalues = markgroupList.getSelectedValues();
 		    int markarraysize = markedvalues.length;
 		    for (int i=0;i<markarraysize;i++){
@@ -237,7 +236,6 @@ public class GroupManager extends Manager
 			    = "ck.printclient(str(charm.markParticlesGroup('"+markedvalues[i]+"')))";
 			PythonExecute markcode = new PythonExecute(markgroupscode,false, true, 0);
 		        HighLevelPython execute = new HighLevelPython(markcode, windowManager.ccs, new MarkGroupsHandler());}
-		    ((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
 		}
 			     
 	}
@@ -272,6 +270,8 @@ public class GroupManager extends Manager
 	}
     
 	public class MarkGroupsHandler extends PyPrintHandler{
-	    public void handle(String result){}
+	    public void handle(String result){
+		((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
+	    }
 	}
 }
