@@ -179,6 +179,14 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	if(minMass >= maxMass)
 		minMass = 0;
 		
+	//create markbox attribute for all families
+	byte mark = 0;
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter){
+	    c.activeFamilies.insert(iter->first);
+	    byte* particleMark = new byte[iter->second.count.numParticles];
+	    memset(particleMark, mark, iter->second.count.numParticles);
+	    iter->second.addAttribute("mark", particleMark);
+	}
 	contribute(sizeof(OrientedBox<float>), &boundingBox, growOrientedBox_float, cb);
 }
 
@@ -762,6 +770,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		  	int SX=req.width, SY=req.width, SZ=req.width; /* size, pixels, along X, Y, Z */
 			std::cout<<"Volume render dimensions: "<<SX<<"x"<<SY<<"x"<<SZ<<"\n";
 			float hX=SX*0.5, hY=SY*0.5, hZ=SZ*0.5;
+			byte* mark = family.getAttribute("markbox", Type2Type<byte>());
 			Vector3D<float> xAxis=req.x*hX, yAxis=req.y*hY, zAxis=req.z*hZ; /* pixel axes */
 			float xo=(dot(req.x,req.o)-1)*hX, yo=(dot(req.y,req.o)-1)*hY, zo=(dot(req.z,req.o)-1)*hZ; /* pixel origin */
 			
@@ -775,6 +784,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				pixel = (unsigned int) ((int)x + SX *((int)y + SY * (int)z));
 				if(image[pixel] < colors[*iter])
 				        image[pixel] = colors[*iter];
+				if (mark[*iter]!=0){
+				  image[pixel]=1;}
 			}
 		  } else 
 		  { /* 2D image render only */
@@ -799,6 +810,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				        	image[pixel] = colors[*iter];
 				} else
 				    drawDisk(image, req.width, req.height, (int)x, (int)y, req.radius, colors[*iter]);
+				if(mark[*iter]!=0){
+				  image[pixel]=1;}
 			}
 		  }
 		}
@@ -1841,6 +1854,44 @@ void Worker::createGroup_AttributeBox(std::string const& groupName,
 		result = 1;
 	}
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
+}
+
+void Worker::markParticlesGroup(const std::string& groupName, const CkCallback& cb) {
+	GroupMap::iterator gIter = groups.find(groupName);
+	if(gIter != groups.end()) {
+		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		        ParticleFamily& family = (*sim)[*famIter];
+			AttributeMap::iterator attrIter = family.attributes.find("markbox");
+		        if(attrIter->second.length == 0)
+				sim->loadAttribute(*famIter, "markbox", family.count.numParticles, family.count.startParticle);
+			byte* mark = family.getAttribute("markbox", Type2Type<byte>());
+			GroupIterator iter = g->make_begin_iterator(*famIter);
+			GroupIterator end = g->make_end_iterator(*famIter);
+			for(; *iter != *end; iter++)
+			    mark[*iter] += 1;
+		}
+	}
+	contribute(cb);
+}
+
+void Worker::unmarkParticlesGroup(const std::string& groupName, const CkCallback& cb) {
+	GroupMap::iterator gIter = groups.find(groupName);
+	if(gIter != groups.end()) {
+		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+		        ParticleFamily& family = (*sim)[*famIter];
+			AttributeMap::iterator attrIter = family.attributes.find("markbox");
+		        if(attrIter->second.length == 0)
+				sim->loadAttribute(*famIter, "markbox", family.count.numParticles, family.count.startParticle);
+			byte* mark = family.getAttribute("markbox", Type2Type<byte>());
+			GroupIterator iter = g->make_begin_iterator(*famIter);
+			GroupIterator end = g->make_end_iterator(*famIter);
+			for(; *iter != *end; iter++)
+			    mark[*iter] = 0;
+		}
+	}
+	contribute(cb);
 }
 
 class PythonLocalParticle: public PythonObjectLocal
