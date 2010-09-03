@@ -770,7 +770,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 		  	int SX=req.width, SY=req.width, SZ=req.width; /* size, pixels, along X, Y, Z */
 			std::cout<<"Volume render dimensions: "<<SX<<"x"<<SY<<"x"<<SZ<<"\n";
 			float hX=SX*0.5, hY=SY*0.5, hZ=SZ*0.5;
-			byte* mark = family.getAttribute("markbox", Type2Type<byte>());
+			byte* mark = family.getAttribute("mark", Type2Type<byte>());
 			Vector3D<float> xAxis=req.x*hX, yAxis=req.y*hY, zAxis=req.z*hZ; /* pixel axes */
 			float xo=(dot(req.x,req.o)-1)*hX, yo=(dot(req.y,req.o)-1)*hY, zo=(dot(req.z,req.o)-1)*hZ; /* pixel origin */
 			
@@ -792,6 +792,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 			float w=req.width/2, h=req.height/2;
 			Vector3D<float> xAxis=req.x*w, yAxis=req.y*h; /* pixel axes */
 			float xo=(dot(req.x,req.o)-1)*w, yo=(dot(req.y,req.o)-1)*h; /* pixel origin */
+			byte* mark = family.getAttribute("mark", Type2Type<byte>());
 			// Only needed for clipping planes
 			// float zo=dot(req.z,req.o)-1;
 			for(; *iter != *end; ++iter) {
@@ -1862,10 +1863,10 @@ void Worker::markParticlesGroup(const std::string& groupName, const CkCallback& 
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 		        ParticleFamily& family = (*sim)[*famIter];
-			AttributeMap::iterator attrIter = family.attributes.find("markbox");
+			AttributeMap::iterator attrIter = family.attributes.find("mark");
 		        if(attrIter->second.length == 0)
-				sim->loadAttribute(*famIter, "markbox", family.count.numParticles, family.count.startParticle);
-			byte* mark = family.getAttribute("markbox", Type2Type<byte>());
+				sim->loadAttribute(*famIter, "mark", family.count.numParticles, family.count.startParticle);
+			byte* mark = family.getAttribute("mark", Type2Type<byte>());
 			GroupIterator iter = g->make_begin_iterator(*famIter);
 			GroupIterator end = g->make_end_iterator(*famIter);
 			for(; *iter != *end; iter++)
@@ -1881,10 +1882,10 @@ void Worker::unmarkParticlesGroup(const std::string& groupName, const CkCallback
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 		        ParticleFamily& family = (*sim)[*famIter];
-			AttributeMap::iterator attrIter = family.attributes.find("markbox");
+			AttributeMap::iterator attrIter = family.attributes.find("mark");
 		        if(attrIter->second.length == 0)
-				sim->loadAttribute(*famIter, "markbox", family.count.numParticles, family.count.startParticle);
-			byte* mark = family.getAttribute("markbox", Type2Type<byte>());
+				sim->loadAttribute(*famIter, "mark", family.count.numParticles, family.count.startParticle);
+			byte* mark = family.getAttribute("mark", Type2Type<byte>());
 			GroupIterator iter = g->make_begin_iterator(*famIter);
 			GroupIterator end = g->make_end_iterator(*famIter);
 			for(; *iter != *end; iter++)
