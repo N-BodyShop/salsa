@@ -50,7 +50,7 @@ public class SalsaRequests {
     	}
 
     	public void handleReply(byte[] data) {
-			status = (data != null) && (data[0] == 1);
+			status = (data.length > 0) && (data[0] == 1);
     	}
 	}
 }
