@@ -38,6 +38,7 @@ echo PORT is $PORT
 
 export LD_LIBRARY_PATH=$ld_path:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
+sleep 2
 /usr/bin/java -Xmx512m -jar $BINDIR/Salsa.jar localhost $PORT $FILE &
 sleep 1
 xterm -e "$BINDIR/taco localhost $PORT"
