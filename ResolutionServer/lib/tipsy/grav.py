@@ -1,4 +1,4 @@
-import traceback, math, config, tipsyf, charm
+import traceback, math, config, tipsyf
 
 def grav(pos, acc_gas, acc_star, acc_dark, gasgroup, stargroup, darkgroup) :
     # follows grav.c from Tipsy
@@ -25,6 +25,7 @@ def grav(pos, acc_gas, acc_star, acc_dark, gasgroup, stargroup, darkgroup) :
     
     # iterate over gas particles
     result = charm.reduceParticle(gasgroup, gravmap, gravreduce, params)
+    print result
     for i in index :
         acc_gas[i][0] = result[0][i+1][0]
         acc_gas[i][1] = result[0][i+1][1]
@@ -45,7 +46,8 @@ def grav(pos, acc_gas, acc_star, acc_dark, gasgroup, stargroup, darkgroup) :
         acc_dark[i][2] = result[0][i+1][2]
     
 gravmap = """def localparticle(p):
-    import math, config, tipsyf
+    import math
+    from tipsy import config, tipsyf
     nbins = p._param[0]
     pos = p._param[1:nbins+1]
     result = [None] * nbins
