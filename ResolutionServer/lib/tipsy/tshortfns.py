@@ -1,4 +1,4 @@
-import math, charm, traceback
+import math, traceback
 
 centmassmap = """def localparticle(p):
 	return (0, p.mass*p.position[0], p.mass*p.position[1], p.mass*p.position[2])
@@ -146,38 +146,26 @@ def markgal(group, maxTemp, minRho) :
     charm.createGroup_AttributeRange('mark', 'mark', 'temperature', minTemp, maxTemp)
     charm.createGroup_AttributeRange('mark', 'mark', 'density', minRho, maxRho)
 
+def unmarkall() :
+    "unmark all particles"
+    charm.unmarkParticlesGroup('All')
+    
 def markbox(group) :
-    """Mark the contents of group. Marked particles are stored in a group
-    called "mark" which will be replaced every time a marking command is run."""
+    """Mark the contents of group. Marked particles are indicated by a "mark"
+    attribute being set to non-zero."""
+
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
     
-    if family == 'all':
-        bBox = list(charm.getAttributeRangeGroup(group, 'gas', 'position'))
-        bBoxTmp = charm.getAttributeRangeGroup(group, 'dark', 'position')
-        bBox[0] = map(lambda x, y : min(x,y), bBox[0], bBoxTmp[0])
-        bBox[1] = map(lambda x, y : max(x,y), bBox[1], bBoxTmp[1])
-        bBoxTmp = charm.getAttributeRangeGroup(group, 'star', 'position')
-        bBox[0] = map(lambda x, y : min(x,y), bBox[0], bBoxTmp[0])
-        bBox[1] = map(lambda x, y : max(x,y), bBox[1], bBoxTmp[1])
-    elif family == 'baryon':
-        bBox = list(charm.getAttributeRangeGroup(group, 'gas', 'position'))
-        bBoxTmp = charm.getAttributeRangeGroup(group, 'star', 'position')
-        bBox[0] = map(lambda x, y : min(x,y), bBox[0], bBoxTmp[0])
-        bBox[1] = map(lambda x, y : max(x,y), bBox[1], bBoxTmp[1])
-    else :
-        mass = charm.getAttributeSum(group, family, 'mass')
-        bBox = charm.getAttributeRangeGroup(group, family, 'position')
-    charm.createGroupAttributeSphere('mark', group, 'position', bBox[0], bBox[1])
+    charm.markParticlesGroup(group)
 
 def markgal(group, max_temp, min_rho) :
     """Mark all the gas particles in group that have temperatures less
     than or equal to max_temp and densities greater than or equal to
     min_rho. This command can be used to mark those gas particles that
-    are likely to be in galaxies. Marked particles are stored in a group
-    called "mark" which will be replaced every time a marking command is
-    run."""
+    are likely to be in galaxies."""
+
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
@@ -187,12 +175,17 @@ def markgal(group, max_temp, min_rho) :
     min_temp = charm.getAttributeRange('gas', 'temperature')[0]
     
     # play the createGroup shuffle
-    charm.createGroup_Family('mark', group, 'gas')
-    charm.createGroup_AttributeRange('tmp_group', 'mark', 'density', min_rho, max_rho)
-    charm.createGroup_AttributeRange('mark', 'tmp_group', 'temperature', min_temp, max_temp)
+    charm.createGroup_Family('tmp_group_fam', group, 'gas')
+    charm.createGroup_AttributeRange('tmp_group1', 'tmp_group_fam', 'density',
+                                     min_rho, max_rho)
+    charm.createGroup_AttributeRange('tmp_group2', 'tmp_group1',
+                                     'temperature', min_temp, max_temp)
+    charm.markParticlesGroup('tmp_group2')
     
-    # remove the temporary group to avoid clutter
-    charm.deleteGroup('tmp_group')
+    # remove the temporary groups to avoid clutter
+    charm.deleteGroup('tmp_group_fam')
+    charm.deleteGroup('tmp_group1')
+    charm.deleteGroup('tmp_group2')
 
 def writemark(group, filename) :
     """Write a file which contains the index values for all
