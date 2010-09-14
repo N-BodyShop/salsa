@@ -23,6 +23,7 @@ centmassreduce = """def localparticle(p):
 """
 
 def boxstat(group, family='all') :
+    import charm
     """Print statistics for a group as in the tipsy boxstat command
     Arguments are group and family
     
@@ -110,6 +111,7 @@ def boxstat(group, family='all') :
 
 def setsphere(xcenter, ycenter, zcenter, radius, group, sourcegroup='All') :
     """Select particles within radius from coordinate."""
+    import charm
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
@@ -193,6 +195,8 @@ def writemark(group, filename) :
     export and import particle markings.
     
     The file has a header row with ntotal ngas nstar."""
+
+    import charm
     
     # check if simulation loaded
     groups = charm.getGroups()
