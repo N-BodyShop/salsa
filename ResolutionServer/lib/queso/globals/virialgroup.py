@@ -2,8 +2,8 @@ import charm, findcenter, math, queso
 from queso import quesoConfig
 
 def getVirialGroup(group='All',center2='pot', virialGroup='virialGroup'):
-    global center
     """This method returns the virial radius of a given group, bases around a center that can be given by one of three options: Default 'pot' finds the potential minimum, 'com' uses the center of mass, or a tuple of length 3 can be given.  virialGroup specifies the group name of the resulting """
+    global center
     if   (center2=='pot'):cnt = findcenter.findCenter(group2=group, method='pot')
     elif (center2=='com'):cnt = findcenter.findCenter(group2=group, method='com')
     elif (len(center2)==3): 
