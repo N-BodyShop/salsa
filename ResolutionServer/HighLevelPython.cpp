@@ -1117,3 +1117,62 @@ void Main::reduceParticle(int handle) {
     Py_DECREF(objResult);
     delete mesg;
 }
+
+void Main::markParticlesGroup(int handle)
+{
+    char *groupName;
+    CkReductionMsg* mesg;
+    Worker* w = workers[0].ckLocal();
+
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    if(PyArg_ParseTuple(arg, "s", &groupName) == false) {
+	PyErr_SetString(PyExc_TypeError, "Usage: markParticlesGroup(group)");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    int result;
+    workers.markParticlesGroup(groupName, createCallbackResumeThread(mesg, result));
+    delete mesg;
+    pythonReturn(handle);
+}
+
+void Main::unmarkParticlesGroup(int handle)
+{
+    char *groupName;
+    CkReductionMsg* mesg;
+    Worker* w = workers[0].ckLocal();
+
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    if(PyArg_ParseTuple(arg, "s", &groupName) == false) {
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
+    int result;
+    workers.unmarkParticlesGroup(groupName, createCallbackResumeThread(mesg, result));
+    delete mesg;
+    pythonReturn(handle);
+}

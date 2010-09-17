@@ -76,6 +76,10 @@ mainmodule ResolutionServer {
 			void importData(int handle);
 		entry [python "perform a reduction of particle data"]
 			void reduceParticle(int handle);
+		entry [python "turns all particles in a group green"]
+			void markParticlesGroup(int handle);
+		entry [python "reverses markParticleGroup"]
+			void unmarkParticlesGroup(int handle);
 	};
 	
 	array [1D] Worker {
@@ -163,6 +167,9 @@ mainmodule ResolutionServer {
 			    std::string const &sReduceCode,
 			    PyObjectMarshal &global,
 			    const CkCallback &cb);
+		entry void markParticlesGroup(std::string const& groupName, CkCallback const& cb);
+		entry void unmarkParticlesGroup(std::string const& groupName, CkCallback const& cb);
+
 	};
 	
 	group MetaInformationHandler {

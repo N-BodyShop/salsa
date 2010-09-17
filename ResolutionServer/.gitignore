@@ -3,6 +3,7 @@
 *.decl.h
 *.def.h
 config.*
+Makefile
 charmrun
 ResolutionServer
 *.pyc

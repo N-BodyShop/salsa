@@ -224,6 +224,8 @@ public:
 	void runLocalParticleCode(int handle);
 	void runLocalParticleCodeGroup(int handle);
 	void reduceParticle(int handle);
+	void markParticlesGroup(int handle);
+	void unmarkParticlesGroup(int handle);
 };
 
 class MetaInformationHandler : public Group {
@@ -380,6 +382,8 @@ public:
 			    std::string const &sReduceCode,
 			    PyObjectMarshal &global,
 			    const CkCallback &cb);
+	void markParticlesGroup(const std::string& groupName, const CkCallback& cb);
+	void unmarkParticlesGroup(const std::string& groupName, const CkCallback& cb);
 };
 
 #endif //RESOLUTIONSERVER_H
