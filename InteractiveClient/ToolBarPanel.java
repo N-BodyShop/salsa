@@ -172,9 +172,9 @@ public class ToolBarPanel extends JPanel
 		if(command.equals("orientationapply")) {
 		        String delims = "[,]";
 		        String[] eulerangles = orientationText.getText().split(delims);
-		        view.coord.rotateUp(Float.valueOf(eulerangles[0]));
-		        view.coord.rotateRight(Float.valueOf(eulerangles[1]));
-		        view.coord.rotateClock(Float.valueOf(eulerangles[2]));
+		        view.coord.rotateClock(Float.valueOf(eulerangles[2])*Math.PI/180.);
+		        view.coord.rotateUp(Float.valueOf(eulerangles[1])*Math.PI/180.);
+		        view.coord.rotateClock(Float.valueOf(eulerangles[0])*Math.PI/180.);
 		     	((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
 		}
     }
