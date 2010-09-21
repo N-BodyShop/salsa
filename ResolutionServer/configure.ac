@@ -138,6 +138,6 @@ AC_CHECK_FUNCS([floor memset sqrt xdr_hyper])
 rm -f python
 ln -s $PYTHON_INCLUDE_DIR python
 
-AC_CONFIG_SUBDIRS(../structures)
+AC_CONFIG_SUBDIRS(../../utility/structures)
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
