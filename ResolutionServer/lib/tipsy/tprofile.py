@@ -1,4 +1,4 @@
-import traceback, config, charm, tipsyf, math, spline, elliptical, star_lum
+import traceback, config, tipsyf, math, spline, elliptical, star_lum
 
 def safeprofile() :
     try :
@@ -47,6 +47,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     e.g. non-uniform UV for star luminosity calculation."""
     
   try:
+    import charm
     # check initialization state of meanmwt attribute
     if family in ['all', 'gas', 'baryon'] and not 'meanmwt' in charm.getAttributes('gas') :
         print 'Attribute meanmwt not initialized. Initializing...'
@@ -470,7 +471,8 @@ basemap = """def localparticle(p):
         seperation = dx_rot[0] * dx_rot[0] + dx_rot[1] * dx_rot[1] * invba2 + dx_rot[2] * dx_rot[2] * invca2
         return math.sqrt(seperation)
     # import necessary packages & unpack values passed on p._param
-    import math, spline
+    import math
+    import tipsy.spline as spline
     fam, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ell_matrix, center_ell, ba, ca, msolunit, gasconst, sim_time, time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom = p._param
     # find radius and bin number
     radius = 0.

@@ -6,4 +6,22 @@ AC_HAVE_LIBRARY(termlib, [LIBS="$LIBS -ltermlib"])
 AC_HAVE_LIBRARY(termcap, [LIBS="$LIBS -ltermcap"])
 AC_HAVE_LIBRARY(readline, [LIBS="$LIBS -lreadline"])
 
+# find CHARM
+ax_charm_header=no
+if test "x$CHARM_DIR" != "x"; then
+  if test -f $CHARM_DIR/include/converse.h ; then
+       ax_charm_header=yes
+   fi
+else
+for charm in $PWD/../charm $PWD/../../charm $PWD/../charm-6.2 $PWD/../../charm-6.2 ; do
+   if test -f $charm/include/converse.h ; then
+       ax_charm_header=yes
+       CHARM_DIR=$charm
+       break;
+   fi
+done
+fi
+
+AC_SUBST(CHARM_DIR)
+
 AC_OUTPUT(Makefile)

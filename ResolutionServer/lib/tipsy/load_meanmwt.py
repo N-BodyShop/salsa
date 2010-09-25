@@ -15,7 +15,7 @@ def do_meanmwt() :
     charm.runLocalParticleCodeGroup('AllFAMgas', setvals, None)
     
 setvals = """def localparticle(p):
-    import meanmwt
+    import tipsy.meanmwt as meanmwt
     n = 0.
     n = meanmwt.calc_meanmwt(p.temperature, p.density)
     p.meanmwt = n

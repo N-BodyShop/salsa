@@ -7,3 +7,5 @@ Makefile
 charmrun
 ResolutionServer
 *.pyc
+.tipsy_history
+.taco_history
