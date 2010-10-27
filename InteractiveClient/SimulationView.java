@@ -1206,7 +1206,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			fragmentCode[0]="varying vec2 texture_coordinate; uniform sampler2D my_color_texture; uniform sampler2D my_screen_texture;"+
 							"void main()" +
 							"{ vec4 screenpix=texture2D(my_screen_texture, texture_coordinate);" +
-							"gl_FragColor = texture2D(my_color_texture, vec2(screenpix)+vec2(0.5/255,0));}";
+							"gl_FragColor = texture2D(my_color_texture, vec2(screenpix));}";
 			int codeLength[]=new int[1];
 
 			int my_vertex_shader;
@@ -1488,11 +1488,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				b3.flip();
 				gl.glActiveTexture(GL.GL_TEXTURE1);
 				gl.glBindTexture(GL.GL_TEXTURE_2D, colortable);
-				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, colorBar.cmap_size, 1, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b3);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
+				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, colorBar.tableSize, 1, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b3);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP);
+				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP);
 				gl.glActiveTexture(GL.GL_TEXTURE0);
 
 
