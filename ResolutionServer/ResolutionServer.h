@@ -265,7 +265,12 @@ class Worker : public CBase_Worker {
 	byte* image;
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
+	
 	byte startColor;
+	byte endColor;
+	byte startFamily;
+	byte markColor;
+	
 	static const std::string coloringPrefix;
 	std::vector<Coloring> colorings;
 	std::string activeGroupName;

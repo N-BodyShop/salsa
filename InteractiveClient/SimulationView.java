@@ -1206,7 +1206,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			fragmentCode[0]="varying vec2 texture_coordinate; uniform sampler2D my_color_texture; uniform sampler2D my_screen_texture;"+
 							"void main()" +
 							"{ vec4 screenpix=texture2D(my_screen_texture, texture_coordinate);" +
-							"gl_FragColor = texture2D(my_color_texture, vec2(screenpix)+vec2(0.5/255,0));}";
+							"gl_FragColor = texture2D(my_color_texture, vec2(screenpix));}";
 			int codeLength[]=new int[1];
 
 			int my_vertex_shader;
@@ -1258,6 +1258,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	public void displayChanged(GLAutoDrawable arg0, boolean arg1, boolean arg2){}
 	public void reshape(GLAutoDrawable arg0, int arg1, int arg2, int arg3, int arg4) {}
+	
+	private void texturemode(GL gl,int target,int filtermode) {
+			gl.glTexParameteri(target, GL.GL_TEXTURE_MAG_FILTER, filtermode);
+			gl.glTexParameteri(target, GL.GL_TEXTURE_MIN_FILTER, filtermode);
+			gl.glTexParameteri(target, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
+			gl.glTexParameteri(target, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_BORDER);
+			gl.glTexParameteri(target, GL.GL_TEXTURE_WRAP_R, GL.GL_CLAMP_TO_BORDER);
+	
+	}
 
 	public void display(GLAutoDrawable arg0)
 	{
@@ -1273,7 +1282,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		if (disable3D || (uptodate2D && coord.equals(coord2D))) 
 		{ /* 2D screen rendering: colorize on CPU, upload texture, draw. */
 			debugNetwork("--display2D--");
-			synchronized(b2Lock)
+			synchronized(b2Lock) /* colorize on CPU */
 			{
 				b2.clear();
 				for(int i=0;i<pixels.length;i++)
@@ -1286,12 +1295,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				b2.flip();
 				gl.glBindTexture(GL.GL_TEXTURE_2D, texture2D);
 				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, cwidth2D, cheight2D, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b2);
+				texturemode(gl,GL.GL_TEXTURE_2D,GL.GL_LINEAR);
 			}
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_BORDER);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_R, GL.GL_CLAMP_TO_BORDER);
 			gl.glDisable(GL.GL_ALPHA_TEST); /* too agressive--loses too many points */
 			gl.glDisable(GL.GL_BLEND);
 			gl.glColor4f(1f, 1f, 1f, 1f);
@@ -1314,10 +1319,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			gl.glFramebufferTexture2DEXT(GL.GL_FRAMEBUFFER_EXT, GL.GL_COLOR_ATTACHMENT0_EXT, GL.GL_TEXTURE_2D, screen, 0);
 
 
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_BORDER);
 			gl.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT);
 			gl.glViewport(0,0,width2D,height2D);
 			gl.glMatrixMode(GL.GL_PROJECTION);
@@ -1337,16 +1338,12 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				{
 					gl.glTexImage3D(GL.GL_TEXTURE_3D, 0, GL.GL_LUMINANCE, width3D, height3D, height3D, 0, GL.GL_LUMINANCE, GL.GL_UNSIGNED_BYTE, b);
 				}
-				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
-				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
-				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_BORDER);
-				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_BORDER);
-				gl.glTexParameteri(GL.GL_TEXTURE_3D, GL.GL_TEXTURE_WRAP_R, GL.GL_CLAMP_TO_BORDER);
 				isNewImageData=false;
 			}
 			else
 				gl.glBindTexture(GL.GL_TEXTURE_3D, texture3D);
 
+			texturemode(gl,GL.GL_TEXTURE_3D,GL.GL_NEAREST);
 			gl.glLoadIdentity();
 			gl.glDisable(GL.GL_ALPHA_TEST); /* too agressive--loses too many points */
 			gl.glDisable(GL.GL_DEPTH_TEST); /* don't do Z buffer (screws up overlaps, esp. w/blending) */
@@ -1477,6 +1474,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				gl.glMatrixMode(GL.GL_MODELVIEW);
 				gl.glLoadIdentity();
 				gl.glBindTexture(GL.GL_TEXTURE_2D, screen);
+				texturemode(gl,GL.GL_TEXTURE_2D,GL.GL_NEAREST);
 
 				b3.clear();
 				for(int i=0; i<256; i++)
@@ -1488,11 +1486,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				b3.flip();
 				gl.glActiveTexture(GL.GL_TEXTURE1);
 				gl.glBindTexture(GL.GL_TEXTURE_2D, colortable);
-				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, colorBar.cmap_size, 1, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b3);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
+				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, colorBar.tableSize, 1, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, b3);
+				texturemode(gl,GL.GL_TEXTURE_2D,GL.GL_NEAREST); /* do not blend family colors */
 				gl.glActiveTexture(GL.GL_TEXTURE0);
 
 
@@ -1532,10 +1527,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				temp2.flip();
 				gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
 				gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB8, w, h, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, temp2);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP_TO_EDGE);
-				gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
+				texturemode(gl,GL.GL_TEXTURE_2D,GL.GL_LINEAR);
 				gl.glEnable(GL.GL_TEXTURE_2D);
 				gl.glBegin(GL.GL_QUADS);
 					gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f,  1.0f, 0.0f);
