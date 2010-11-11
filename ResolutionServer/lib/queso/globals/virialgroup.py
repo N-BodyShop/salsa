@@ -29,7 +29,7 @@ def getVirialGroup(group='All',center2='pot', virialGroup='virialGroup'):
     count = 0
     maxIterations = 200
     leftr = 0.1/quesoConfig.kpcunit
-    rightr = 400./quesoConfig.kpcunit
+    rightr = 4000./quesoConfig.kpcunit
     #================================================================
     from queso.quesoConfig import virialRadiusDensity
     midpoint = (leftr + rightr)/2
