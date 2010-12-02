@@ -433,7 +433,7 @@ void Worker::readMark(const std::string& fileName,
     ckout << "[" << thisIndex << "]: reading Array ... ";
     int nFamilies = sim->size();
     TypedArray* aArrCmp[nFamilies];
-    short* aArrMark[nFamilies];
+    byte* aArrMark[nFamilies];
     int aIter[nFamilies];
     
     int i = 0;
@@ -452,13 +452,13 @@ void Worker::readMark(const std::string& fileName,
 	AttributeMap::iterator iAttr = iFam->second.attributes.find(attributeMark);
 	if(iAttr == iFam->second.attributes.end()) {
 	    // add attribute to family
-	    short *array = new short[iFam->second.count.numParticles];
+	    byte *array = new byte[iFam->second.count.numParticles];
 	    for(unsigned int ia = 0; ia < iFam->second.count.numParticles; ia++)
 		array[ia] = 0;
 	    iFam->second.addAttribute(attributeMark, array);
 	    iAttr = iFam->second.attributes.find(attributeMark);
 	    }
-	aArrMark[i] = iAttr->second.getArray(Type2Type<short>());
+	aArrMark[i] = iAttr->second.getArray(Type2Type<byte>());
 	aIter[i] = 0;
 	i++;
 	}

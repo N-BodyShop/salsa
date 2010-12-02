@@ -244,6 +244,8 @@ void Main::writeIndexes(int handle) {
     char *fileName;
     
     if(PyArg_ParseTuple(arg, "sss", &groupName, &familyName, &fileName) == false) {
+	    PyErr_SetString(PyExc_TypeError,
+			"Usage: writeIndexes(group, family,filename)");
 	    pythonReturn(handle, NULL);
 	    return;
 	}

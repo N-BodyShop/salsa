@@ -1199,14 +1199,21 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		if (hasShaders)
 		{
 			String shaderCode []=new String [1];
-			shaderCode[0]="varying vec2 texture_coordinate;" +
-							"void main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;" +
-							"texture_coordinate = vec2(gl_MultiTexCoord0);}";
+			shaderCode[0]=
+			"varying vec2 texture_coordinate;" +
+			"void main(){gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;" +
+			"texture_coordinate = vec2(gl_MultiTexCoord0);}";
 			String fragmentCode []=new String [1];
-			fragmentCode[0]="varying vec2 texture_coordinate; uniform sampler2D my_color_texture; uniform sampler2D my_screen_texture;"+
-							"void main()" +
-							"{ vec4 screenpix=texture2D(my_screen_texture, texture_coordinate);" +
-							"gl_FragColor = texture2D(my_color_texture, vec2(screenpix));}";
+			fragmentCode[0]=
+			"varying vec2 texture_coordinate; uniform sampler2D my_color_texture; uniform sampler2D my_screen_texture;"+
+			"void main()" +
+			"{ vec4 screenpix=texture2D(my_screen_texture, texture_coordinate);" +
+			/* SUBTLE! 
+			     The 0.997*screenpix.x is to avoid a texture lookup roundoff problem
+				 on Tom's GeForce 7600 GS
+			*/
+			"gl_FragColor = texture2D(my_color_texture, vec2(0.997*screenpix.x,0.0));}";
+			
 			int codeLength[]=new int[1];
 
 			int my_vertex_shader;
@@ -1465,6 +1472,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 					System.out.println("Facing Error");
 			}
 			gl.glDisable(GL.GL_TEXTURE_3D);
+			gl.glDisable(GL.GL_BLEND);
 
 			if (hasShaders)
 			{
@@ -1493,6 +1501,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 				// Use The Program Object Instead Of Fixed Function OpenGL
 				gl.glUseProgramObjectARB(my_program);
+				gl.glUniform1i(gl.glGetUniformLocationARB(my_program, "my_screen_texture"), 0);
 				gl.glUniform1i(gl.glGetUniformLocationARB(my_program, "my_color_texture"), 1);
 				gl.glBegin(GL.GL_QUADS);
 					gl.glTexCoord2f(0.0f, 1.0f); gl.glVertex3f(-1.0f,  1.0f, 0.0f);
