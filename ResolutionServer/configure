@@ -311,7 +311,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subdirs_all="$ac_subdirs_all ../structures"
+ac_subdirs_all="$ac_subdirs_all ../../utility/structures"
 ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS CHARMC CXX CXXFLAGS LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT CC CFLAGS ac_ct_CC CPP EGREP PYTHON_INCLUDE_DIR PYTHON_LIB BOOST_PATH XERCESCROOT subdirs LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
@@ -4671,7 +4671,7 @@ ac_configure="$SHELL $ac_aux_dir/configure" # This should be Cygnus configure.
 
 
 
-subdirs="$subdirs ../structures"
+subdirs="$subdirs ../../utility/structures"
 
           ac_config_files="$ac_config_files Makefile"
 

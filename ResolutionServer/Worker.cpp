@@ -136,8 +136,13 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	}
 	
 	
+	startColor = 1; // range used by attributes
+	endColor=255-1-sim->size();
+	startFamily=255-sim->size(); // color map entry for first family
+	markColor=255; // green for marked particles
+	
 	//create color attribute for all families
-	byte familyColor = 2;
+	byte familyColor = startFamily;
 	Coloring c;
 	c.name = "Family Colors";
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
@@ -148,7 +153,6 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 	}
 	colorings.clear();
 	colorings.push_back(c);
-	startColor = familyColor;
 	
 	//groupNames.push_back("All");
 	//activeGroupName = "All";
@@ -160,7 +164,7 @@ void Worker::loadSimulation(const std::string& simulationName, const CkCallback&
 
 	minMass = HUGE_VAL;
 	maxMass = -HUGE_VAL;
-	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
+	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
 		TypedArray& massArr = iter->second.attributes["mass"];
 		
 		if(massArr.data == NULL)
@@ -429,7 +433,7 @@ void Worker::readMark(const std::string& fileName,
     ckout << "[" << thisIndex << "]: reading Array ... ";
     int nFamilies = sim->size();
     TypedArray* aArrCmp[nFamilies];
-    short* aArrMark[nFamilies];
+    byte* aArrMark[nFamilies];
     int aIter[nFamilies];
     
     int i = 0;
@@ -448,13 +452,13 @@ void Worker::readMark(const std::string& fileName,
 	AttributeMap::iterator iAttr = iFam->second.attributes.find(attributeMark);
 	if(iAttr == iFam->second.attributes.end()) {
 	    // add attribute to family
-	    short *array = new short[iFam->second.count.numParticles];
+	    byte *array = new byte[iFam->second.count.numParticles];
 	    for(unsigned int ia = 0; ia < iFam->second.count.numParticles; ia++)
 		array[ia] = 0;
 	    iFam->second.addAttribute(attributeMark, array);
 	    iAttr = iFam->second.attributes.find(attributeMark);
 	    }
-	aArrMark[i] = iAttr->second.getArray(Type2Type<short>());
+	aArrMark[i] = iAttr->second.getArray(Type2Type<byte>());
 	aIter[i] = 0;
 	i++;
 	}
@@ -755,8 +759,8 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 					y = dot(req.y, positions[*iter] - req.o);
 					float ybound = 1 + 2 * 2 * hpix / req.height;
 					if(y > -ybound && y < ybound) {
-						//rescale masses (log masses?) to (256-startColor)
-						//float m = (256 - startColor) * uniform((masses[*iter] - req.minMass) / massRange);
+						//rescale masses (log masses?) to (endColor-startColor)
+						//float m = (endColor - startColor) * uniform((masses[*iter] - req.minMass) / massRange);
 						//splatParticle(image, req.width, req.height, x, y, m, smoothingLengths[*iter], delta, startColor);
 						double minAmount = req.minMass;
 						double maxAmount = req.maxMass;
@@ -785,7 +789,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				if(image[pixel] < colors[*iter])
 				        image[pixel] = colors[*iter];
 				if (mark[*iter]!=0){
-				  image[pixel]=1;}
+				  image[pixel]=markColor;}
 			}
 		  } else 
 		  { /* 2D image render only */
@@ -812,7 +816,7 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 				} else
 				    drawDisk(image, req.width, req.height, (int)x, (int)y, req.radius, colors[*iter]);
 				if(mark[*iter]!=0){
-				  image[pixel]=1;}
+				  image[pixel]=markColor;}
 			}
 		  }
 		}
@@ -891,17 +895,17 @@ void Worker::assignColors(const unsigned int dimensions, byte* colors, void* val
 				continue;
 			}
 		}
-		value = floor(startColor + (256 - startColor) * (value - minVal) * invdelta);
+		value = floor(startColor + (endColor - startColor) * (value - minVal) * invdelta);
 		if(value < startColor) {
 			if(clip == low || clip == both)
 				colors[i] = 0;
 			else
 				colors[i] = startColor;
-		} else if(value > 255) {
+		} else if(value > endColor) {
 			if(clip == high || clip == both)
 				colors[i] = 0;
 			else
-				colors[i] = 255;
+				colors[i] = endColor;
 		} else
 			colors[i] = static_cast<byte>(value);
 	}
@@ -986,7 +990,7 @@ public:
 void Worker::createNewColoring(const std::string& specification, const CkCallback& cb) {
 	//decode specification, get colorName, attributeName, minValue, maxValue, beLogarithmic
 	
-	ColoringVisitor coloring(minValue, maxValue, beLogarithmic, startColor, 255)
+	ColoringVisitor coloring(minValue, maxValue, beLogarithmic, startColor, endColor)
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter) {
 		AttributeMap::iterator attrIter = iter->second.attributes.find(attributeName);
 		if(attrIter != iter->second.attributes.end()) {
@@ -1055,7 +1059,7 @@ void Worker::makeColoring(const std::string& specification, const CkCallback& cb
 		index = colorings.size() - 1;
 	}
 		
-	byte familyColor = startColor - sim->size();
+	byte familyColor = startFamily;
 	for(Simulation::iterator iter = sim->begin(); iter != sim->end(); ++iter, ++familyColor) {
 		if(c.activeFamilies.count(iter->first) != 0) { //it's active
 			AttributeMap::iterator attrIter = iter->second.attributes.find(c.attributeName);

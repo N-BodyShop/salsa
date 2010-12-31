@@ -3,12 +3,19 @@
 # Shell script to fire up ResolutionServer, the java GUI (Salsa), and
 # a command line client (taco).
 #
+# This is a "remote" version: the server will be started on some remote
+# cluster via ssh, and we will connect across to the port.
+#
 # "charmrun", "ResolutionServer", "taco" and "Salsa.jar" should be installed
 # in BINDIR.
 # The jogl (Java Open GL) libraries should also be installed in
 # BINDIR/jogl-1.1.1-linux-XXX/lib.  Where the XXX indicates the
 # architecture: amd64 or i586
 # Edit the BINDIR to point at this installation.
+#
+# Edit the REMOTE_BINDIR to point at the directory containing the charmrun and
+# ResolutionServer executables on the remote host.  Also be aware that the
+# snapshot file must be a valid path on the REMOTE host.
 
 rm -f /tmp/Resolution-$UID.out
 
@@ -22,11 +29,17 @@ HOST=$1
 CPUS=$2
 FILE=$3
 BINDIR=/astro/users/trq/bin.x86_64
+REMOTE_BINDIR=/astro/users/trq/bin.x86_64
 
+# Build remote script
+cat << EOF > /tmp/Resolution_remote.sh
 echo "group main ++shell /usr/bin/ssh -X" > /tmp/nodelist.salsa$UID
-echo host $HOST cpus 1 >> /tmp/nodelist.salsa$UID
+echo host localhost cpus 1 >> /tmp/nodelist.salsa$UID
 
-$BINDIR/charmrun ++nodelist /tmp/nodelist.salsa$UID ++server ++batch 4 $BINDIR/ResolutionServer +stacksize 131072 +p $CPUS junk >& /tmp/Resolution-$UID.out &
+$REMOTE_BINDIR/charmrun ++nodelist /tmp/nodelist.salsa$UID ++server ++batch 4 $REMOTE_BINDIR/ResolutionServer +stacksize 131072 +p $CPUS junk
+EOF
+
+cat /tmp/Resolution_remote.sh | ssh $HOST >& /tmp/Resolution-$UID.out &
 
 PORT=""
 while test -z "$PORT" ; do
@@ -54,6 +67,6 @@ fi
 export LD_LIBRARY_PATH=$ld_path:$LD_LIBRARY_PATH
 echo $LD_LIBRARY_PATH
 sleep 2
-/usr/bin/java -Xmx512m -jar $BINDIR/Salsa.jar localhost $PORT $FILE &
+/usr/bin/java -Xmx512m -jar $BINDIR/Salsa.jar $HOST $PORT $FILE &
 sleep 1
-xterm -e "$BINDIR/taco localhost $PORT"
+xterm -e "$BINDIR/taco $HOST $PORT"

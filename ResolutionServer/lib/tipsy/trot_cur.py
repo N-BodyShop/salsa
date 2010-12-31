@@ -1,4 +1,4 @@
-import traceback, config, charm, tipsyf, math, grav
+import traceback, config, tipsyf, math, grav
 
 def saferotcur() :
     try :
