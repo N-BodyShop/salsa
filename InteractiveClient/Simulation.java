@@ -21,8 +21,7 @@ public class Simulation {
     NotifyingHashtable families = new NotifyingHashtable();
 	NotifyingHashtable colorings = new NotifyingHashtable();
 	NotifyingHashtable groups = new NotifyingHashtable();
-    NotifyingHashtable attributes = new NotifyingHashtable();
-	
+
 	/// The original origin of the simulation
 	Vector3D origin;
 	double boxSize;
@@ -66,7 +65,7 @@ public class Simulation {
 				for(int j = 0; j < family.numAttributes; ++j) {
 					Attribute attr = new Attribute();
 					attr.name = props.getProperty("family-" + i + ".attribute-" + j + ".name");
-					attr.dimensionality = props.getProperty("family-" + i + ".attribute-" + j + ".dimensions");
+					attr.dimensionality = props.getProperty("family-" + i + ".attribute-" + j + ".dimensionality");
 					attr.dataType = props.getProperty("family-" + i + ".attribute-" + j + ".dataType");
 					attr.definition = props.getProperty("family-" + i + ".attribute-" + j + ".definition");
 					attr.minValue = Double.parseDouble(props.getProperty("family-" + i + ".attribute-" + j + ".minScalarValue"));
@@ -278,5 +277,43 @@ public class Simulation {
     
 	public AttributeModel createAttributeModel() {
 	    return new AttributeModel(families);
+	}
+
+	static public class ScalarAttributeModel extends DefaultComboBoxModel
+	    implements ChangeListener {
+	    Vector attributeNames = new Vector();
+	    Hashtable families = null;
+		
+	    public ScalarAttributeModel(NotifyingHashtable cf) {
+		families = cf;
+		stateChanged(null);
+		cf.addChangeListener(this);
+	    }
+		
+	    public int getSize() {
+		return attributeNames.size();
+	    }
+		
+	    public Object getElementAt(int index) {
+		return attributeNames.get(index);
+	    }
+		
+	    public void stateChanged(ChangeEvent ev) {
+		attributeNames.clear();
+		for(Enumeration e = families.elements(); e.hasMoreElements(); ) {
+		    Family f = ((Family) e.nextElement());
+		    for(Enumeration e2 = f.attributes.keys(); e2.hasMoreElements(); ) {
+			String name = ((String) e2.nextElement());
+			Attribute a = ((Attribute) f.attributes.get(name));
+			if((!attributeNames.contains(name)) && a.dimensionality.equals("scalar"))
+			    attributeNames.add(name);
+			}
+		    }
+		fireContentsChanged(this, -1, -1);
+	    }
+	    }
+    
+	public ScalarAttributeModel createScalarAttributeModel() {
+	    return new ScalarAttributeModel(families);
 	}
 }
