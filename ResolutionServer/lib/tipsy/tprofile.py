@@ -1,4 +1,4 @@
-import traceback, config, tipsyf, math, spline, elliptical
+import traceback, config, tipsyf, math, spline, elliptical, star_lum
 
 def safeprofile() :
     try :
@@ -8,7 +8,7 @@ def safeprofile() :
         print traceback.format_exc()
 
 def profile(group='All', center='pot', family='all', projection='sph', bin_type='log', nbins=30, filename='profile.DAT', min_radius=0., fit_radius=0.) :
-    """Perform the Tipsy profile() function.
+  """Perform the Tipsy profile() function.
     
     profile is a command that produces a file of  name,  file-
     name,  that  contains various physical profiles as a func-
@@ -46,13 +46,13 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     Note: some rarer configuration options are not implemented
     e.g. non-uniform UV for star luminosity calculation."""
     
+  try:
     import charm
     # check initialization state of meanmwt attribute
     if family in ['all', 'gas', 'baryon'] and not 'meanmwt' in charm.getAttributes('gas') :
         print 'Attribute meanmwt not initialized. Initializing...'
         import load_meanmwt
         load_meanmwt.do_meanmwt()
-    
     print '\n'
     # these should be moved to tipsyf
     # fn to take the dot product of two vectors in R3
@@ -235,41 +235,14 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     if bin_type == 'log' :
         for i in range(1, nbins + 1) :
             bounds[i] = pow(10., bounds[i])
-    
-    # constants
-    # msolunit  = 1.e12          # mass scale
-    # kpcunit   = 1.             # distance scale
-    # fhydrogen = 0.76           # fraction of gas as hydrogen 
-    # KPCCM     = 3.085678e21    # kiloparsec in centimeters
-    # GCGS      = 6.67e-8        # G in cgs
-    # MSOLG     = 1.99e33        # solar mass in grams
-    # GYRSEC    = 3.155693e16    # gigayear in seconds
 
-    age      = [  .01,   .02,   .05,   .1,   .2,   .5,   1.,   2.,   5.,  10.,  20.]
-    lum      = [.0635, .0719, .0454, .153, .293, .436, .636, .898, 1.39, 2.54, 5.05]
-    vv_dat   = [ -.01,  -.02,  -.01,   0., -.01, -.01, -.01,   0.,   0.,  .01,  .01]
-    bv_dat   = [ -.02,  -.33,    0.,  .19,  .04,   .1,  .18,  .31,  .42,  .75,  .84]
-    uv_dat   = [  .16,  -.12,   .84,  .97,  .83, 1.08, 1.24, 1.39, 1.51, 2.22, 2.50]
-    uuv_dat  = [ -.32,  -.21,  1.68, 1.67, 1.75, 2.62, 3.50, 4.70, 6.30, 8.86, 9.97]
+    starlf = star_lum.star_lum()
     
-    n = 11
-    lumv_fit = [None] * n
-    vv_fit   = [None] * n
-    bv_fit   = [None] * n
-    uv_fit   = [None] * n
-    uuv_fit  = [None] * n
-    spline.splinit( age, lum,     lumv_fit, n, 0., 0. )
-    spline.splinit( age, vv_dat,  vv_fit,   n, 0., 0. )
-    spline.splinit( age, bv_dat,  bv_fit,   n, 0., 0. )
-    spline.splinit( age, uv_dat,  uv_fit,   n, 0., 0. )
-    spline.splinit( age, uuv_dat, uuv_fit,  n, 0., 0. )
-    
-    # time_unit = math.sqrt(pow(kpcunit*KPCCM, 3.) / (GCGS*msolunit*MSOLG)) / GYRSEC
     sim_time = charm.getTime()
     
     # do calculations which must see individual particles.
     # the set of attributes on a particle varies by family, so each family must be processed seperately
-    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ell_matrix, center_ell, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, age, lum, lumv_fit, vv_dat, vv_fit, bv_dat, bv_fit, center_angular_mom]
+    params = [None, isbaryon, bounds, projection, nbins, bin_type, bin_size, min_radius, max_radius, center, center_vel, ell_matrix, center_ell, ba, ca, config.msolunit, config.gasconst, sim_time, config.time_unit, starlf.age, starlf.lum, starlf.lumv_fit, starlf.vv_dat, starlf.vv_fit, starlf.bv_dat, starlf.bv_fit, center_angular_mom]
     fam_data = [None] * len(famgroups)
     for i in range(len(famgroups)) :
         params[0] = families[i]
@@ -332,8 +305,7 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
                 vel_radial_sigma = math.sqrt(vel_radial_sigma - pow(vel_radial, 2))
             else :
                 vel_radial_sigma = 0.
-            if mass > 0. :
-                vel_tang_sigma = math.sqrt(data[i][5] / mass)
+            vel_tang_sigma = data[i][5] / mass
             ang_mom = scalevec(1./mass, data[i][6])
             ang = vlength(ang_mom)
             if ang > 0.0 :
@@ -388,6 +360,8 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
 
     # there is no current mechanism to delete groups.
     # if one is added, delete temporary working groups here.
+  except :
+    print traceback.format_exc()
 
 vmmap = """def localparticle(p):
     # map code to find the per-particle contribution to the system's mass, velocity, and angular momentum
