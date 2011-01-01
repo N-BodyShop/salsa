@@ -384,24 +384,53 @@ void Worker::writeGroupArray(const std::string& groupName,
 	    ParticleFamily& family = (*sim)[*famIter];
 	    TypedArray& tarray = family.attributes[attributeName];
 	    
-	    switch(tarray.code) {
+	    if(tarray.dimensions == 1) {
+		switch(tarray.code) {
 #undef caseCode2Type
 #define caseCode2Type(enumName,typeName) \
-	    case enumName: \
-		{ \
-		typeName *array = tarray.getArray(Type2Type<typeName>()); \
-	    if(array == NULL) { \
-		for(; *iter != *end; ++iter) \
-		    fp << "0\n";  /* zero fill if no values */	\
-		} \
-	    else { \
-		for(; *iter != *end; ++iter) \
-		    fp << array[*iter] << "\n";	\
-		}				\
-		    }				\
-	    break;
+		    case enumName:	 \
+			{						\
+			    typeName *array = tarray.getArray(Type2Type<typeName>()); \
+			    if(array == NULL) {				\
+				for(; *iter != *end; ++iter)		\
+				    fp << "0\n";  /* zero fill if no values */ \
+				}					\
+			    else {					\
+				for(; *iter != *end; ++iter)		\
+				    fp << array[*iter] << "\n";		\
+				}					\
+			    }						\
+			break;
 
-	    casesCode2Types
+		    casesCode2Types
+			}
+		}
+	    else if(tarray.dimensions == 3) {
+		switch(tarray.code) {
+#undef caseCode2Type
+#define caseCode2Type(enumName,typeName) \
+		    case enumName:	 \
+			{						\
+			    Vector3D<typeName> *array = tarray.getArray(Type2Type<Vector3D<typeName> >()); \
+			    if(array == NULL) {				\
+				for(; *iter != *end; ++iter)		\
+				    fp << "0\n0\n0\n";  /* zero fill if no values */ \
+				}					\
+			    else {					\
+				for(; *iter != *end; ++iter) {          \
+				    fp << array[*iter].x << "\n";	\
+				    fp << array[*iter].y << "\n";	\
+				    fp << array[*iter].z << "\n";	\
+				    }					\
+				}					\
+			    }						\
+			break;
+
+		    casesCode2Types
+			}
+		}
+	    else {
+		CkError("Bad array dimensions\n");
 		}
 	    }
 	}
