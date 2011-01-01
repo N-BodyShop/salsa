@@ -646,6 +646,13 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 	Coloring& c = colorings[req.coloring];
 	boost::shared_ptr<SimulationHandling::Group> g(groups[req.activeGroup]);
 	
+	if(!g) {
+	    CkError(req.activeGroup.c_str());
+	    CkError(": Group not defined\n");
+	    liveVizDeposit(m, 0, 0, req.width, req.height, image, this, max_image_data);
+	    return;
+	    }
+		
 	bool drawSplatter = req.doSplatter;
 		
 	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
@@ -1266,22 +1273,11 @@ void Worker::makeGroup(const string& s, const CkCallback& cb) {
 				if(attrIter != simIter->second.attributes.end() && attrIter->second.data == 0)
 					sim->loadAttribute(simIter->first, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
 			}
-			groups[groupName] = make_AttributeRangeGroup(*sim, groups["All"], attributeName, minValue, maxValue);
-			/*
-			vector<string>::iterator groupIter = find(groupNames.begin(), groupNames.end(), groupName);
-			if(groupIter != groupNames.end())
-				index = groupIter - groupNames.begin();
-			else {
-				groupNames.push_back(groupName);
-				index = groupNames.size() - 1;
-			}
-			for(Simulation::iterator simIter = sim->begin(); simIter != sim->end(); ++simIter) {
-				sim->loadAttribute(simIter->first, attributeName, simIter->second.count.numParticles, simIter->second.count.startParticle);
-				ParticleGroup& g = simIter->second.createGroup(groupName, attributeName, static_cast<void *>(&minValue), static_cast<void *>(&maxValue));
-				if(verbosity > 3)
-					cout << "Piece " << thisIndex << ": My part of the group includes " << g.size() << " particles" << endl;
-			}
-			*/
+			boost::shared_ptr<SimulationHandling::Group> g = make_AttributeRangeGroup(*sim, groups["All"], attributeName, minValue, maxValue);
+			if(g)
+			    groups[groupName] = g;
+			else
+			    cerr << "Problem with make_AttributeRange, no group created" << endl;
 		} else
 			cerr << "Problem getting group range values, no group created" << endl;
 	} else
