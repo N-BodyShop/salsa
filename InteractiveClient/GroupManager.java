@@ -87,7 +87,7 @@ public class GroupManager extends Manager
 				
 		b = new Box(BoxLayout.LINE_AXIS);
 		b.add(new JLabel("Attribute: "));
-		attributeNameBox = new JComboBox(sim.createAttributeModel());
+		attributeNameBox = new JComboBox(sim.createScalarAttributeModel());
 		attributeNameBox.setActionCommand("chooseAttribute");
 		attributeNameBox.addActionListener(this);
 		b.add(attributeNameBox);

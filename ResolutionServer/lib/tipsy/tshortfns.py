@@ -23,7 +23,6 @@ centmassreduce = """def localparticle(p):
 """
 
 def boxstat(group, family='all') :
-    import charm
     """Print statistics for a group as in the tipsy boxstat command
     Arguments are group and family
     
@@ -35,6 +34,7 @@ def boxstat(group, family='all') :
     
     Check error cases: Bad input, Not a proper data type, Box not loaded."""
     
+    import charm
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
@@ -121,6 +121,8 @@ def setsphere(xcenter, ycenter, zcenter, radius, group, sourcegroup='All') :
 def setbox(xcenter, ycenter, zcenter, xradius, yradius, zradius,  group, sourcegroup='All') :
     """Select particles within a box centered on coordinate which extends
     radius in either direction along each axis."""
+    
+    import charm
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
