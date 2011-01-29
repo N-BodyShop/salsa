@@ -1261,6 +1261,49 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		gl.glGenTextures(1, texture, 0);
 		texture3D=texture[0];
 		isNewImageData=true;
+		
+		
+		
+	/* The first time, run a performance test to see if 3D is even viable:
+		Run an exponential search to determine the machine's rendering rate.
+		Output for a typical modern card (GTX 460M) is 20000 megapixels/sec.
+		Output for Mesa software rendering (Core i5 @ 2.5GHz) is 2 megapixel/sec.
+		
+		The volume dataset is like 134 million pixels, 
+		so if you can't render 100 million/sec, we're below 1fps,
+		so disable 3D volumes entirely, and go 2D only.
+		
+		FIXME: build a software rendering path, because you can certainly 
+		beat Mesa's general OpenGL solution.
+	*/
+		gl.glDisable(GL.GL_DEPTH_TEST); /* similar state to voxel rendering */
+		gl.glEnable(GL.GL_BLEND);
+		gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
+		gl.glBlendEquation(GL.GL_MAX);
+		gl.glLoadIdentity();
+		gl.glScalef(0.5f/width2D,0.5f/height2D,0.0f);
+		gl.glColor4f(0.01f,0.01f,0.01f,0.01f);
+		gl.glFinish();
+		long start=System.currentTimeMillis(), elapsed=0;
+		int nrendered; /* in blocks of 100x100 = 10K pixels */
+		for (nrendered=1;nrendered<=10000;nrendered*=2) {
+			gl.glBegin(gl.GL_QUADS);
+			for (int i=0;i<nrendered;i++) {
+				gl.glVertex2f(0,0); 
+				gl.glVertex2f(100,0); 
+				gl.glVertex2f(100,100); 
+				gl.glVertex2f(0,100); 
+			}
+			gl.glEnd();
+			gl.glFinish();
+			elapsed=System.currentTimeMillis()-start;
+			if (elapsed>50) break; /* don't spend more than 50ms testing this */
+		}
+		double millionPerSecond=nrendered*0.01 / (elapsed*0.001); /* millions of pixels per second */
+		if (millionPerSecond<100.0) disable3D=true; /* can't render full voxel dataset at 1fps */
+		System.out.println("Your card can render "+millionPerSecond+" megapixels per second:");
+		if (disable3D) System.out.println("   3D volume rendering disabled.");
+		else System.out.println("   3D volume rendering enabled.");
 	}
 	
 	public void displayChanged(GLAutoDrawable arg0, boolean arg1, boolean arg2){}
