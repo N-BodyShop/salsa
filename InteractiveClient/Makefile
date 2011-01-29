@@ -72,9 +72,15 @@ dist:
 	tar zcf $(TARGET)-$(VERSION).tar.gz $(TARGET)-$(VERSION)
 	rm -Rf $(TARGET)-$(VERSION)
 
-binarydist:
-	tar zcvf salsa.tar.gz salsa Salsa.jar
-	
+binarydist: $(TARGET).jar jogl.jar 
+	tar zcvf salsa.tar.gz salsa *.jar *.so
+
+BINDIR=../bin
+install: $(TARGET).jar jogl.jar 
+	mkdir -p $(BINDIR)
+	cp -r salsa *.jar *.so  $(BINDIR)
+
+
 #CcsThread.class: CcsServer.class
 #Config.class: Vector3D.class
 #Simulation.class: CcsThread.class Vector3D.class
