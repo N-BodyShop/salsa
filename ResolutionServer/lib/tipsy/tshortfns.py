@@ -109,16 +109,61 @@ def boxstat(group, family='all') :
     print 'center of mass velocity =', vcm
     print 'angular momentum vector =', angmom
 
-def setsphere(xcenter, ycenter, zcenter, radius, group, sourcegroup='All') :
-    """Select particles within radius from coordinate."""
-    import charm
+def setsphere(group, *args) :
+  """Select particles within radius from coordinate."""
+  import charm
+  try :
+    # parse args
+    if len(args) < 3 : raise TypeError('Too few arguments')
+    if type(args[0]) == str :
+        if args[0] == 'pot' or args[0] == 'potential ':
+            center = charm.findAttributeMin(args[1], 'potential')
+            radius = args[2]
+            if(len(args) == 4) : parent = args[3]
+            else : parent = 'All'
+        elif args[0] == 'com' :
+            if type(args[1]) != str : raise StandardError('third argument should be a group')
+            if args[2] == 'all' or args[2] == 'All' :
+                center = charm.getCenterOfMass(args[1])
+                radius = args[3]
+                if(len(args) == 5) : parent = args[4]
+                else : parent = 'All'
+            elif args[2] == 'gas' :
+                charm.createGroup_Family("__tmpgroup", args[1], 'gas')
+                center = charm.getCenterOfMass(args[1])
+                radius = args[3]
+                if(len(args) == 5) : parent = args[4]
+                else : parent = 'All'
+            elif args[2] == 'dark' :
+                charm.createGroup_Family("__tmpgroup", args[1], 'dark')
+                center = charm.getCenterOfMass(args[1])
+                radius = args[3]
+                if(len(args) == 5) : parent = args[4]
+                else : parent = 'All'
+            elif args[2] == 'star' :
+                charm.createGroup_Family("__tmpgroup", args[1], 'star')
+                center = charm.getCenterOfMass(args[1])
+                radius = args[3]
+                if(len(args) == 5) : parent = args[4]
+                else : parent = 'All'
+            else : raise StandardError('unknown particle type: ' + args[2])
+        else : raise StandardError('unknown center type: ' + args[0])
+    else :
+        center = (args[0], args[1], args[2])
+        radius = args[3]
+        if(len(args) == 5) : parent = args[4]
+        else : parent = 'All'
+
     # check if simulation loaded
     if charm.getGroups() == None :
         raise StandardError('Simulation not loaded')
 
-    charm.createGroupAttributeSphere(group, sourcegroup, 'position', xcenter, ycenter, zcenter, radius)
+    charm.createGroupAttributeSphere(group, parent, 'position', center[0], center[1],
+                                     center[2], radius)
+  except :
+      print traceback.format_exc()
 
-def setbox(xcenter, ycenter, zcenter, xradius, yradius, zradius,  group, sourcegroup='All') :
+def setbox(group, xcenter, ycenter, zcenter, xradius, yradius, zradius,  sourcegroup='All') :
     """Select particles within a box centered on coordinate which extends
     radius in either direction along each axis."""
     
