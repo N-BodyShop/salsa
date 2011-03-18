@@ -297,6 +297,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	{
 		System.out.println("--- "+fallbackReason + " ---\nWill fall back to plain 2D Swing rendering (eventually).\n");
 		fallbackNextTime=true;
+		hasGL=false;
 		this.repaint();
 	}
 	
@@ -930,7 +931,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 				}
 			}
 			
-			if (!hasGL) { /* trivial AWT fallback rendering */
+			if (!hasGL && fallbackLabel!=null) { /* trivial AWT fallback rendering */
 				MemoryImageSource source = new MemoryImageSource(w, h, colorBar.colorModel, pixels, 
 					// 0, w   //<- right side up: start at beginning, ascend
 					w*(h-1),-w //<- upside down (OpenGL orientation): start at end, descend
@@ -966,7 +967,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			//System.out.println("Request Time 3D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			long startTime=0;
-			if (!disable3D) synchronized(bLock)
+			if (hasGL && !disable3D) synchronized(bLock)
 			{
 				switch(encoding3D)
 				{
@@ -1236,6 +1237,15 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	public void init(GLAutoDrawable arg0)
 	{
 		GL gl = arg0.getGL();
+		
+		String vendor=gl.glGetString(gl.GL_VENDOR);
+		System.out.println("OpenGL vendor string: "+vendor);
+		if (vendor.startsWith("Mesa")) // || vendor.startsWith("Tungsten"))
+		{
+			fallbackSwingDelayed("Plain Swing is better than software OpenGL");
+			return;
+		}
+		
 		gl.glClearColor(0, 0, 0.0f, 0);
 		gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, GL.GL_ONE);
 		gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, GL.GL_ONE);
@@ -1354,7 +1364,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			fallbackSwingDelayed("OpenGL exists, but is too slow.");
 			*/
 		}
-		System.out.println("Your card can render "+millionPerSecond+" megapixels per second:");
+		System.out.println("Your card can render "+(int)millionPerSecond+" megapixels per second:");
 		if (disable3D) System.out.println("   3D volume rendering disabled.");
 		else System.out.println("   3D volume rendering enabled.");
 	}
@@ -1371,6 +1381,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	/* Called by SimulationViewGL only (should probably be moved there eventually) */
 	public void display(GLAutoDrawable arg0)
 	{
+		if (hasGL==false) return;
 		GL gl = arg0.getGL();
 		int j=gl.glGetError();
 		if(j!=0)
