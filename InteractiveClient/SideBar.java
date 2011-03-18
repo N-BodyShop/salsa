@@ -74,7 +74,7 @@ public class SideBar extends JPanel implements ActionListener
 		switchTool(0);
 		
 		this.add(toolboxbox, BorderLayout.WEST);
-		
+	
 		JTabbedPane JTP=new JTabbedPane();
 		JTP.addTab("Groups", new GroupManager(windowManager).getContentPane());
 		JTP.addTab("Color", new ColoringManager(windowManager).getContentPane());

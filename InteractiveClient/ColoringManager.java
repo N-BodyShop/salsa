@@ -44,7 +44,7 @@ public class ColoringManager extends Manager
 		coloringList.setPrototypeCellValue("Log Density Color");
 		
 		JPanel lhs = new JPanel(new BorderLayout());
-		lhs.setBorder(BorderFactory.createTitledBorder("Colorings"));
+		//lhs.setBorder(BorderFactory.createTitledBorder("Colorings"));
 		lhs.add(new JScrollPane(coloringList), BorderLayout.WEST);
 		Box b2 = new Box(BoxLayout.LINE_AXIS);
 		b2.add(new JLabel("Active Coloring:"));
@@ -57,7 +57,7 @@ public class ColoringManager extends Manager
 		lhs.add(b2, BorderLayout.NORTH);
 		
 		displayPanel = new JPanel();
-		displayPanel.setBorder(BorderFactory.createTitledBorder("Coloring information"));
+		//displayPanel.setBorder(BorderFactory.createTitledBorder("Coloring information"));
 		displayPanel.setLayout(new BoxLayout(displayPanel, BoxLayout.PAGE_AXIS));
 		
 		Box b = new Box(BoxLayout.LINE_AXIS);

@@ -917,6 +917,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 		public void handleReply(byte[] data)
 		{
+			if (disable3D) return; /* voxels use too much RAM on netbooks... */
+			
 			//System.out.println("Request Time 3D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			long startTime=0;

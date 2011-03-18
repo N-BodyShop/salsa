@@ -38,14 +38,14 @@ public class GroupManager extends Manager
 		
 		groupList = new JList(sim.createGroupModel());
 		groupList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		groupList.setVisibleRowCount(8);
+		groupList.setVisibleRowCount(4);
 		groupList.setPrototypeCellValue("Log Density Color");
 		markgroupList = new JList(sim.createGroupModel());
 		markgroupList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		markgroupList.setLayoutOrientation(JList.VERTICAL);
 		
 		JPanel lhs = new JPanel(new BorderLayout());
-		lhs.setBorder(BorderFactory.createTitledBorder("Groups"));
+		//lhs.setBorder(BorderFactory.createTitledBorder("Groups"));
                 lhs.setLayout(new BoxLayout(lhs, BoxLayout.Y_AXIS));
 
 		Box b2 = new Box(BoxLayout.LINE_AXIS);
@@ -74,7 +74,7 @@ public class GroupManager extends Manager
 		lhs.add(new JScrollPane(groupList), BorderLayout.WEST);
 
 		displayPanel = new JPanel();
-		displayPanel.setBorder(BorderFactory.createTitledBorder("Group definition"));
+		//displayPanel.setBorder(BorderFactory.createTitledBorder("Group definition"));
 		displayPanel.setLayout(new BoxLayout(displayPanel, BoxLayout.PAGE_AXIS));
 		
 		Box b = new Box(BoxLayout.LINE_AXIS);

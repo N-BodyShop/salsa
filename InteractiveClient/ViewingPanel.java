@@ -20,15 +20,19 @@ public class ViewingPanel extends JFrame {
                 Container c = getContentPane();
                 c.setLayout(new BorderLayout());
 		
-		int width = 800;                                                                                                                 
+		Dimension ss=java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+		// ss.width=800; ss.height=480; // <- for NetBook testing
 		
-		colorBar = new ColorBarPanel(windowManager.sim, width, 20);
-		view = new SimulationView(windowManager, width, width, colorBar);
-		colorBar.setView(view);		
+		int width = ss.width/2;  /* basic width of 2D view panel */
+		int height = ss.height-100;  /* leave room for window title bar, start menu, etc */
+		
+		colorBar = new ColorBarPanel(windowManager.sim, 20, height);
+		view = new SimulationView(windowManager, width, height, colorBar);
+		colorBar.setView(view);	
 		side= new SideBar(windowManager, view);
 		
 		setJMenuBar(new MenuBar(windowManager,view));
-		c.add(colorBar, BorderLayout.NORTH);
+		c.add(colorBar, BorderLayout.WEST);
 		c.add(view, BorderLayout.CENTER);
 		c.add(side, BorderLayout.EAST);
 		

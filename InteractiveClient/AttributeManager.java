@@ -46,6 +46,7 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		treeModel = new DefaultTreeModel(rootNode);
 		tree = new JTree(treeModel);
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+		tree.setVisibleRowCount(8);
 		tree.addTreeSelectionListener(this);
 		refreshData();
 		
@@ -67,8 +68,8 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		b.add(attributeDimensionalityLabel);
 		infoPanel.add(b);
 
-		b = new Box(BoxLayout.LINE_AXIS);
-		b.add(new JLabel("Data Type: "));
+		// b = new Box(BoxLayout.LINE_AXIS);
+		b.add(new JLabel(", Data Type: "));
 		attributeTypeLabel = new JLabel("");
 		b.add(attributeTypeLabel);
 		infoPanel.add(b);
@@ -125,11 +126,13 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		buttonPanel.add(applyButton);
 		buttonPanel.add(refreshButton);
 		
-		JPanel rhs = new JPanel(new BorderLayout());
-		rhs.add(displayPanel, BorderLayout.CENTER);
-		rhs.add(buttonPanel, BorderLayout.SOUTH);
+		displayPanel.add(buttonPanel);
 		
-		getContentPane().add(new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(tree), rhs));
+		JPanel rhs = new JPanel(new BorderLayout());
+		rhs.add(new JScrollPane(tree), BorderLayout.CENTER);
+		rhs.add(displayPanel, BorderLayout.SOUTH);
+		
+		getContentPane().add(rhs); // new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(tree), rhs));
 		
 		pack();
 		

@@ -31,7 +31,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
 	final int tableSize=256; // length of above arrays
 	
     byte[] pixels = new byte[0];
-    int cbstartx = 0, width, height; // onscreen pixel coordinates
+    int cbstarty = 0, width, height; // onscreen pixel coordinates
 	
 	int startColor; // first color map index for attributes
 	int endColor; // last color map index for attributes 
@@ -85,11 +85,11 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
 	    byte value;
 
 	    // Draw the colorbar, pixel by pixel.
-	    for(int i = 0; i < width; i++) {
-		//value = (byte)(i*((float)tableSize)/(width)); // shows whole table
-		value =(byte) (startColor + (endColor+1 - startColor) * i / width);
-		for(int j = 0; j < height; j++) 
-		    pixels[j * width + i] = value;
+	    for(int i = 0; i < height; i++) {
+		//value = (byte)(i*((float)tableSize)/(height)); // shows whole table
+		value =(byte) (startColor + (endColor+1 - startColor) * i / height);
+		for(int j = 0; j < width; j++) 
+		    pixels[i * width + j] = value;
 		}
 	    cbsource = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
 	    setIcon(new ImageIcon(createImage(cbsource)));
@@ -104,7 +104,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     public void mousePressed(MouseEvent e) {
         if(e.getButton()==e.BUTTON3) 
             cbpm.show(e.getComponent(), e.getX(), e.getY());
-        cbstartx = e.getX();
+        cbstarty = e.getY();
     }
 	
     public void mouseClicked(MouseEvent e) {
@@ -122,11 +122,11 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     public void mouseMoved(MouseEvent e) { }
 	
     public void mouseDragged(MouseEvent e) {
-        translateCM((cbstartx - e.getX()) * attrSize / width );
+        translateCM((cbstarty - e.getY()) * attrSize / height );
         cbsource.newPixels(pixels, colorModel, 0, width);
         setIcon(new ImageIcon(createImage(cbsource)));
         view.redisplay(colorModel);
-        cbstartx = e.getX();
+        cbstarty = e.getY();
     }
 
     public void mouseWheelMoved(MouseWheelEvent e) {
