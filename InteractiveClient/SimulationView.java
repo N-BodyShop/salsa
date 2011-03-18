@@ -32,12 +32,12 @@ import javax.media.opengl.*;
 import javax.media.opengl.glu.GLU;
 
 import com.sun.opengl.util.Animator;
+import com.sun.image.codec.jpeg.*;
 import com.sun.opengl.util.BufferUtil;
 import com.sun.gluegen.runtime.BufferFactory;
-import com.sun.image.codec.jpeg.*;
 
 
-public class SimulationView extends JPanel implements ActionListener, MouseInputListener, MouseMotionListener, MouseWheelListener, ComponentListener, GLEventListener
+public class SimulationView extends JPanel implements ActionListener, MouseInputListener, MouseMotionListener, MouseWheelListener, ComponentListener
 {
 	WindowManager windowManager;
 	CcsThread ccs;
@@ -131,9 +131,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	/* Amount that one zoomtool-click zooms */
 	static final double clickZoomFactor=2.0;
 	
-	double maxX, maxY, maxZ, minX, minY, minZ; //dimensions of simulation, in sim coords
-	
-	
+	double delX, delY, delZ; //dimensions of simulation, in sim coords
 	
 	int activeColoring = 0;
 	//int activeGroup = 0;
@@ -164,14 +162,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	double selectRadius;	// sphere radius
 
-	MemoryImageSource source;
 	byte[] pixels;
-	JLabel display;
 
-	double angleLeft, angleCcw, angleUp;
+	//double angleLeft, angleCcw, angleUp;
 	Rectangle rect;
 
-	ColorModel colorModel;
 	RightClickMenu rcm;
 	GroupQuery gquery;
 
@@ -186,7 +181,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	int screen, colortable; 
 	int framebuffer; /* framebuffer object */
 	int texture[]=new int[1];
-	private boolean hasShaders=false;
+	private boolean hasGL=true; // if true, we can run OpenGL code
+	private boolean hasShaders=false; // if true, we can run GLSL code
 	boolean isNewImageData=true; /* need to regenerate texture3D */
 	boolean networkBusy=false; // if true, the server is currently busy rendering already
 	boolean want2D=false, wantZ=false, want3D=false; /* we need to send off a request of this type (2D render, depth estimate, 3D render) */
@@ -201,15 +197,16 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	int width3D, height3D, depth3D; // number of voxels in volume impostor image
 	int width2D, height2D; //size of screen in pixel coords
 	int cwidth2D, cheight2D;
+	int my_program;
 
 	boolean maxMode=true;
 	Point rotationPoint;
-
-	// 3D coordinate system used for 3D request volume rendering
-
-	int my_program;
-	GLJPanel glcanvas;
-
+	
+/* OpenGL mode: */
+	SimulationViewGL svGL; // stores our OpenGL data (if OpenGL enabled)
+/* Non-OpenGL mode: */
+	JLabel fallbackLabel;
+	
 	//0=No Compression, 1=JPEG, 2=RunLength
 	static final int encoding_raw=0;
 	static final int encoding_jpeg=1;
@@ -233,13 +230,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		super(new BorderLayout());
 		windowManager = wm;
 
-		maxX = windowManager.sim.maxX;
-		maxY = windowManager.sim.maxY;
-		maxZ = windowManager.sim.maxZ;
-		minX = windowManager.sim.minX;
-		minY = windowManager.sim.minY;
-		minZ = windowManager.sim.minZ;
-		System.out.println("Loading simulation: dimensions X="+(maxX-minX)+" Y="+(maxY-minY)+" Z="+(maxZ-minZ));
+		delX = windowManager.sim.maxX-windowManager.sim.minX;
+		delY = windowManager.sim.maxY-windowManager.sim.minY;
+		delZ = windowManager.sim.maxZ-windowManager.sim.minZ;
+		System.out.println("Loading simulation: dimensions X="+(delX)+" Y="+(delY)+" Z="+(delZ));
 
 		//a viewing window gets its own CcsThread, so the queues can operate independently
 		ccs = new CcsThread(windowManager.ccs);
@@ -255,9 +249,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		height2D=h;
 		delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
 		pixels = new byte[width2D*height2D];
-		b=BufferUtil.newByteBuffer(width3D*height3D*depth3D);
-		b2=BufferUtil.newByteBuffer(width2D*height2D*3);
-		b3=BufferUtil.newByteBuffer(256*3);
 
 		coord=new CoordinateSystem();
 		coord2D=new CoordinateSystem();
@@ -268,33 +259,75 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		
 		zall();
 		
-		GLCapabilities glcaps = new GLCapabilities();
-		glcaps.setDoubleBuffered(true);
-		glcaps.setHardwareAccelerated(true);
-		glcanvas=new GLJPanel(glcaps);
-		glcanvas.setSize(new Dimension(width2D,height2D));
-		glcanvas.setPreferredSize(new Dimension(width2D,height2D));
-		glcanvas.addGLEventListener(this);
-		glcanvas.addMouseListener(this);
-		glcanvas.addMouseMotionListener(this);
-		glcanvas.addMouseWheelListener(this);
-
-		/*GLCanvas glcanvas2=new GLCanvas(glcaps);
-		glcanvas2.setPreferredSize(new Dimension(width2D,height2D));
-		glcanvas2.setName("3D");
-		glcanvas2.addGLEventListener(this);
-		glcanvas2.addMouseListener(this);
-		glcanvas2.addMouseMotionListener(this);
-		glcanvas2.addMouseWheelListener(this);
-		this.add(glcanvas2, BorderLayout.EAST);*/
-		this.add(glcanvas, BorderLayout.WEST);
-
-    	addComponentListener(this);
+		System.out.println("Trying to set up JOGL...");
+		try {
+			/* This will make the OpenGL glcanvas, ByteBuffers, etc;
+			  or else it will fail, and we will fall back to AWT. */
+			svGL=new SimulationViewGL(this,width2D,height2D);
+			addMyListeners(svGL.getMainComponent());
+		}
+		catch (java.lang.NoClassDefFoundError e) {
+			e.printStackTrace();
+			fallbackSwingNow("Error initializing JOGL (missing .jar?).");
+		}
 
     	rcm = new RightClickMenu(windowManager, this);
     	gquery = new GroupQuery(this);
 	}
-
+	
+	private boolean fallbackNextTime=false;
+	// Stupidly, missing or mismatched JOGL/OpenGL native libraries aren't detectable until paint time.
+	public void paint(Graphics g) {
+		if (fallbackNextTime) {
+			fallbackNextTime=false;
+			fallbackSwingNow("delayed fallback resumed");
+		}
+		try {
+			super.paint(g);
+		} catch (java.lang.UnsatisfiedLinkError e) {
+			e.printStackTrace();
+			fallbackSwingNow("Error loading JOGL native libraries (missing or mismatched .so?).");
+			System.out.println("If this hangs, remove 'jogl.jar' and restart Salsa.");
+		}
+	}
+	
+	// Fall back to swing, but not quite yet.
+	//  This is needed because JOGL is amazingly stupid about *crashing* if you removeAll() at the wrong time.
+	private void fallbackSwingDelayed(String fallbackReason)
+	{
+		System.out.println("--- "+fallbackReason + " ---\nWill fall back to plain 2D Swing rendering (eventually).\n");
+		fallbackNextTime=true;
+		this.repaint();
+	}
+	
+	// This is the non-OpenGL fallback case: a plain Java Swing panel.
+	private void fallbackSwingNow(String fallbackReason)
+	{
+		System.out.println("--- "+fallbackReason + " ---\nFalling back to plain 2D Swing rendering.\n");
+		removeAll(); // don't try to paint that OpenGL crap again (this kills ancient-X machines)
+		
+		fallbackLabel=new JLabel("OpenGL disabled.  Now waiting for the network.");
+		addMyListeners(fallbackLabel);
+		
+		svGL=null;
+		hasGL=false;
+		disable3D=true;
+		
+		getNewImage(false); // pull a fresh image to get Swing image updated
+	}
+	/*
+	  We need to get mouse clicks and such: listen to them on this panel.
+	*/
+	private void addMyListeners(JComponent comp)
+	{
+		comp.setSize(new Dimension(width2D,height2D));
+		comp.setPreferredSize(new Dimension(width2D,height2D));
+		comp.addMouseListener(this);
+		comp.addMouseMotionListener(this);
+		comp.addMouseWheelListener(this);
+		comp.addComponentListener(this);
+		add(comp);
+	}
 	public void redisplay(ColorModel cm) {
 		this.repaint();
 	}
@@ -343,11 +376,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		
 		/* Set initial zoom factor based on whether the simulation in X-Y view 
 		   has no extra space along the X or Y dimension, calculate the sim coord to pixel ratio*/  
-		if ((maxY-minY)/(maxZ-minZ) < width2D/height2D){
-			coord.factor = 2.0/(maxY-minY);
+		if ((delY)/(delZ) < width2D/height2D){
+			coord.factor = 2.0/(delY);
 		}
 		else{
-			coord.factor = 2.0/(maxZ-minZ);
+			coord.factor = 2.0/(delZ);
 		}
 	    coord.orthoNormalize();
 		fireViewReset();
@@ -357,11 +390,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
     	coord.origin = new Vector3D(windowManager.sim.origin);
 		coord.x = new Vector3D(-1, 0, 0);
 		coord.y = new Vector3D(0, 0, 1);
-		if ((maxX-minX)/(maxZ-minZ)< width2D/height2D){
-			coord.factor = 2.0/(maxX-minX);
+		if ((delX)/(delZ)< width2D/height2D){
+			coord.factor = 2.0/(delX);
 		}
 		else{
-			coord.factor = 2.0/(maxZ-minZ);
+			coord.factor = 2.0/(delZ);
 		}
     	coord.orthoNormalize();
 		fireViewReset();
@@ -371,11 +404,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		coord.origin = new Vector3D(windowManager.sim.origin);
 		coord.x = new Vector3D(1, 0, 0);
 		coord.y = new Vector3D(0, 1, 0);
-		if ((maxX-minX)/(maxY-minY) < width2D/height2D){
-			coord.factor = 2.0/(maxX-minX);
+		if ((delX)/(delY) < width2D/height2D){
+			coord.factor = 2.0/(delX);
 		}
 		else{
-			coord.factor = 2.0/(maxY-minY);
+			coord.factor = 2.0/(delY);
 		}
     	coord.orthoNormalize();
 		fireViewReset();
@@ -401,7 +434,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	*/
 	private void drawSelection() 
 	{
-		Graphics g = glcanvas.getGraphics();
+		Graphics g = /*glcanvas.*/ getGraphics();
 		g.setXORMode(Color.green);
 		Point cur=screenFm3D(selCur), old=screenFm3D(selOld);
 		switch(selectState)
@@ -801,6 +834,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 	/* Send out any pending image requests */
 	void networkPoll() {
+		debugNetwork("poll");
 		if (networkBusy) return; /* don't bother me right now */
 		if (want2D) {
 			ccs.addRequest(new ImageRequest(), false);
@@ -817,9 +851,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	}
 
 	private final void debugNetwork(String doingWhat) {
-		//System.out.println("Network "+doingWhat+" (busy="+networkBusy
-		//	+" want="+(want2D?"2D ":"")+(wantZ?"Z ":"")+(want3D?"3D":"")
-		//	+" uptodate="+(uptodate2D?"2D ":"")+(uptodate3D?"3D ":"")+")");
+	/*
+		System.out.println("Network "+doingWhat+" (busy="+networkBusy
+		  +" want="+(want2D?"2D ":"")+(wantZ?"Z ":"")+(want3D?"3D":"")
+		  +" uptodate="+(uptodate2D?"2D ":"")+(uptodate3D?"3D ":"")+")");
+	*/
 	}
 
 	private class ImageRequest extends CcsThread.request {
@@ -845,7 +881,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			{
 				cwidth2D=w;
 				cheight2D=h;
-				b2=BufferUtil.newByteBuffer(cwidth2D*cheight2D*3);
 				byte[] bytes=new byte [cwidth2D*cheight2D];
 				long startTime=0;
 				switch(encoding2D)
@@ -894,6 +929,16 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 				}
 			}
+			
+			if (!hasGL) { /* trivial AWT fallback rendering */
+				MemoryImageSource source = new MemoryImageSource(w, h, colorBar.colorModel, pixels, 
+					// 0, w   //<- right side up: start at beginning, ascend
+					w*(h-1),-w //<- upside down (OpenGL orientation): start at end, descend
+				);
+				source.setAnimated(true);
+				fallbackLabel.setIcon(new ImageIcon(createImage(source)));
+			}
+			
 			coord2D=mycoord;
 			uptodate2D=true;
 			networkBusy=false;
@@ -917,12 +962,11 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 		public void handleReply(byte[] data)
 		{
-			if (disable3D) return; /* voxels use too much RAM on netbooks... */
-			
+			debugNetwork("incoming 3D image response");
 			//System.out.println("Request Time 3D (ms): "+(System.currentTimeMillis()-reqStartTime));
 			setCursor(Cursor.getDefaultCursor());
 			long startTime=0;
-			synchronized(bLock)
+			if (!disable3D) synchronized(bLock)
 			{
 				switch(encoding3D)
 				{
@@ -978,7 +1022,6 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			networkBusy=false;
 			networkPoll();
 			displayImage();
-			debugNetwork("incoming 3D image");
 		}
 	}
 
@@ -1153,8 +1196,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		delta = (double) 1.0 / (height2D < width2D ? height2D : width2D);
 		request2D(true); 
 		//b=BufferUtil.newByteBuffer(width2D*height2D*height2D);
-		glcanvas.setPreferredSize(new Dimension(width2D,height2D));
-		glcanvas.setSize(new Dimension(width2D, height2D));
+		//glcanvas.setPreferredSize(new Dimension(width2D,height2D));
+		//glcanvas.setSize(new Dimension(width2D, height2D));
 		//System.out.println("SizeWin: "+width2D+", "+height2D);
 		displayImage();
 	}
@@ -1188,7 +1231,8 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
         	System.out.println("Screen capture cancelled by user.");
     	}
 	}
-
+	
+	/* Called by SimulationViewGL only (should probably be moved there eventually) */
 	public void init(GLAutoDrawable arg0)
 	{
 		GL gl = arg0.getGL();
@@ -1272,7 +1316,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		Output for Mesa software rendering (Core i5 @ 2.5GHz) is 2 megapixel/sec.
 		
 		The volume dataset is like 134 million pixels, 
-		so if you can't render 100 million/sec, we're below 1fps,
+		so if you can't render 500 million/sec, we're below 5fps,
 		so disable 3D volumes entirely, and go 2D only.
 		
 		FIXME: build a software rendering path, because you can certainly 
@@ -1302,14 +1346,18 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			if (elapsed>50) break; /* don't spend more than 50ms testing this */
 		}
 		double millionPerSecond=nrendered*0.01 / (elapsed*0.001); /* millions of pixels per second */
-		if (millionPerSecond<100.0) disable3D=true; /* can't render full voxel dataset at 1fps */
+		if (millionPerSecond<500.0) { /* can't render full voxel dataset at 5fps */
+			disable3D=true; 
+			
+			/* This would be a good idea, but it kills ancient-X machines (crashes the X server!).
+			  There, it's better to just remove jogl.jar before we even get to this point.
+			fallbackSwingDelayed("OpenGL exists, but is too slow.");
+			*/
+		}
 		System.out.println("Your card can render "+millionPerSecond+" megapixels per second:");
 		if (disable3D) System.out.println("   3D volume rendering disabled.");
 		else System.out.println("   3D volume rendering enabled.");
 	}
-	
-	public void displayChanged(GLAutoDrawable arg0, boolean arg1, boolean arg2){}
-	public void reshape(GLAutoDrawable arg0, int arg1, int arg2, int arg3, int arg4) {}
 	
 	private void texturemode(GL gl,int target,int filtermode) {
 			gl.glTexParameteri(target, GL.GL_TEXTURE_MAG_FILTER, filtermode);
@@ -1320,6 +1368,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	
 	}
 
+	/* Called by SimulationViewGL only (should probably be moved there eventually) */
 	public void display(GLAutoDrawable arg0)
 	{
 		GL gl = arg0.getGL();
@@ -1336,6 +1385,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			debugNetwork("--display2D--");
 			synchronized(b2Lock) /* colorize on CPU */
 			{
+				b2=BufferUtil.newByteBuffer(pixels.length*3); // cwidth2D*cheight2D*3);
 				b2.clear();
 				for(int i=0;i<pixels.length;i++)
 				{
@@ -1594,7 +1644,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		}
 		else { /* no 2D image, no 3D image (yet).  Just wait! */
 			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			Graphics g= glcanvas.getGraphics();
+			Graphics g= /*glcanvas.*/getGraphics();
 			g.setColor(Color.green);
 			g.drawString("Waiting for network...", 0, 80);
 			
@@ -1611,7 +1661,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 		
 		if(networkBusy)
 		{
-			Graphics g= glcanvas.getGraphics();
+			Graphics g= /*glcanvas.*/getGraphics();
 			g.setColor(Color.green);
 			g.drawString("Loading New Image...", 0, 20);
 		}
