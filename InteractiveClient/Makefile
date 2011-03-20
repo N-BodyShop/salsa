@@ -36,11 +36,11 @@ jogl.jar: $(JOGL_ARCHIVE).zip
 	cp $(JOGL_ARCHIVE)/lib/*.so .
 	touch jogl.jar
 
-$(JOGL_ARCHIVE32): 
-	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@.zip 
+$(JOGL_ARCHIVE32).zip: 
+	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@
 
-$(JOGL_ARCHIVE64): 
-	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@.zip 
+$(JOGL_ARCHIVE64).zip: 
+	wget http://download.java.net/media/jogl/builds/archive/jsr-231-1.1.1/$@
 
 
 charm: charm/ccs/*.java
