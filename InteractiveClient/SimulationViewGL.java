@@ -70,7 +70,7 @@ class SimulationViewGL {
 		
 		String vendor=gl.glGetString(gl.GL_VENDOR);
 		System.out.println("OpenGL vendor string: "+vendor);
-		if (vendor.startsWith("Mesa")) // || vendor.startsWith("Tungsten"))
+		if (vendor.startsWith("Mesa") || vendor.startsWith("Tungsten"))
 		{
 			sv.fallbackSwingDelayed("Plain Swing is better than software OpenGL");
 			return;
