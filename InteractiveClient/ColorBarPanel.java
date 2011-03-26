@@ -67,7 +67,7 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
 		
 		setSize(width, height);
 		
-		resize();
+		updateColors();
 		
 		addComponentListener(this);
     }
@@ -78,27 +78,31 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
         addMouseMotionListener(this);
         addMouseWheelListener(this);
 	}
-			
-	public void resize() {
+	
+	// Push colorModel back out to AWT
+	private void updateColors() {
 	    if(pixels.length < width * height)
         	pixels = new byte[width * height];
 	    byte value;
 
 	    // Draw the colorbar, pixel by pixel.
-	    for(int i = 0; i < height; i++) {
-		//value = (byte)(i*((float)tableSize)/(height)); // shows whole table
-		value =(byte) (startColor + (endColor+1 - startColor) * i / height);
-		for(int j = 0; j < width; j++) 
-		    pixels[i * width + j] = value;
+	    	for(int i = 0; i < height; i++) {
+			//value = (byte)(i*((float)tableSize)/(height)); // shows whole table
+			value =(byte) (startColor + (endColor+1 - startColor) * i / height);
+			for(int j = 0; j < width; j++) 
+		    	pixels[i * width + j] = value;
 		}
-	    cbsource = new MemoryImageSource(width, height, colorModel, pixels, 0, width);
+	    cbsource = new MemoryImageSource(width, height, colorModel, pixels, 
+			width*(height-1), -width); /* <- flips image upside down */
 	    setIcon(new ImageIcon(createImage(cbsource)));
+		
+		if (view!=null) view.redisplay(colorModel);
 	}
-      
+    
 	public void componentResized(ComponentEvent e) {
 		width = getWidth();
 		height = getHeight();
-		resize();
+		updateColors();
 	}
 	
     public void mousePressed(MouseEvent e) {
@@ -108,12 +112,9 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     }
 	
     public void mouseClicked(MouseEvent e) {
-        if(e.getClickCount() == 2) { 
+        if(e.getClickCount() == 2)
             invertCM();
-	    cbsource.newPixels(pixels, colorModel, 0, width);
-	    setIcon(new ImageIcon(createImage(cbsource)));
-            view.redisplay(colorModel);
-        }
+	    updateColors();
     }
 	
     public void mouseReleased(MouseEvent e) { }
@@ -122,18 +123,14 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
     public void mouseMoved(MouseEvent e) { }
 	
     public void mouseDragged(MouseEvent e) {
-        translateCM((cbstarty - e.getY()) * attrSize / height );
-        cbsource.newPixels(pixels, colorModel, 0, width);
-        setIcon(new ImageIcon(createImage(cbsource)));
-        view.redisplay(colorModel);
+        translateCM((e.getY()-cbstarty) * attrSize / height );
+       	updateColors();
         cbstarty = e.getY();
     }
 
     public void mouseWheelMoved(MouseWheelEvent e) {
         translateCM(e.getWheelRotation());
-        cbsource.newPixels(pixels, colorModel, 0, width);
-        setIcon(new ImageIcon(createImage(cbsource)));
-        view.redisplay(colorModel);
+       	updateColors();
     }
 
     private class CBPopupMenu extends JPopupMenu implements ActionListener { 
@@ -167,9 +164,8 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
                 setColorModelRainbow();
             else if(command.equals("swapBackground"))
                 swapBackground();
-            cbsource.newPixels(pixels, colorModel, 0, width);
-	    setIcon(new ImageIcon(createImage(cbsource)));
-            view.redisplay(colorModel);
+
+            updateColors();
         }
     }
 
