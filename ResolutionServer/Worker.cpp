@@ -797,10 +797,10 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 					if(y > -ybound && y < ybound) {
 						//rescale masses (log masses?) to (endColor-startColor)
 						//float m = (endColor - startColor) * uniform((masses[*iter] - req.minMass) / massRange);
-						//splatParticle(image, req.width, req.height, x, y, m, smoothingLengths[*iter], delta, startColor);
+						//splatParticle(image, req.width, req.height, x, y, m, smoothingLengths[*iter], delta, endColor);
 						double minAmount = req.minMass;
 						double maxAmount = req.maxMass;
-						splatParticle(image, req.width, req.height, x, y, masses[*iter], smoothingLengths[*iter], delta, startColor, minAmount, maxAmount);
+						splatParticle(image, req.width, req.height, x, y, masses[*iter], smoothingLengths[*iter], delta, endColor, minAmount, maxAmount);
 					}
 				}
 			}
