@@ -26,7 +26,9 @@ void Main::loadSimulation(int handle) {
 	workers.loadSimulation(fileName, CkCallbackPython());
 	}
     else {
-	PyErr_SetString(PyExc_NameError, "No such file");
+	char msg[MAXPATHLEN];
+	sprintf(msg, "%s: No such file", fileName);
+	PyErr_SetString(PyExc_NameError, msg);
 	}
     pythonReturn(handle);
     }
@@ -68,7 +70,7 @@ void Main::readTipsyArray(int handle) {
 	}
     else {
 	PyErr_SetString(PyExc_NameError, "No such file");
-	pythonReturn(handle, NULL);
+	pythonReturn(handle);
 	return;
 	}
     pythonReturn(handle);
