@@ -1,15 +1,28 @@
 STRUCTURES_PATH = ../../utility/structures
 
-CXXFLAGS += -g -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../../utility/SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
-LDFLAGS +=  -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
+
+OPTS=-O3 -ffast-math
+CXXFLAGS += $(OPTS) -Wall -I$(STRUCTURES_PATH) -I$(XERCESCROOT)/include -I../../utility/SimulationHandler $(BOOST_FLAGS) -I$(PYTHON_INCLUDE_DIR) -I.
+LDFLAGS += $(OPTS) -Wl,-rpath,$(XERCESCROOT)/lib -L$(STRUCTURES_PATH) -language charm++ -L$(XERCESCROOT)/lib #-static
 LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_LIB) $(LIBS)
 
-PYTHON_INCLUDE_DIR = /usr/include/python2.4
-PYTHON_LIB = -L/usr/lib/python2.4/config -lpython2.4
+
+# For OpenGL: (comment out to disable)
+CXXFLAGS+=-DPARTICLELIB_TRY_GPU=1
+LDFLAGS+= -lglut -lGLEW -lGLU -lGL
+
+# For OpenCL: (comment out to disable)
+# CXXFLAGS+=-DPARTICLELIB_TRY_OPENCL=1
+# LDFLAGS+=-lOpenCL
+
+
+
+PYTHON_INCLUDE_DIR = /usr/include/python2.6
+PYTHON_LIB = -L/usr/lib/python2.6/config -lpython2.6
 
 BOOST_PATH = /usr/include
 BOOST_FLAGS = -ftemplate-depth-100 -DNDEBUG -finline-functions -Wno-inline -I$(BOOST_PATH)
-XERCESCROOT = /astro/users/trq/nchil/src/xerces-c-src_2_6_0
+XERCESCROOT = /usr
 
 LIBS = -lrt -lpthread -lpopt 
 CHARMC = ../../charm/bin/charmc
@@ -24,7 +37,7 @@ $(TARGET).o: $(TARGET).decl.h Reductions.decl.h
 
 Reductions.o: Reductions.decl.h ParticleStatistics.h
 
-$(TARGET): ResolutionServer.o Worker.o MetaInformationHandler.o Reductions.o HighLevelPython.o ../../utility/SimulationHandler/SiXFormat.o ../../utility/SimulationHandler/TipsyFormat.o $(STRUCTURES_PATH)/libTipsy.a
+$(TARGET): ResolutionServer.o Worker.o  particlelib.o MetaInformationHandler.o Reductions.o HighLevelPython.o ../../utility/SimulationHandler/SiXFormat.o ../../utility/SimulationHandler/TipsyFormat.o $(STRUCTURES_PATH)/libTipsy.a
 	$(CXX) -o $(TARGET) $(LDFLAGS) $+ $(LDLIBS)
 
 $(STRUCTURES_PATH)/libTipsy.a:
@@ -33,7 +46,7 @@ $(STRUCTURES_PATH)/libTipsy.a:
 ResolutionServer.o: PythonInstance.h ../../utility/SimulationHandler/Group.h \
 	PyObjectMarshal.h
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../../utility/SimulationHandler/Simulation.h
-Worker.o: PixelDrawing.cpp ../../utility/SimulationHandler/Group.h \
+Worker.o: particlelib.h PixelDrawing.cpp ../../utility/SimulationHandler/Group.h \
 	../../utility/structures/TypeHandling.h ../../utility/structures/TypedArray.h Reductions.h \
 	PyObjectMarshal.h
 Reductions.o: PyObjectMarshal.h
