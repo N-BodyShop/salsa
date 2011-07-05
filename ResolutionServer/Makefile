@@ -9,7 +9,7 @@ LDLIBS += -lTipsy -module liveViz -module PythonCCS -lxerces-c -lutil $(PYTHON_L
 
 # For OpenGL: (comment out to disable)
 CXXFLAGS+=-DPARTICLELIB_TRY_GPU=1
-LDFLAGS+= -lglut -lGLEW -lGLU -lGL
+LDFLAGS+= -lGL
 
 # For OpenCL: (comment out to disable)
 # CXXFLAGS+=-DPARTICLELIB_TRY_OPENCL=1
