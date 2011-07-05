@@ -901,6 +901,8 @@ void Main::createGroup_Family(int handle)
 
     if(PyArg_ParseTuple(arg, "sss", &groupName, &parentName, &familyName)
        == false) {
+	PyErr_SetString(PyExc_TypeError,
+			"Usage: createGroup_Family(group, parent, family)");
 	pythonReturn(handle, NULL);
 	return;
 	}
