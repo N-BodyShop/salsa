@@ -572,15 +572,24 @@ public:
 		  GL_R8 or GL_RG8 works on NVIDIA or ATI.
 		  Everything fails (error 1) on Intel, but that's expected.
 		*/
-		GLenum format=GL_R8;
+		GLenum formats[]={GL_R8,GL_RG8,GL_RGBA8,0};
 		int texwid=wid, texht=ht;
 		if (doVolumeRender) { // FIXME: automatic determination?
 			texwid=16*wid; texht=32*ht; // because 16*32 == depth
 		}
-		int level=0; // for (int level=0;texwid>>level>0;level++) // mipmap loop
-		glTexImage2D(t,level,format, texwid>>level,texht>>level,0,
-			GL_RGBA,GL_UNSIGNED_BYTE,0);
-		glTexParameteri(t, GL_TEXTURE_MIN_FILTER,GL_LINEAR); /* no mipmaps */
+		
+		for (int formatNo=0;formats[formatNo]!=0;formatNo++) {
+			int level=0; // for (int level=0;texwid>>level>0;level++) // mipmap loop
+			glTexImage2D(t,level,formats[formatNo], texwid>>level,texht>>level,0,
+				GL_RGBA,GL_UNSIGNED_BYTE,0);
+			glTexParameteri(t, GL_TEXTURE_MIN_FILTER,GL_LINEAR); /* no mipmaps */
+			int err=glGetError();
+			if (err==0) break; //That format worked fine!
+			else { CkPrintf("Texture setup failure (%d) for format %d (%dx%d)... %s\n",
+					err,formats[formatNo],texwid,texht,
+					formats[formatNo+1]?"Retrying":"Giving up...");
+			}
+		}
 		oglCheck("after tex setup");
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, 
 					GL_COLOR_ATTACHMENT0_EXT, t, tex, 0);
