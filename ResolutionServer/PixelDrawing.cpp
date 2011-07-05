@@ -144,14 +144,18 @@ inline T clamp(T val) {
 		return val;
 }
 
-inline void splatParticle(byte* image, const int width, const int height, const float x, const float y, const float m, const float h, const float delta, const byte startColor, const double minAmount, const double maxAmount) {
+inline void splatParticle(byte* image, const int width, const int height, const float x, const float y, const float m, const float h, const float delta, const byte endColor, const double minAmount, const double maxAmount) {
 	int partxpix = static_cast<int>(width * (x + 1) / 2);
 	int partypix = static_cast<int>(height * (1 - y) / 2);
 	int pixel = partxpix + partypix * width;
 	//is the particle contained in one pixel?
 	if(2 * h <= delta) {
-		if(pixel >= 0 && pixel < width * height)
-			image[pixel] = static_cast<byte>(min(255.0, image[pixel] + (256 - startColor) * clamp((m - minAmount) / (maxAmount - minAmount))));
+		if(pixel >= 0 && pixel < width * height) {
+			double amount = clamp((m - minAmount) / (maxAmount - minAmount));
+			image[pixel] = static_cast<byte>(max(1,min(endColor, 
+				image[pixel] + endColor * amount
+			)));
+		}
 	} else {
 		unsigned int hint = static_cast<unsigned int>(ceil(h / delta));
 		unsigned int minxpix = max(0, partxpix - 2 * hint);
@@ -180,10 +184,10 @@ inline void splatParticle(byte* image, const int width, const int height, const 
 					double amount = m * projectedKernel(r / h);// * dAOverhsq;
 					//amount \in [0,1]
 					amount = clamp((amount - minAmount) / (maxAmount - minAmount));
-					//value \in {0, 1, ... , 256 - startColor}
-					if(amount > 0 && image[pixel] == 0)
-						image[pixel] = startColor;
-					image[pixel] = static_cast<byte>(min(255.0, image[pixel] + (256 - startColor) * amount));
+					//value \in {0, 1, ... , endColor}
+					image[pixel] = static_cast<byte>(max(1,min(endColor, 
+						image[pixel] + endColor * amount
+					)));
 				}
 			}
 		}

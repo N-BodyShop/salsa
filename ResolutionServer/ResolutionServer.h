@@ -265,6 +265,7 @@ class Worker : public CBase_Worker {
 	byte* image;
 	unsigned int imageSize;
 	OrientedBox<float> boundingBox;
+	bool particles_changed; /* have particles changed since last render? */
 	
 	byte startColor;
 	byte endColor;

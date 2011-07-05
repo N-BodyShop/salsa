@@ -26,6 +26,8 @@
 #include "Reductions.h"
 #include "Space.h"
 
+#include "particlelib.h" /* for backend rendering */
+
 std::string trim(const std::string& s) {
 	std::string trimmed(s);
 	trimmed.erase(0, trimmed.find_first_not_of(" \t\r\n"));
@@ -64,6 +66,7 @@ using namespace SPH;
 const string Worker::coloringPrefix = "__internal_coloring";
 
 void Worker::loadSimulation(const std::string& simulationName, const CkCallback& cb) {
+	particles_changed=true;
 	if(MetaInformationHandler* meta = metaProxy.ckLocalBranch()) {
 		for(vector<Box<double> *>::iterator iter = meta->boxes.begin(); iter != meta->boxes.end(); ++iter)
 			delete *iter;
@@ -449,6 +452,7 @@ void Worker::readMark(const std::string& fileName,
 							// to "mark"
 		      const std::string& attributeCmp,	// index or iOrder
 		      const CkCallback& cb) {
+	particles_changed=true;
     FILE *fp = fopen(fileName.c_str(), "r");
     CkAssert(fp != NULL);
     unsigned int nTotal;
@@ -463,7 +467,7 @@ void Worker::readMark(const std::string& fileName,
     int nFamilies = sim->size();
     TypedArray* aArrCmp[nFamilies];
     byte* aArrMark[nFamilies];
-    int aIter[nFamilies];
+    u_int64_t aIter[nFamilies];
     
     int i = 0;
 
@@ -635,232 +639,69 @@ inline T uniform(T val) {
 // Draw the image using this chare's particles
 
 void Worker::generateImage(liveVizRequestMsg* m) {
-	
+	double start = CkWallTimer();
 	MyVizRequest req;
 	liveVizRequestUnpack(m, req);
-	bool doVolumeRender=false; /* if false, 2D image; if true, 3D volume */
-	
-	if(verbosity > 2 && thisIndex == 0)
-		cout << "Worker " << thisIndex << ": Image request: " << req << endl;
-		
-	if(imageSize < (unsigned int) (req.width * req.height)) {
-		delete[] image;
-		imageSize = req.width * req.height;
-		image = new byte[imageSize];
-	}
-	memset(image, 0, req.width * req.height);
-	
-	if (req.height==req.width*req.width) doVolumeRender=true;
-
-	MetaInformationHandler* meta = metaProxy.ckLocalBranch();
-	if(!meta) {
-		cerr << "ResolutionServer Worker.cpp error: Couldn't get local pointer to meta handler" << endl;
-		return;
-	}
-	
-	double delta = 2 * req.x.length() / req.width;
-	if(verbosity > 3 && thisIndex == 0)
-		cout << "Pixel size: " << delta << " x " << (2 * req.y.length() / req.height) << endl;
-	req.x /= req.x.lengthSquared();
-	req.y /= req.y.lengthSquared();
-	req.z /= req.z.lengthSquared();
-	double x, y;
-	unsigned int pixel;
+	particle_renderer *renderer=start_particle_render(req,particles_changed);
 	
 	if(verbosity > 2 && thisIndex == 0) {
 		cout << "Worker " << thisIndex << ": Number of colorings: " << colorings.size() << endl;
 		for(vector<Coloring>::iterator colorIter = colorings.begin(); colorIter != colorings.end(); ++colorIter)
 			cout << "Coloring " << (colorIter - colorings.begin()) << " is called " << colorIter->name << endl;
 	}
-	Coloring& c = colorings[req.coloring];
-	boost::shared_ptr<SimulationHandling::Group> g(groups[req.activeGroup]);
 	
-	if(!g) {
-	    CkError(req.activeGroup.c_str());
-	    CkError(": Group not defined\n");
-	    liveVizDeposit(m, 0, 0, req.width, req.height, image, this, max_image_data);
-	    return;
-	    }
-		
-	bool drawSplatter = req.doSplatter;
-		
-	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
-		GroupIterator iter = g->make_begin_iterator(*famIter);
-		GroupIterator end = g->make_end_iterator(*famIter);
-		if(iter == end)
-			continue;
-		//don't try to draw inactive families
-		if(c.activeFamilies.find(*famIter) == c.activeFamilies.end())
-			continue;
-		
-		ParticleFamily& family = (*sim)[*famIter];
-		Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
-		if(positions == NULL) {
-		    CkError(family.familyName.c_str());
-		    CkError(":Family has no positions\n");
-		    continue;
-		    }
-		
-		byte* colors = family.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
-		//if the color doesn't exist, use the family color
-		if(colors == 0)
-			colors = family.getAttribute(coloringPrefix + "Family Colors", Type2Type<byte>());
-		assert(colors != 0);
-		
-		bool drawVectorsThisFamily = drawVectors;
-		AttributeMap::iterator vectorIter;
-		if(drawVectorsThisFamily) {
-			vectorIter = family.attributes.find(drawVectorAttributeName);
-			if(vectorIter == family.attributes.end())
-				drawVectorsThisFamily = false;
-			else
-				sim->loadAttribute(*famIter, drawVectorAttributeName, family.count.numParticles, family.count.startParticle);
-		}
-		
-		if(drawVectorsThisFamily) {
-			//get vectors
-			CoerciveExtractor<Vector3D<float> > vectorGetter(vectorIter->second);
-			Vector3D<float> point;
-			float x_end, y_end, t;
-			int x0, y0, x1, y1, b;
-			for(; *iter != *end; ++iter) {
-				point = positions[*iter] - req.o;
-				x = dot(req.x, point);
-				if(x > -1 && x < 1) {
-					y = dot(req.y, point);
-					if(y > -1 && y < 1) {
-						point += vectorScale * vectorGetter[*iter];
-						x_end = dot(req.x, point);
-						y_end = dot(req.y, point);
-						if(x_end <= -1 || x_end >= 1) {
-							b = sign(x_end);
-							t = (b - x) / (x_end - x);
-							x_end = b;
-							y_end = y + (y_end - y) * t;
-						} else if(y_end <= -1 || y_end >= 1) {
-							b = sign(y_end);
-							t = (b - y) / (y_end - y);
-							x_end = x + (x_end - x) * t;
-							y_end = b;
-						}
-						x0 = static_cast<unsigned int>(req.width * (x + 1) / 2);
-						x1 = static_cast<unsigned int>(req.width * (x_end + 1) / 2);
-						y0 = static_cast<unsigned int>(req.height * (1 - y) / 2);
-						y1 = static_cast<unsigned int>(req.height * (1 - y_end) / 2);
-						drawLine(image, req.width, req.height, x0, y0, x1, y1, colors[*iter]);
-					}
-				}
-			}
-		} else if(drawSplatter) { //draw splattered visual
-			//make sure these attributes are loaded, and assign softening to smoothing for point-particles
-			AttributeMap::iterator attrIter = family.attributes.find("mass");
-			if(attrIter == family.attributes.end())
-				cerr << "No Masses!" << endl;
-			if(attrIter->second.length == 0)
-				sim->loadAttribute(*famIter, "mass", family.count.numParticles, family.count.startParticle);
-			float* masses = family.getAttribute("mass", Type2Type<float>());
-			//CoerciveExtractor<float> masses(attrIter->second);
-			if(masses == 0)
-				cerr << "Masses pointer null!" << endl;
-			string smoothingAttributeName = "softening";
-			if(*famIter == "gas") {
-				attrIter = family.attributes.find("smoothingLength");
-				if(attrIter != family.attributes.end())
-					smoothingAttributeName = "smoothingLength";
-			}
-			attrIter = family.attributes.find(smoothingAttributeName);
-			if(attrIter == family.attributes.end())
-				cerr << "No smoothing or softening!" << endl;
-			if(attrIter->second.length == 0)
-				sim->loadAttribute(*famIter, smoothingAttributeName, family.count.numParticles,family.count.startParticle);
-			float* smoothingLengths = family.getAttribute(smoothingAttributeName, Type2Type<float>());
-			if(smoothingLengths == 0) {
-			    cerr << "D'oh!  smoothingLengths null!" << endl;
-			    continue; // To next family
-			    }
-			//CoerciveExtractor<float> smoothingLengths(attrIter->second);
-			
-			if(!projectedKernel.isReady())
-				initializeProjectedKernel(100);
-			
-			if(thisIndex == 0) {
-				cout << "Mass range is from " << minMass << " to " << maxMass << endl;
-				cout << "Splatter range is from " << req.minMass << " to " << req.maxMass << endl;
-			}
-			for(; *iter != *end; ++iter) {
-				x = dot(req.x, positions[*iter] - req.o);
-				float hpix = smoothingLengths[*iter] / delta;
-				float xbound = 1 + 2 * 2 * hpix / req.width;
-				if(x > -xbound && x < xbound) {
-					y = dot(req.y, positions[*iter] - req.o);
-					float ybound = 1 + 2 * 2 * hpix / req.height;
-					if(y > -ybound && y < ybound) {
-						//rescale masses (log masses?) to (endColor-startColor)
-						//float m = (endColor - startColor) * uniform((masses[*iter] - req.minMass) / massRange);
-						//splatParticle(image, req.width, req.height, x, y, m, smoothingLengths[*iter], delta, startColor);
-						double minAmount = req.minMass;
-						double maxAmount = req.maxMass;
-						splatParticle(image, req.width, req.height, x, y, masses[*iter], smoothingLengths[*iter], delta, startColor, minAmount, maxAmount);
-					}
-				}
-			}
-		} else { //draw points only
-		  if (doVolumeRender) 
-		  { /* 3D volume render */
-		  	int SX=req.width, SY=req.width, SZ=req.width; /* size, pixels, along X, Y, Z */
-			std::cout<<"Volume render dimensions: "<<SX<<"x"<<SY<<"x"<<SZ<<"\n";
-			float hX=SX*0.5, hY=SY*0.5, hZ=SZ*0.5;
-			byte* mark = family.getAttribute("mark", Type2Type<byte>());
-			Vector3D<float> xAxis=req.x*hX, yAxis=req.y*hY, zAxis=req.z*hZ; /* pixel axes */
-			float xo=(dot(req.x,req.o)-1)*hX, yo=(dot(req.y,req.o)-1)*hY, zo=(dot(req.z,req.o)-1)*hZ; /* pixel origin */
-			
-			for(; *iter != *end; ++iter) {
-				x=dot(xAxis,positions[*iter])-xo;
-				if (x<0 || x>=SX) continue; /* point is offscreen: skip */
-				y=dot(yAxis,positions[*iter])-yo;
-				if (y<0 || y>=SY) continue;
-				float z=dot(zAxis,positions[*iter])-zo;
-				if (z<0 || z>=SZ) continue;
-				pixel = (unsigned int) ((int)x + SX *((int)y + SY * (int)z));
-				if(image[pixel] < colors[*iter])
-				        image[pixel] = colors[*iter];
-				if (mark[*iter]!=0){
-				  image[pixel]=markColor;}
-			}
-		  } else 
-		  { /* 2D image render only */
-			float w=req.width/2, h=req.height/2;
-			Vector3D<float> xAxis=req.x*w, yAxis=req.y*h; /* pixel axes */
-			float xo=(dot(req.x,req.o)-1)*w, yo=(dot(req.y,req.o)-1)*h; /* pixel origin */
-			byte* mark = family.getAttribute("mark", Type2Type<byte>());
-			// Only needed for clipping planes
-			// float zo=dot(req.z,req.o)-1;
-			for(; *iter != *end; ++iter) {
-				x=dot(xAxis,positions[*iter])-xo;
-				if (x<0 || x>=req.width) continue; /* point is offscreen: skip */
-				y=dot(yAxis,positions[*iter])-yo;
-				if (y<0 || y>=req.height) continue;
+	particle_renderer::needs_t needs;
+	while (particle_renderer::needs_nothing!=(needs=renderer->needs_what())) {
+		Coloring& c = colorings[req.coloring];
+		boost::shared_ptr<SimulationHandling::Group> g(groups[req.activeGroup]);
+		if(g)
+		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
+			GroupIterator iter = g->make_begin_iterator(*famIter);
+			GroupIterator end = g->make_end_iterator(*famIter);
+			if(iter == end)
+				continue;
+			//don't try to draw inactive families
+			if(c.activeFamilies.find(*famIter) == c.activeFamilies.end())
+				continue;
 
-				// No z clipping planes for now
-				// float z=dot(req.z,positions[*iter])-zo;
-				// if (z<0 || z>=2.0) continue;
-				
-				if(req.radius == 0) {
-				    pixel = (unsigned int) ((int)x + req.width * (int)(y));
-					if(image[pixel] < colors[*iter])
-				        	image[pixel] = colors[*iter];
-				} else
-				    drawDisk(image, req.width, req.height, (int)x, (int)y, req.radius, colors[*iter]);
-				if(mark[*iter]!=0){
-				  image[pixel]=markColor;}
+			ParticleFamily& family = (*sim)[*famIter];
+			Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+			if(positions == NULL) {
+		    	CkError(family.familyName.c_str());
+		    	CkError(":Family has no positions\n");
+		    	continue;
+		    	}
+
+			byte* colors = family.getAttribute(coloringPrefix + c.name, Type2Type<byte>());
+			//if the color doesn't exist, use the family color
+			if(colors == 0)
+				colors = family.getAttribute(coloringPrefix + "Family Colors", Type2Type<byte>());
+			assert(colors != 0);
+
+			byte* mark = family.getAttribute("mark", Type2Type<byte>());
+
+			if (needs==particle_renderer::needs_count)
+			{ // Only add count
+			   renderer->render_count(end-iter);
 			}
-		  }
+			else { // Add every particle
+				for(; *iter != *end; ++iter) {
+		  			unsigned char c=colors[*iter];
+					if (mark[*iter]!=0) c=markColor;
+					renderer->render(positions[*iter],c);
+				}
+			}
 		}
 	}
-	//double stop = CkWallTimer();
-	liveVizDeposit(m, 0, 0, req.width, req.height, image, this, (drawSplatter ? sum_image_data : max_image_data));
-	//cout << "Image generation took " << (CkWallTimer() - start) << " seconds" << endl;
-	//cout << "my part: " << (stop - start) << " seconds" << endl;
+	double stop = CkWallTimer();
+	
+	renderer->finish(m,this);
+	particles_changed=false; /* the renderer now has up-to-date particles */
+
+	if (true) {
+		cout << " Image generation: " << (CkWallTimer() - start)*1.0e3 << " ms" << endl;
+		cout << "Render only: " << (stop - start)*1.0e3 << " ms" << endl;
+	}
 }
 
 void Worker::collectStats(const string& id, const CkCallback& cb) {
@@ -916,6 +757,7 @@ void Worker::collectStats(const string& id, const CkCallback& cb) {
 
 template <typename T>
 void Worker::assignColors(const unsigned int dimensions, byte* colors, void* values, const u_int64_t N, double minVal, double maxVal, bool beLogarithmic, clipping clip) {
+	particles_changed=true;
 	double invdelta = 1.0 / (maxVal - minVal);
 	double value;
 	for(u_int64_t i = 0; i < N; ++i) {
@@ -1083,6 +925,7 @@ public:
 };
 
 void Worker::makeColoring(const std::string& specification, const CkCallback& cb) {
+	particles_changed=true;
 	Coloring c(specification);
 	
 	int index = 0;
@@ -1285,6 +1128,7 @@ void Worker::calculateDepth(MyVizRequest req, const CkCallback& cb) {
 }
 
 void Worker::makeGroup(const string& s, const CkCallback& cb) {
+	particles_changed=true;
 	string groupName, attributeName;
 	list<string> parts = splitString(s);
 	float minValue, maxValue;
@@ -1320,6 +1164,7 @@ void Worker::makeGroup(const string& s, const CkCallback& cb) {
 }
 
 void Worker::setActiveGroup(const std::string& s, const CkCallback& cb) {
+	particles_changed=true;
 	activeGroupName = s;
 	if(thisIndex == 0)
 		cerr << "Activated group " << activeGroupName << endl;
@@ -1327,6 +1172,7 @@ void Worker::setActiveGroup(const std::string& s, const CkCallback& cb) {
 }
 
 void Worker::setDrawVectors(const string& s, const CkCallback& cb) {
+	particles_changed=true;
 	list<string> parts = splitString(s);
 	if(parts.size() >= 2) {
 		list<string>::iterator iter = parts.begin();
@@ -1749,6 +1595,7 @@ void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
 
 void Worker::createScalarAttribute(std::string const& familyName, std::string const& attributeName, CkCallback const& cb) 
 {
+	particles_changed=true;
     int result = 1;
     float* empty;
     
@@ -1762,6 +1609,7 @@ void Worker::createScalarAttribute(std::string const& familyName, std::string co
 //CC 4/1/07
 void Worker::createVectorAttribute(std::string const& familyName, std::string const& attributeName, CkCallback const& cb) 
 {
+	particles_changed=true;
     int result = 1;
     Vector3D<double>* empty;
     
@@ -1775,6 +1623,8 @@ void Worker::createVectorAttribute(std::string const& familyName, std::string co
 // CC 7/19/07
 void Worker::importScalarData( std::string const& familyName, std::string const& attributeName, int length, double c_data[], CkCallback const&cb)
 {
+	particles_changed=true;
+
   int result = 1;
   
   Simulation::iterator simIter = sim->find(familyName); //Now find the family or create a new one
@@ -1796,6 +1646,8 @@ void Worker::importScalarData( std::string const& familyName, std::string const&
 // CC 7/19/07
 void Worker::importVectorData( std::string const& familyName, std::string const&attributeName, int length, Vector3D<float> c_data[], CkCallback const&cb)
 {
+	particles_changed=true;
+
   int result = 1;
   cout<<"In importVectorData\n";
   Simulation::iterator simIter = sim->find(familyName); //Now find the family or create a new one
@@ -1887,6 +1739,8 @@ void Worker::createGroup_AttributeBox(std::string const& groupName,
 }
 
 void Worker::markParticlesGroup(const std::string& groupName, const CkCallback& cb) {
+	particles_changed=true;
+
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
@@ -1906,6 +1760,8 @@ void Worker::markParticlesGroup(const std::string& groupName, const CkCallback& 
 }
 
 void Worker::unmarkParticlesGroup(const std::string& groupName, const CkCallback& cb) {
+	particles_changed=true;
+
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
 		shared_ptr<SimulationHandling::Group>& g = gIter->second;
@@ -1950,6 +1806,7 @@ public:
 //
 void Worker::localParticleCode(std::string const &s, const CkCallback &cb) 
 {
+	particles_changed=true;
     
     GroupMap::iterator gIter = groups.find("All");
 
@@ -1976,6 +1833,8 @@ void Worker::localParticleCodeGroup(std::string const &g, // Group
 				    PyObjectMarshal &global, // Globals
 				    const CkCallback &cb)
 {
+	particles_changed=true;
+
     GroupMap::iterator gIter = groups.find(g);
 
     if(gIter != groups.end()) {
