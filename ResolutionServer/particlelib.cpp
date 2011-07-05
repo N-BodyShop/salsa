@@ -247,11 +247,18 @@ particle_renderer *start_particle_render(MyVizRequest &req,bool flush_cached)
 /*
 This version tries rendering to the local GPU, by opening a
 GLSL/glut connection.
-
 */
 #include <X11/Xlib.h> /* for XOpenDisplay preflight check */
-#include <GL/glew.h>
-#include <GL/glut.h>
+#include "GL/glew.h" /* OpenGL Extension Wrangler */
+#include "GL/glew.c" /* avoid linking trouble, by just including body directly */
+
+#define PARTICLELIB_USE_GLUT 0 /* use GLUT, or fall back to native X? */
+#if PARTICLELIB_USE_GLUT
+#  include <GL/glut.h>
+#else
+#  include <GL/glx.h>
+#endif
+
 #include "ogl/glsl.h"  /* Orion's GL Library utility code */
 #include "ogl/glsl.cpp" 
 
@@ -259,32 +266,52 @@ GLSL/glut connection.
 void oglCheck(const char *where) {
         GLenum e=glGetError();
         if (e==GL_NO_ERROR) return;
-        const GLubyte *errString = gluErrorString(e);
-        printf("ResolutionServer/particlelib.cpp OpenGL error: In %s, error %s (%d)\n",where,errString,e);
+        //const GLubyte *errString = gluErrorString(e);
+        printf("ResolutionServer/particlelib.cpp OpenGL error in %s (err=%d)\n",where,/*errString,*/e);
 		abort();
 }
 
 
-/* Return true if we can successfully set up an OpenGL context. */
-bool start_GPU(void) {
+/* Return NULL if we can successfully set up an OpenGL context. */
+const char * start_GPU(void) {
 	// OpenGL setup with GLUT and GLEW
-	const char *display=":0";
-	setenv("DISPLAY",display,1);
+	const char *displayName=":0";
+#if PARTICLELIB_USE_GLUT
+	setenv("DISPLAY",displayName,1);
 	
 	// Preflight the DISPLAY:
-	if (NULL==XOpenDisplay(display)) return false; /* no backend available */
-	
+	if (NULL==XOpenDisplay(displayName)) return "No DISPLAY=:0 X backend available";
 	glutInitWindowSize(80,80);
 	int argc=1; char *argv[2]; argv[0]=(char *)"foo"; argv[1]=0; /* fake arguments */
 	glutInit(&argc,argv); /* FIXME: glut can crash here, if bad GL setup */
 	int mode=GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH;
 	glutInitDisplayMode (mode);
 	/*int win=*/ glutCreateWindow("ResolutionServer Backend");
+#else /* no GLUT, fall back to native X (UNIX only) */
+    Display *display = XOpenDisplay( displayName );
+    if( display == NULL ) return "No DISPLAY=:0 X backend available";
+	
+    if( !glXQueryExtension( display, NULL, NULL ) )
+		return "No OpenGL available on DISPLAY=:0";
+	const static int attrib[10]={GLX_RGBA,GLX_DOUBLEBUFFER,None};
+	XVisualInfo* visualInfo=glXChooseVisual(display,0,(int *)attrib);
+	if (visualInfo==NULL) return "Error in glXChooseVisual";
+	GLXContext ctx = glXCreateContext(display, visualInfo, NULL, True );
+	if (!ctx)  return "Error in glXCreateContext";
+	
+	Window w=XCreateSimpleWindow(display,RootWindow(display,0),
+		0,0,100,100,0,0,0);
+	if (!w)  return "Error in XCreateSimpleWindow";
+	
+	if (!glXMakeCurrent(display,w,ctx)) return "Error in glXMakeCurrent";
+	
+#endif
+	
 	glewInit(); /*<- needed for gl...ARB functions to work! */
 	
 	// If we don't have a modern OpenGL, nothing's going to work.
 	if (0==glUseProgramObjectARB || 0==glGenFramebuffersEXT || 0==glBufferDataARB)
-		return false;
+		return "OpenGL does not have sufficient extensions (upgrade drivers?)";
 	
 	/* We don't usually want these features for GPGPU-style rendering: */
 	glDisable(GL_DEPTH_TEST);
@@ -295,7 +322,7 @@ bool start_GPU(void) {
 	glBlendFunc(GL_ONE, GL_ONE);
 	oglCheck("After OpenGL setup");
 	
-	return true;
+	return NULL;
 }
 
 /* Tiny Timer functions
@@ -431,6 +458,10 @@ public:
 			oglCheck("before VBO setup");
 			printf("VBO size: %.1f Mparticles, %.3f GB\n",VBO_size*1.0e-6,VBO_size*sizeof(pb[0])*1.0e-9);
 			glBindBufferARB(GL_ARRAY_BUFFER_ARB,VBO);
+			
+			/* Weird: reduce NVIDIA driver bug/memory leak by zeroing out the buffer first */
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB,0,0,GL_STATIC_DRAW_ARB);
+			
 			glBufferDataARB(GL_ARRAY_BUFFER_ARB,sizeof(pb[0])*VBO_size,
 	        		0,GL_STATIC_DRAW_ARB);
 			VBO_cpu=(GPU_particle *)glMapBuffer(GL_ARRAY_BUFFER_ARB,GL_WRITE_ONLY);
@@ -703,7 +734,9 @@ typical_particle_renderer *start_GPU_render(MyVizRequest &req,bool doVolumeRende
 	static bool setup_GPU=false;
 	static bool GPU_OK=false;
 	if (!setup_GPU) {
-		GPU_OK=start_GPU();
+		const char *err=start_GPU();
+		if (err==NULL) GPU_OK=true;
+		else CkPrintf("No GPU backend: %s\n",err);
 		setup_GPU=true;
 	}
 	if (!GPU_OK) return NULL; // fall back to CPU
