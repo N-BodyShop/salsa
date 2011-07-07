@@ -26,13 +26,13 @@ public class WindowManager extends WindowAdapter {
 	public WindowManager(CcsThread ccsThread) {
 		ccs = ccsThread;
 		
-		ccs.doBlockingRequest(new GetAttributeInformation());
-		attributeManager = new AttributeManager(this);
-		attributeManager.addWindowListener(this);
-		
 		ccs.doBlockingRequest(new GetColoringInformation());
 		coloringManager = new ColoringManager(this);
 		coloringManager.addWindowListener(this);
+		
+		ccs.doBlockingRequest(new GetAttributeInformation());
+		attributeManager = new AttributeManager(this);
+		attributeManager.addWindowListener(this);
 
 		//ccs.doBlockingRequest(new GetGroupInformation());
 		sim.fillGroups();

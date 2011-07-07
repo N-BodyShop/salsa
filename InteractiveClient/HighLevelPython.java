@@ -39,10 +39,10 @@ public class HighLevelPython
 	    // 0 if print request on unknown interpreter
 	    // string if valid print request
 	    public void handleReply(byte[] data) {
-		    System.err.println("In handle Reply\n");
+		    //System.err.println("In handle Reply\n");
 		    // data will be 4 bytes... convert them to an int
 		    interpreterHandle = CcsServer.readInt(data, 0);
-		    System.err.println("Request print " + interpreterHandle);
+		    //System.err.println("Request print " + interpreterHandle);
 		    ccs.addRequest(new PythonPrintRequest((new PythonPrint(interpreterHandle, true)).pack(), handler));
 	    }
 	}
@@ -55,7 +55,7 @@ public class HighLevelPython
 	    }
 	    public void handleReply(byte[] data) {
 		String result = new String(data);
-		System.err.println("In handle Print Reply:" + result);
+		//System.err.println("In handle Print Reply:" + result);
 		if (result.length() > 0) {
 		    handler.handle(result);
 		    }

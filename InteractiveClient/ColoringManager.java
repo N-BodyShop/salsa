@@ -41,20 +41,14 @@ public class ColoringManager extends Manager
 		coloringList = new JList(sim.createColoringModel());
 		coloringList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		coloringList.setVisibleRowCount(8);
+		coloringList.setSelectedIndex(0);
 		coloringList.setPrototypeCellValue("Log Density Color");
+		coloringList.addListSelectionListener(this);
 		
 		JPanel lhs = new JPanel(new BorderLayout());
 		//lhs.setBorder(BorderFactory.createTitledBorder("Colorings"));
+		lhs.add(new JLabel("Colorings on Server:"), BorderLayout.NORTH);
 		lhs.add(new JScrollPane(coloringList), BorderLayout.WEST);
-		Box b2 = new Box(BoxLayout.LINE_AXIS);
-		b2.add(new JLabel("Active Coloring:"));
-		JComboBox coloringCombo = new JComboBox(windowManager.sim.createColoringModel());
-		coloringCombo.setPrototypeDisplayValue("Density");
-		coloringCombo.setSelectedIndex(0);
-		coloringCombo.setActionCommand("chooseColoring");
-		coloringCombo.addActionListener(this);
-		b2.add(coloringCombo);
-		lhs.add(b2, BorderLayout.NORTH);
 		
 		displayPanel = new JPanel();
 		//displayPanel.setBorder(BorderFactory.createTitledBorder("Coloring information"));
@@ -142,14 +136,17 @@ public class ColoringManager extends Manager
 		getContentPane().add(rhs);
 		
 		pack();
-		
-		coloringList.addListSelectionListener(this);
-		coloringList.setSelectedIndex(0);
+	}
+	
+	/* Return the currently selected coloring */
+	private Simulation.Coloring getColoring() {
+		if (coloringList.getSelectedValue() == null) return null;
+		return sim.findColoring((String)coloringList.getSelectedValue());
 	}
 	
 	public void valueChanged(ListSelectionEvent e) {
-		if(e.getValueIsAdjusting() == false && coloringList.getSelectedValue() != null) {
-			Simulation.Coloring c = (Simulation.Coloring) sim.colorings.get(coloringList.getSelectedValue());
+		Simulation.Coloring c = getColoring();
+		if(e.getValueIsAdjusting() == false && c != null) {
 			coloringNameField.setText(c.name);
 			if(c.infoKnown) {
 				coloringNameField.setEnabled(true);
@@ -161,11 +158,13 @@ public class ColoringManager extends Manager
 				activeFamilyList.setEnabled(true);
 				attributeNameBox.setSelectedItem(c.attributeName);
 				attributeNameBox.setEnabled(true);
+				
 				int index = 0;
 				if(c.logarithmic)
 					index = 1;
 				logLinearBox.setSelectedIndex(index);
 				logLinearBox.setEnabled(true);
+				
 				if(c.clipping.equals("clipno"))
 					index = 0;
 				else if(c.clipping.equals("cliphigh"))
@@ -176,10 +175,12 @@ public class ColoringManager extends Manager
 					index = 3;
 				clippingBox.setSelectedIndex(index);
 				clippingBox.setEnabled(true);
+				
 				minValField.setValue(new Double(c.minValue));
 				minValField.setEnabled(true);
 				maxValField.setValue(new Double(c.maxValue));
 				maxValField.setEnabled(true);
+				
 				applyButton.setEnabled(true);
 			} else {
 				//could switch cards here to display "Sorry, no knowledge" message?
@@ -192,24 +193,35 @@ public class ColoringManager extends Manager
 				maxValField.setEnabled(false);
 				applyButton.setEnabled(false);
 			}
+
+			updateDisplay();
 		}
+	}
+	
+	// Make the currently-selected coloring show up onscreen
+	private void updateDisplay() {
+		Simulation.Coloring c=getColoring();
+		
+		// Update the server-side coloring (if needed)
+		if (c.id<0) {
+			windowManager.ccs.doBlockingRequest(new CreateColoring(c));
+		}
+		
+		// Make the new coloring active
+		ViewingPanel vp=((ViewingPanel)windowManager.windowList.peek());
+		vp.view.activeColoring = c.id;
+		vp.view.getNewImage(true);
 	}
 	
 	public void actionPerformed(ActionEvent e) {
 		String command = e.getActionCommand();
-		if(command.equals("chooseColoring")) {
-			//System.out.println("Choose coloring: " + ((JComboBox) e.getSource()).getSelectedItem());
-			((ViewingPanel)windowManager.windowList.peek()).view.activeColoring = ((Simulation.Coloring) windowManager.sim.colorings.get((String) ((JComboBox) e.getSource()).getSelectedItem())).id;
-			((ViewingPanel)windowManager.windowList.peek()).view.getNewImage(true);
-		} else if(command.equals("swap")) {
+		if(command.equals("swap")) { /* Swap min and max */
 			double minValue = ((Number) minValField.getValue()).doubleValue();
 			double maxValue = ((Number) maxValField.getValue()).doubleValue();
 			minValField.setValue(new Double(maxValue));
 			maxValField.setValue(new Double(minValue));
-		    }
-		
-		if(command.equals("apply")) {
-			Simulation.Coloring c = (Simulation.Coloring) sim.colorings.get(coloringList.getSelectedValue());
+		} else if(command.equals("apply")) { /* Apply button: pull values from GUI, put to server */
+			Simulation.Coloring c = getColoring();
 			String oldName = c.name;
 			c.name = coloringNameField.getText();
 			c.infoKnown = true;
@@ -227,21 +239,17 @@ public class ColoringManager extends Manager
 			}
 			c.minValue = ((Number) minValField.getValue()).doubleValue();
 			c.maxValue = ((Number) maxValField.getValue()).doubleValue();
-			windowManager.ccs.addRequest(new CreateColoring(c));
-			if(c.name != oldName) {
-				sim.colorings.remove(oldName);
-				sim.colorings.put(c.name, c);
-			}
-			coloringList.clearSelection();
-			coloringList.setSelectedValue(c.name, true);
-		} else if(command.equals("new")) {
+			
+			c.id=-1; // Updated coloring needs a new coloring number
+			updateDisplay();
+		} else if(command.equals("new")) { /* Make a new coloring */
 			++coloringCount;
 			Simulation.Coloring c = new Simulation.Coloring("New Coloring " + coloringCount);
 			//fill in c more correctly here
 			for(Enumeration en = sim.families.keys(); en.hasMoreElements(); )
 				c.activeFamilies += ((String) en.nextElement()) + ",";
 			c.attributeName = (String) attributeNameBox.getSelectedItem();
-			sim.colorings.put(c.name, c);
+			sim.colorings.add(c);
 			coloringList.clearSelection();
 			coloringList.setSelectedValue(c.name, true);
 		} else if(command.equals("chooseAttribute")) {
@@ -261,33 +269,10 @@ public class ColoringManager extends Manager
 						maxVal = attr.maxValue;
 				}
 			}
-			if(((String) logLinearBox.getSelectedItem()).equals("Logarithmic")) {
-				minVal = Math.log(minVal) / Math.log(10);
-				maxVal = Math.log(maxVal) / Math.log(10);
-			}
 			minValField.setValue(new Double(minVal));
 			maxValField.setValue(new Double(maxVal));
 		} else if(command.equals("chooseScaling")) {
-		    if(minValField.getValue() == null)
-			return;
-		    
-			double val = ((Number) minValField.getValue()).doubleValue();
-			boolean logarithmic = ((String) logLinearBox.getSelectedItem()).equals("Logarithmic");
-			if(logarithmic) {
-				if(val > 0) {
-					val = Math.log(val) / Math.log(10.0);
-					minValField.setValue(new Double(val));
-				}
-			} else
-				minValField.setValue(new Double(Math.pow(10.0, val)));
-			val = ((Number) maxValField.getValue()).doubleValue();
-			if(logarithmic) {
-				if(val > 0) {
-					val = Math.log(val) / Math.log(10.0);
-					maxValField.setValue(new Double(val));
-				}
-			} else
-				maxValField.setValue(new Double(Math.pow(10.0, val)));
+			/* nothing to do here */
 		}
 	}
 	
@@ -296,7 +281,15 @@ public class ColoringManager extends Manager
 		public CreateColoring(Simulation.Coloring coloring) {
 			super("CreateColoring", (byte[]) null);
 			c = coloring;
-			setData((c.name + "," + (c.logarithmic ? "logarithmic," : "linear,") + c.attributeName + "," + c.minValue + "," + c.maxValue + "," + c.clipping + "," + c.activeFamilies).getBytes());
+			double lo=c.minValue, hi=c.maxValue;
+			if (c.logarithmic) {
+				lo=Math.log(lo) / Math.log(10.0);
+				hi=Math.log(hi) / Math.log(10.0);
+			}
+			if (c.attributeName.equals("potential")) { /* swap min and max: should be viewed backwards (by default) */
+				double t=lo; lo=hi; hi=t;
+			}
+			setData((c.name + "," + (c.logarithmic ? "logarithmic," : "linear,") + c.attributeName + "," + lo + "," + hi + "," + c.clipping + "," + c.activeFamilies).getBytes());
 		}
 		
 		public void handleReply(byte[] data) {

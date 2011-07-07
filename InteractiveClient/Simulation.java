@@ -19,7 +19,7 @@ public class Simulation {
 	
 	//clients can register to be notified when these structures change
     NotifyingHashtable families = new NotifyingHashtable();
-	NotifyingHashtable colorings = new NotifyingHashtable();
+	Vector colorings = new Vector();
 	NotifyingHashtable groups = new NotifyingHashtable();
 
 	/// The original origin of the simulation
@@ -48,38 +48,6 @@ public class Simulation {
 		public double maxValue;
 	}
 	
-	/// Get family information out of a Properties
-	/// XXX This should be replaced by a python call
-	public void fill(Properties props) {
-	    System.err.println("Fill Called");
-		name = props.getProperty("simulationName");
-		try {
-			int numFamilies = Integer.parseInt(props.getProperty("numFamilies"));
-			for(int i = 0; i < numFamilies; ++i) {
-				Family family = new Family();
-				family.name = props.getProperty("family-" + i + ".name");
-				family.index = i;
-				family.numParticles = Long.parseLong(props.getProperty("family-" + i + ".numParticles"));
-				family.defaultColor = Integer.parseInt(props.getProperty("family-" + i + ".defaultColor"));
-				family.numAttributes = Integer.parseInt(props.getProperty("family-" + i + ".numAttributes"));
-				for(int j = 0; j < family.numAttributes; ++j) {
-					Attribute attr = new Attribute();
-					attr.name = props.getProperty("family-" + i + ".attribute-" + j + ".name");
-					attr.dimensionality = props.getProperty("family-" + i + ".attribute-" + j + ".dimensionality");
-					attr.dataType = props.getProperty("family-" + i + ".attribute-" + j + ".dataType");
-					attr.definition = props.getProperty("family-" + i + ".attribute-" + j + ".definition");
-					attr.minValue = Double.parseDouble(props.getProperty("family-" + i + ".attribute-" + j + ".minScalarValue"));
-					attr.maxValue = Double.parseDouble(props.getProperty("family-" + i + ".attribute-" + j + ".maxScalarValue"));
-					family.attributes.put(attr.name, attr);
-				}
-				families.put(family.name, family);
-			}
-		} catch(NumberFormatException e) {
-			System.err.println("Problem parsing simulation properties");
-			e.printStackTrace();
-		}
-	}
-	
 	static public class Coloring {
 		public String name;
 		public int id;
@@ -103,7 +71,69 @@ public class Simulation {
 			maxValue = 0;
 		}
 	}
-		
+	
+	/// Get family information out of a Properties
+	/// XXX This should be replaced by a python call
+	public void fill(Properties props) {
+	    System.err.println("Filling family information from network data");
+		name = props.getProperty("simulationName");
+		try {
+			int numFamilies = Integer.parseInt(props.getProperty("numFamilies"));
+			for(int i = 0; i < numFamilies; ++i) {
+				Family family = new Family();
+				family.name = props.getProperty("family-" + i + ".name");
+				family.index = i;
+				family.numParticles = Long.parseLong(props.getProperty("family-" + i + ".numParticles"));
+				family.defaultColor = Integer.parseInt(props.getProperty("family-" + i + ".defaultColor"));
+				family.numAttributes = Integer.parseInt(props.getProperty("family-" + i + ".numAttributes"));
+				for(int j = 0; j < family.numAttributes; ++j) {
+					Attribute attr = new Attribute();
+					attr.name = props.getProperty("family-" + i + ".attribute-" + j + ".name");
+					attr.dimensionality = props.getProperty("family-" + i + ".attribute-" + j + ".dimensionality");
+					attr.dataType = props.getProperty("family-" + i + ".attribute-" + j + ".dataType");
+					attr.definition = props.getProperty("family-" + i + ".attribute-" + j + ".definition");
+					attr.minValue = Double.parseDouble(props.getProperty("family-" + i + ".attribute-" + j + ".minScalarValue"));
+					attr.maxValue = Double.parseDouble(props.getProperty("family-" + i + ".attribute-" + j + ".maxScalarValue"));
+					family.attributes.put(attr.name, attr);
+					
+					if (!attr.name.equals("position")) 
+					{
+						/* Make a Coloring for this attribute, if there isn't already one */
+						Coloring c=findColoring(attr.name);
+						if (c!=null) { /* just update existing coloring */
+							c.minValue=Math.min(c.minValue,attr.minValue);
+							c.maxValue=Math.max(c.maxValue,attr.maxValue);
+							c.activeFamilies+=","+family.name;
+						} else 
+						{/* Create a new coloring */
+							//System.out.println("Creating coloring for attribute "+attr.name+": index "+colorings.size());
+							c=new Coloring(attr.name);
+							c.id=-1; /* lazy create-on-demand by ColoringManager */
+							c.name=attr.name;
+							c.infoKnown=true;
+							c.activeFamilies=family.name;
+							c.attributeName=attr.name;
+							c.minValue=attr.minValue;
+							c.maxValue=attr.maxValue;
+							c.logarithmic=false;
+							c.clipping="clipno";
+							colorings.add(c);
+						}
+						
+						if (c.minValue>0 && c.maxValue>0 && c.maxValue/c.minValue>10.0) 
+						{ /* Positive attributes with large dynamic range should be plotted in log scale */
+							c.logarithmic=true;
+						}
+					}
+				}
+				families.put(family.name, family);
+			}
+		} catch(NumberFormatException e) {
+			System.err.println("Problem parsing simulation properties");
+			e.printStackTrace();
+		}
+	}
+	
 	public void fillColorings(Properties props) {
 		try {
 			int numColorings = Integer.parseInt(props.getProperty("numColorings"));
@@ -118,7 +148,7 @@ public class Simulation {
 					c.minValue = Double.parseDouble(props.getProperty("coloring-" + i + ".minValue"));
 					c.maxValue = Double.parseDouble(props.getProperty("coloring-" + i + ".maxValue"));
 				}
-				colorings.put(c.name, c);
+				colorings.add(c);
 			}
 		} catch(NumberFormatException e) {
 			System.err.println("Problem parsing simulation properties");
@@ -126,35 +156,33 @@ public class Simulation {
 		}
 	}
 	
-	/// A ColoringModel can be used to present a view of the names of the Colorings
-	static public class ColoringModel extends DefaultComboBoxModel implements ChangeListener {
-		Vector coloringNames = new Vector();
-		Hashtable colorings = null;
-		
-		public ColoringModel(NotifyingHashtable c) {
-			colorings = c;
-			stateChanged(null);
-			c.addChangeListener(this);
+	/// Look up Coloring based on its name.
+	public Coloring findColoring(String name) {
+		for (int i=0;i<colorings.size();i++) 
+		{
+			Coloring c=(Coloring)colorings.elementAt(i);
+			if (c.name.equals(name)) return c;
+		}
+		return null;
+	}
+	
+	/// A ColoringModel can be used to present a view of the names of the Colorings for a JList.
+	public class ColoringModel extends DefaultComboBoxModel {
+		public ColoringModel() {
 		}
 		
 		public int getSize() {
-			return coloringNames.size();
+			return colorings.size();
 		}
 		
 		public Object getElementAt(int index) {
-			return coloringNames.get(index);
-		}
-		
-		public void stateChanged(ChangeEvent ev) {
-			coloringNames.clear();
-			for(Enumeration e = colorings.elements(); e.hasMoreElements(); )
-				coloringNames.add(((Coloring) e.nextElement()).name);
-			fireContentsChanged(this, -1, -1);
+			Coloring c=(Coloring)colorings.elementAt(index);
+			return c.name;
 		}
 	}
 	
 	public ColoringModel createColoringModel() {
-		return new ColoringModel(colorings);
+		return new ColoringModel();
 	}
 
 	static public class Group {
