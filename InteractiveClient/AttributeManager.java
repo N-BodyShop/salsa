@@ -47,6 +47,7 @@ public class AttributeManager extends Manager implements ActionListener, TreeSel
 		tree = new JTree(treeModel);
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.setVisibleRowCount(8);
+		tree.setPreferredSize(new Dimension(200,300));
 		tree.addTreeSelectionListener(this);
 		refreshData();
 		
