@@ -1,6 +1,4 @@
-//
-//  ToolBarPanel.java
-//  
+//  This is the "Rendering" tab in the Sidebar.
 //
 //  Created by Greg Stinson on Sat Oct 18 2003.
 //  Copyright (c) 2003 __MyCompanyName__. All rights reserved.
@@ -16,7 +14,7 @@ import java.io.*;
 import java.net.UnknownHostException;
 import java.text.*;
 
-public class ToolBarPanel extends JPanel 
+public class RenderingPanel extends JPanel 
 						  implements ActionListener, 
 						  			 ChangeListener, 
 									 ViewListener {
@@ -33,7 +31,7 @@ public class ToolBarPanel extends JPanel
 	JCheckBox disable3D;
         JButton zoomapply;
 
-	public ToolBarPanel(WindowManager wm, SimulationView v) {
+	public RenderingPanel(WindowManager wm, SimulationView v) {
 		windowManager = wm;
 		view = v;
 		setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
