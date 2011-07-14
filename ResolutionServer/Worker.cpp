@@ -755,7 +755,10 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 
 			if (needs==particle_renderer::needs_count)
 			{ // Only add count
-			   renderer->render_count(end-iter);
+			    int count = 0;
+			    for(; *iter != *end; ++iter)
+				count++;
+			    renderer->render_count(count);
 			}
 			else { // Add every particle
 				for(; *iter != *end; ++iter) {
