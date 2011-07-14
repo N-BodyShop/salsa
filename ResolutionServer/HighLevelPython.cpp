@@ -104,7 +104,6 @@ void Main::readMark(int handle) {
 	}
     if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
 	fclose(fp);
-	StatusMsg *mesg;
 	workers.readMark(fileName, attributeMark, attributeCmp,
 			 CkCallbackPython());
 	}
@@ -229,6 +228,67 @@ void Main::saveSimulation(int handle) {
 
     pythonReturn(handle, Py_BuildValue("i",result));
     delete mesg;
+    }
+
+/* usage: writeGroupTipsy('Group', 'savepath') */
+void Main::writeGroupTipsy(int handle) {
+    Worker* w = this->workers[0].ckLocal();
+    if(w->sim == NULL) {
+	    PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    char *path;
+    char *groupName;
+
+    if(PyArg_ParseTuple(arg, "ss", &groupName, &path)== false) {
+	PyErr_SetString(PyExc_TypeError,
+			"Usage: writeGroupTipsy(group, filename)");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	    PyErr_SetString(PyExc_NameError, "No such group");
+	    pythonReturn(handle, NULL);
+	    return;
+	}
+    /* Count particles */
+    CkReductionMsg* mesg;
+    int64_t nGas, nDark, nStar;
+    workers.getNumParticlesGroup(groupName, "gas",
+				 createCallbackResumeThread(mesg, nGas));
+    delete mesg;
+    workers.getNumParticlesGroup(groupName, "dark",
+				 createCallbackResumeThread(mesg, nDark));
+    delete mesg;
+    workers.getNumParticlesGroup(groupName, "star",
+				 createCallbackResumeThread(mesg, nStar));
+    delete mesg;
+    Tipsy::header tipsyHeader;
+    tipsyHeader.time = w->sim->time;
+    tipsyHeader.nsph = nGas;
+    tipsyHeader.ndark = nDark;
+    tipsyHeader.nstar = nStar;
+    tipsyHeader.nbodies = nGas + nDark + nStar;
+    {
+	Tipsy::TipsyWriter w(path, tipsyHeader);
+	if(!w.writeHeader()) {
+	    PyErr_SetString(PyExc_IOError, "File write error");
+	    pythonReturn(handle, NULL);
+	    return;
+	    }
+	}
+    workers[0].writeGroupTipsy(groupName, "gas", path, tipsyHeader, 0,
+			       CkCallbackPython());
+    workers[0].writeGroupTipsy(groupName, "dark", path, tipsyHeader, nGas,
+			       CkCallbackPython());
+    workers[0].writeGroupTipsy(groupName, "star", path, tipsyHeader, nGas + nDark,
+			       CkCallbackPython());
+    pythonReturn(handle);
+    return;
     }
 
 /* usage: writeIndexes('Group', 'family', 'savepath') */

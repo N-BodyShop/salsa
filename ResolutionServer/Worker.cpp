@@ -300,6 +300,79 @@ void Worker::readTipsyArray(const std::string& fileName,
     fclose(fp);
     }
 
+void Worker::writeGroupTipsy(const std::string& groupName,
+			     const std::string& familyName,
+			     const std::string& fileName,
+			     Tipsy::header tipsyHeader,
+			     int64_t nStartWrite,
+			     const CkCallback& cb)
+{
+    Tipsy::TipsyWriter w(fileName, tipsyHeader);
+    if(!w.seekParticleNum(nStartWrite))
+	CkAbort("bad seek");
+    GroupMap::iterator gIter = groups.find(groupName);
+
+    if (gIter != groups.end()) {
+        shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        ParticleFamily& family = (*sim)[familyName];
+	GroupIterator iter = g->make_begin_iterator(familyName);
+	GroupIterator end = g->make_end_iterator(familyName);
+	Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+	Vector3D<float>* velocity = family.getAttribute("velocity", Type2Type<Vector3D<float> >());
+	float* mass = family.getAttribute("mass", Type2Type<float>());
+	float* softening = family.getAttribute("softening", Type2Type<float>());
+	float* potential = family.getAttribute("potential", Type2Type<float>());
+	float* density = family.getAttribute("density", Type2Type<float>());
+	float* temperature = family.getAttribute("temperature", Type2Type<float>());
+	float* metals = family.getAttribute("metals", Type2Type<float>());
+	float* formationtime = family.getAttribute("formationtime", Type2Type<float>());
+	for(; *iter != *end; ++iter) {
+	    nStartWrite++;
+	    if(familyName == "gas") {
+		Tipsy::gas_particle gp;
+		gp.mass = mass[*iter];
+		gp.pos = positions[*iter];
+		gp.vel = velocity[*iter];
+		gp.rho = density[*iter];
+		gp.temp = temperature[*iter];
+		gp.metals = metals[*iter];
+		gp.hsmooth = softening[*iter];
+		gp.phi = potential[*iter];
+		w.putNextGasParticle(gp);
+		}
+	    if(familyName == "dark") {
+		Tipsy::dark_particle gp;
+		gp.mass = mass[*iter];
+		gp.pos = positions[*iter];
+		gp.vel = velocity[*iter];
+		gp.eps = softening[*iter];
+		gp.phi = potential[*iter];
+		w.putNextDarkParticle(gp);
+		}
+	    if(familyName == "star") {
+		Tipsy::star_particle gp;
+		gp.mass = mass[*iter];
+		gp.pos = positions[*iter];
+		gp.vel = velocity[*iter];
+		gp.tform = formationtime[*iter];
+		gp.metals = metals[*iter];
+		gp.eps = softening[*iter];
+		gp.phi = potential[*iter];
+		w.putNextStarParticle(gp);
+		}
+	    }
+	}
+    if(thisIndex+1 < CkNumPes()) {
+	CProxy_Worker workers(thisArrayID);
+	workers[thisIndex+1].writeGroupTipsy(groupName, familyName, fileName,
+					     tipsyHeader, nStartWrite, cb);
+	}
+    else {
+	cb.send();
+	}
+    }
+
+
 void Worker::writeIndexes(const std::string& groupName,
                  const std::string& familyName,
 			     const std::string& fileName,
