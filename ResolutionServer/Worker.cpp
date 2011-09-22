@@ -1754,10 +1754,28 @@ void Worker::createGroup_Family(std::string const& groupName, std::string const&
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
+static inline void loadAttribute(Simulation *sim,
+				 std::string const& attributeName)
+{
+	// loop over families
+	for(Simulation::iterator iterFam = sim->begin(); iterFam != sim->end();
+	    ++iterFam) {
+		ParticleFamily& family = iterFam->second;
+		AttributeMap::iterator attrIter = family.attributes.find(attributeName);
+		if(attrIter != family.attributes.end()
+		   && attrIter->second.data == 0) {
+			sim->loadAttribute(iterFam->first, attributeName,
+				family.count.numParticles,
+				family.count.startParticle);
+			}
+		}
+	}
+
 void Worker::createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb) {
 	int result = 0;
 	//parent group idiom: look up parent group by name
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_AttributeRangeGroup(*sim, parentGroup, attributeName, minValue, maxValue);
 	if(g) {
 		groups[groupName] = g;
@@ -1773,6 +1791,7 @@ void Worker::createGroup_AttributeSphere(std::string const& groupName,
 					 CkCallback const& cb) {
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_SphericalGroup(*sim, parentGroup, attributeName, center, size);
 	if(g) {
 		groups[groupName] = g;
@@ -1788,6 +1807,7 @@ void Worker::createGroup_AttributeShell(std::string const& groupName,
 					 double dMax, CkCallback const& cb) {
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_ShellGroup(*sim, parentGroup, attributeName, center, dMin, dMax);
 	if(g) {
 		groups[groupName] = g;
@@ -1806,6 +1826,7 @@ void Worker::createGroup_AttributeBox(std::string const& groupName,
 				      CkCallback const& cb) {
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_BoxGroup(*sim, parentGroup, attributeName, corner, edge1, edge2, edge3);
 	if(g) {
 		groups[groupName] = g;
