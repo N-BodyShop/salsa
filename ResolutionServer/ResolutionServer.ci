@@ -52,6 +52,8 @@ mainmodule ResolutionServer {
 			void getAttributeSum(int handle);
 		entry [python] void getDimensions(int handle);
 		entry [python] void saveSimulation(int handle);
+		entry [python "write group to file"]
+			void writeGroupTipsy(int handle);
 		entry [python "write indexes to file"]
 			void writeIndexes(int handle);
 		entry [python "write group attribute as tipsy array"]
@@ -91,6 +93,12 @@ mainmodule ResolutionServer {
 			    const std::string& attributeName,
 			    long off, int iType, const CkCallback& cb);
 		
+		entry void writeGroupTipsy(const std::string& groupName,
+			     const std::string& familyName,
+			     const std::string& fileName,
+			     Tipsy::header tipsyHeader,
+			     int64_t nStartWrite,
+			     const CkCallback& cb);
 		entry void writeIndexes(const std::string& groupName,
 			    const std::string& familyName,
 			    const std::string& fileName,

@@ -21,6 +21,7 @@ typedef long blkcnt_t;
 #include "ckcallback-ccs.h"
 
 #include "TipsyParticles.h"
+#include "TipsyReader.h"
 #include "OrientedBox.h"
 #include "Sphere.h"
 #include "Box.h"
@@ -195,6 +196,7 @@ public:
 	void loadSimulation(int handle);
 	void saveSimulation(int handle);
 	void readTipsyArray(int handle);
+	void writeGroupTipsy(int handle);
 	void writeIndexes(int handle);
 	void writeGroupArray(int handle);
 	void readMark(int handle);
@@ -302,6 +304,12 @@ public:
 	
 	void loadSimulation(const std::string& simulationName, const CkCallback& cb);
 	void saveSimulation(const std::string& simulationName, const CkCallback& cb);
+	void writeGroupTipsy(const std::string& groupName,
+			     const std::string& familyName,
+			     const std::string& fileName,
+			     Tipsy::header tipsyHeader,
+			     int64_t nStartWrite,
+			     const CkCallback& cb);
 	void writeIndexes(const std::string& groupName,
 			     const std::string& familyName,
 			     const std::string& fileName,

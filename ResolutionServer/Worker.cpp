@@ -300,6 +300,79 @@ void Worker::readTipsyArray(const std::string& fileName,
     fclose(fp);
     }
 
+void Worker::writeGroupTipsy(const std::string& groupName,
+			     const std::string& familyName,
+			     const std::string& fileName,
+			     Tipsy::header tipsyHeader,
+			     int64_t nStartWrite,
+			     const CkCallback& cb)
+{
+    Tipsy::TipsyWriter w(fileName, tipsyHeader);
+    if(!w.seekParticleNum(nStartWrite))
+	CkAbort("bad seek");
+    GroupMap::iterator gIter = groups.find(groupName);
+
+    if (gIter != groups.end()) {
+        shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        ParticleFamily& family = (*sim)[familyName];
+	GroupIterator iter = g->make_begin_iterator(familyName);
+	GroupIterator end = g->make_end_iterator(familyName);
+	Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
+	Vector3D<float>* velocity = family.getAttribute("velocity", Type2Type<Vector3D<float> >());
+	float* mass = family.getAttribute("mass", Type2Type<float>());
+	float* softening = family.getAttribute("softening", Type2Type<float>());
+	float* potential = family.getAttribute("potential", Type2Type<float>());
+	float* density = family.getAttribute("density", Type2Type<float>());
+	float* temperature = family.getAttribute("temperature", Type2Type<float>());
+	float* metals = family.getAttribute("metals", Type2Type<float>());
+	float* formationtime = family.getAttribute("formationtime", Type2Type<float>());
+	for(; *iter != *end; ++iter) {
+	    nStartWrite++;
+	    if(familyName == "gas") {
+		Tipsy::gas_particle gp;
+		gp.mass = mass[*iter];
+		gp.pos = positions[*iter];
+		gp.vel = velocity[*iter];
+		gp.rho = density[*iter];
+		gp.temp = temperature[*iter];
+		gp.metals = metals[*iter];
+		gp.hsmooth = softening[*iter];
+		gp.phi = potential[*iter];
+		w.putNextGasParticle(gp);
+		}
+	    if(familyName == "dark") {
+		Tipsy::dark_particle gp;
+		gp.mass = mass[*iter];
+		gp.pos = positions[*iter];
+		gp.vel = velocity[*iter];
+		gp.eps = softening[*iter];
+		gp.phi = potential[*iter];
+		w.putNextDarkParticle(gp);
+		}
+	    if(familyName == "star") {
+		Tipsy::star_particle gp;
+		gp.mass = mass[*iter];
+		gp.pos = positions[*iter];
+		gp.vel = velocity[*iter];
+		gp.tform = formationtime[*iter];
+		gp.metals = metals[*iter];
+		gp.eps = softening[*iter];
+		gp.phi = potential[*iter];
+		w.putNextStarParticle(gp);
+		}
+	    }
+	}
+    if(thisIndex+1 < CkNumPes()) {
+	CProxy_Worker workers(thisArrayID);
+	workers[thisIndex+1].writeGroupTipsy(groupName, familyName, fileName,
+					     tipsyHeader, nStartWrite, cb);
+	}
+    else {
+	cb.send();
+	}
+    }
+
+
 void Worker::writeIndexes(const std::string& groupName,
                  const std::string& familyName,
 			     const std::string& fileName,
@@ -682,7 +755,10 @@ void Worker::generateImage(liveVizRequestMsg* m) {
 
 			if (needs==particle_renderer::needs_count)
 			{ // Only add count
-			   renderer->render_count(end-iter);
+			    int count = 0;
+			    for(; *iter != *end; ++iter)
+				count++;
+			    renderer->render_count(count);
 			}
 			else { // Add every particle
 				for(; *iter != *end; ++iter) {
@@ -1678,10 +1754,28 @@ void Worker::createGroup_Family(std::string const& groupName, std::string const&
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
 
+static inline void loadAttribute(Simulation *sim,
+				 std::string const& attributeName)
+{
+	// loop over families
+	for(Simulation::iterator iterFam = sim->begin(); iterFam != sim->end();
+	    ++iterFam) {
+		ParticleFamily& family = iterFam->second;
+		AttributeMap::iterator attrIter = family.attributes.find(attributeName);
+		if(attrIter != family.attributes.end()
+		   && attrIter->second.data == 0) {
+			sim->loadAttribute(iterFam->first, attributeName,
+				family.count.numParticles,
+				family.count.startParticle);
+			}
+		}
+	}
+
 void Worker::createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb) {
 	int result = 0;
 	//parent group idiom: look up parent group by name
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_AttributeRangeGroup(*sim, parentGroup, attributeName, minValue, maxValue);
 	if(g) {
 		groups[groupName] = g;
@@ -1697,6 +1791,7 @@ void Worker::createGroup_AttributeSphere(std::string const& groupName,
 					 CkCallback const& cb) {
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_SphericalGroup(*sim, parentGroup, attributeName, center, size);
 	if(g) {
 		groups[groupName] = g;
@@ -1712,6 +1807,7 @@ void Worker::createGroup_AttributeShell(std::string const& groupName,
 					 double dMax, CkCallback const& cb) {
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_ShellGroup(*sim, parentGroup, attributeName, center, dMin, dMax);
 	if(g) {
 		groups[groupName] = g;
@@ -1730,6 +1826,7 @@ void Worker::createGroup_AttributeBox(std::string const& groupName,
 				      CkCallback const& cb) {
 	int result = 0;
 	boost::shared_ptr<SimulationHandling::Group>& parentGroup = groups[groups.find(parentGroupName) != groups.end() ? parentGroupName: "All"];
+	loadAttribute(sim, attributeName);
 	boost::shared_ptr<SimulationHandling::Group> g = make_BoxGroup(*sim, parentGroup, attributeName, corner, edge1, edge2, edge3);
 	if(g) {
 		groups[groupName] = g;
