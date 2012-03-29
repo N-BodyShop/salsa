@@ -111,7 +111,8 @@ cl_device_id  ocdInit(cl_context *new_context,cl_command_queue *new_queue)
 		CL_WGL_HDC_KHR,(cl_context_properties)wglGetCurrentDC(), 
 		CL_CONTEXT_PLATFORM, (cl_context_properties)cpPlatform, 
 		0};
-#elif defined(__APPLE__) // OS X (from OpenGL/ CGLCurrent.h, may be a better #ifdef)
+#elif false // defined(__APPLE__) //    This seems to FAIL on 10.7 boxes...
+// OS X (from OpenGL/ CGLCurrent.h, may be a better #ifdef)
 	CGLContextObj kCGLContext = CGLGetCurrentContext(); 
 	CGLShareGroupObj kCGLShareGroup = CGLGetShareGroup(kCGLContext);
 	cl_context_properties props[] = { 
@@ -227,23 +228,30 @@ inline void replace_all_of(std::string &src,const std::string &f,const std::stri
 	}
 }
 
+/* C++ "tname<foo *>" declarations become OpenCL "templatename foo *" */
+static void fix_gpu_template(std::string &src,const std::string &tname)
+{
+	std::string topen=tname+"<";
+	for (size_t cur=0;(cur=src.find(topen,cur))!=std::string::npos;cur++) {
+		cur+=topen.size()-1; /* move to address of < */
+		if (src[cur]!='<') ocdErrDie(cur,src.c_str(), "Expected < after "+tname+" in gpu_precompile_code.",src[cur]);
+		src[cur]=' '; /* replace < with space */
+		
+		cur=src.find(">",cur);
+		if (cur==std::string::npos||src[cur]!='>') 
+			ocdErrDie(cur,src.c_str(), "Couldn't find matching > after "+topen+" in gpu_precompile_code.",0);
+		src[cur]=' '; /* replace > with space */
+	}
+}
+
 /** Apply compile-time OpenCL replacements.  Typically, these are to work around
   limitations in our macro code generation.  This could be enhanced to nearly 
   a full compiler!
 */
 std::string gpu_precompile_code(std::string src) {
-	size_t cur;
 /* C++ "__global<foo *>" declarations become OpenCL "__global foo *" */
-	std::string global="__global<";
-	for (cur=0;(cur=src.find(global,cur))!=std::string::npos;cur++) {
-		cur+=global.size()-1; /* address of < */
-		if (src[cur]!='<') ocdErrDie(cur,src.c_str(), "Expected __global< in gpu_precompile_code.",src[cur]);
-		src[cur]=' '; /* replace < with space */
-		cur=src.find(">",cur);
-		if (cur==std::string::npos||src[cur]!='>') 
-			ocdErrDie(cur,src.c_str(), "Couldn't find matching > after __global< in gpu_precompile_code.",0);
-		src[cur]=' ';
-	}
+	fix_gpu_template(src,"__global");
+	fix_gpu_template(src,"__constant");
 	
 /* FILLKERNEL "<FILLKERNEL)(" pattern is removed. */
 	replace_all_of(src,  ",<__FILLKERNEL)()"   ,")");  /* no other args case */
@@ -252,8 +260,12 @@ std::string gpu_precompile_code(std::string src) {
 	return src;
 }
 
-void gpu_env::compile(void) {
+void gpu_env::init(void) {
 	if (clDevice==0) clDevice=ocdInit(&clCTX,&clQUE);
+}
+
+void gpu_env::compile(void) {
+	init();
 	std::string fixed=gpu_precompile_code(m_all_code);
 	m_all_compiled = ocdBuildProgram(clCTX, clDevice, fixed.c_str());
 }
@@ -295,7 +307,7 @@ gpu_buffer::gpu_buffer(size_t byte_count_,const void *initial_values)
 			goto skip_alloc;
 	}
 
-	device_ptr = clCreateBuffer(env.clCTX, 
+	device_ptr = clCreateBuffer(env.get_ctx(), 
 		flags, 
 		bytes, 0, &errcode); ocdErr(errcode);
 

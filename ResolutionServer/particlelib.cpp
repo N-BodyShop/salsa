@@ -20,12 +20,28 @@
 #include "particlelib.h"
 
 /* Set these to zero IN THE *MAKEFILE* to turn off all GPU stuff  */
-#ifndef PARTICLELIB_TRY_GPU
-#define PARTICLELIB_TRY_GPU 0  /* OpenGL, for basic rendering */
+#ifndef PARTICLELIB_TRY_OPENGL
+#  define PARTICLELIB_TRY_OPENGL 0  /* OpenGL, for basic rendering */
 #endif
-#ifndef PARTICLELIB_TRY_GPU
-#define PARTICLELIB_TRY_OPENCL 0 /* OpenCL, for vertex randomization and compression */
+
+#ifndef PARTICLELIB_TRY_OPENCL
+#  define PARTICLELIB_TRY_OPENCL 0 /* OpenCL, used for several things */
 #endif
+
+#if PARTICLELIB_TRY_OPENCL /* Use OpenCL for... */
+#  if PARTICLELIB_TRY_OPENGL /* OpenGL renderer's vertex randomization */
+
+#    define PARTICLELIB_TRY_OPENCL_VERTEX 0 /* vertex randomization and compression (not working) */
+
+#  else /* Use OpenCL for renderer */
+
+#    define PARTICLELIB_TRY_OPENCL_RENDER 1
+
+#  endif
+#endif
+
+
+
 
 void particle_renderer::render_count(size_t particle_count) { 
 	CkAbort("Called superclass particle_renderer::render_count in particlelib.cpp\n");
@@ -204,11 +220,6 @@ public:
 #endif
 };
 
-#if PARTICLELIB_TRY_GPU
-// Implemented below
-typical_particle_renderer *start_GPU_render(MyVizRequest &req,bool doVolumeRender,bool flush_cached);
-#endif
-
 /**
   Begin a rendering session, typically in response to a liveViz call.
 	 @param flush_cached Indicates the renderer should not use any stored particles.
@@ -228,8 +239,10 @@ particle_renderer *start_particle_render(MyVizRequest &req,bool flush_cached)
 		ret=s;
 	}
 
-#if PARTICLELIB_TRY_GPU
-	ret=start_GPU_render(req,doVolumeRender,flush_cached);
+#if PARTICLELIB_TRY_OPENGL || PARTICLELIB_TRY_OPENCL_RENDER
+	// Implemented below
+	typical_particle_renderer *start_GPU_render(MyVizRequest &req,bool doVolumeRender,bool flush_cached);
+    ret=start_GPU_render(req,doVolumeRender,flush_cached);
 #endif
 	
 	if (ret==0) { /* fallback to CPU side */
@@ -242,8 +255,43 @@ particle_renderer *start_particle_render(MyVizRequest &req,bool flush_cached)
 }
 
 
-/***************************** GPU ********************************/
-#if PARTICLELIB_TRY_GPU
+
+/****************** Superclass for GPU-type Renderers *******************/
+
+struct GPU_particle {
+public:
+	Vector3D<float> pos;  // position of particle 
+	unsigned char r; // color/X coordinate of vector/SPH center value
+	unsigned char g; //       Y coordinate of vector/SPH radius
+	unsigned char b; //       Z coordinate of vector
+}; 
+
+
+/* Tiny Timer functions
+   Call timeit("section name") to start a section.
+   Call timeit(NULL) to end a test.
+*/
+const char *last_where=NULL;
+double first_t=0.0;
+double last_t=0.0;
+void timeit_flush(void); // finish any rendering operations
+double timeit(const char *where) {
+#if PARTICLELIB_TRY_OPENGL
+	timeit_flush();
+#endif
+	double t=CkWallTimer();
+	if (last_where==NULL) { first_t=t; }
+	else { // print the time of the last thing
+		double elapsed=t-last_t;
+		printf("%30s: %6.2f ms\n", last_where,elapsed*1.0e3);
+	}
+	last_t=t;
+	last_where=where;
+	return t-first_t;
+}
+
+/***************************** OpenGL Renderer ********************************/
+#if PARTICLELIB_TRY_OPENGL
 /*
 This version tries rendering to the local GPU, by opening a
 GLSL/glut connection.
@@ -251,6 +299,9 @@ GLSL/glut connection.
 #include <X11/Xlib.h> /* for XOpenDisplay preflight check */
 #include "GL/glew.h" /* OpenGL Extension Wrangler */
 #include "GL/glew.c" /* avoid linking trouble, by just including body directly */
+
+void timeit_flush(void) { glFinish(); }
+
 
 #define PARTICLELIB_USE_GLUT 0 /* use GLUT, or fall back to native X? */
 #if PARTICLELIB_USE_GLUT
@@ -273,7 +324,7 @@ void oglCheck(const char *where) {
 
 
 /* Return NULL if we can successfully set up an OpenGL context. */
-const char * start_GPU(void) {
+const char * start_OPENGL(void) {
 	// OpenGL setup with GLUT and GLEW
 	const char *displayName=":0";
 #if PARTICLELIB_USE_GLUT
@@ -325,36 +376,7 @@ const char * start_GPU(void) {
 	return NULL;
 }
 
-/* Tiny Timer functions
-   Call timeit("section name") to start a section.
-   Call timeit(NULL) to end a test.
-*/
-const char *last_where=NULL;
-double first_t=0.0;
-double last_t=0.0;
-double timeit(const char *where) {
-	glFinish();
-	double t=CkWallTimer();
-	if (last_where==NULL) { first_t=t; }
-	else { // print the time of the last thing
-		double elapsed=t-last_t;
-		printf("%30s: %6.2f ms\n", last_where,elapsed*1.0e3);
-	}
-	last_t=t;
-	last_where=where;
-	return t-first_t;
-}
-
-
-struct GPU_particle {
-public:
-	Vector3D<float> pos;  // position of particle 
-	unsigned char r; // color/X coordinate of vector/SPH center value
-	unsigned char g; //       Y coordinate of vector/SPH radius
-	unsigned char b; //       Z coordinate of vector
-}; 
-
-#if PARTICLELIB_TRY_OPENCL
+#if PARTICLELIB_TRY_OPENCL_VERTEX
 #include <GL/glx.h> /* <- signals to EPGPU that we want OpenGL interop */
 #include "epgpu.h"
 #include "epgpu.cpp"
@@ -534,6 +556,11 @@ public:
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB,VBO);
 		if (!VBO_done) { /* First time: must copy data from CPU to GPU */
 			timeit("Unmap VBO");
+			
+			if (true) { // DEBUG: 
+				
+			}
+			
 			if (false) { // <- DEBUG: color by location in VBO
 				for (size_t i=0;i<VBO_size;i++)
 					VBO_cpu[i].r=(unsigned char)(i*254.0/VBO_size); 
@@ -551,7 +578,7 @@ public:
 			oglCheck("after VBO upload");
 			
 			timeit("Randomize VBO data");
-#if PARTICLELIB_TRY_OPENCL
+#if PARTICLELIB_TRY_OPENCL_VERTEX
 			// Randomly reorder this OpenGL VBO.  Randomization on GPU side is much faster.
 			OpenCL_randomize_VBO(VBO,VBO_size);
 #endif
@@ -571,11 +598,15 @@ public:
 		  GL_INTENSITY8 or GL_LUMINANCE8 works on NVIDIA, but fails (err -39) on ATI.
 		  GL_R8 or GL_RG8 works on NVIDIA or ATI.
 		  Everything fails (error 1) on Intel, but that's expected.
+		  
+		  On Tom's GeForce 7600GS (with 256MB of RAM):
+		     GL_R8 and GL_RG8 doesn't work at all (INVALID_ENUM)
+			 GL_RGBA8 works, but not at 8192x1692 (INVALID_VALUE)
 		*/
 		GLenum formats[]={GL_R8,GL_RG8,GL_RGBA8,0};
 		int texwid=wid, texht=ht;
 		if (doVolumeRender) { // FIXME: automatic determination?
-			texwid=16*wid; texht=32*ht; // because 16*32 == depth
+			texwid=16*wid; texht=32*ht; // because 16*32 == depth (8192x16384)
 		}
 		
 		for (int formatNo=0;formats[formatNo]!=0;formatNo++) {
@@ -743,7 +774,7 @@ typical_particle_renderer *start_GPU_render(MyVizRequest &req,bool doVolumeRende
 	static bool setup_GPU=false;
 	static bool GPU_OK=false;
 	if (!setup_GPU) {
-		const char *err=start_GPU();
+		const char *err=start_OPENGL();
 		if (err==NULL) GPU_OK=true;
 		else CkPrintf("No GPU backend: %s\n",err);
 		setup_GPU=true;
@@ -755,4 +786,187 @@ typical_particle_renderer *start_GPU_render(MyVizRequest &req,bool doVolumeRende
 	r->setup(req,flush_cached);
 	return r;
 }
-#endif /* PARTICLELIB_TRY_GPU */
+#endif /* PARTICLELIB_TRY_OPENGL */
+
+/***************************** OpenCL Renderer ********************************/
+#if PARTICLELIB_TRY_OPENCL_RENDER
+#include "epgpu.h"
+#include "epgpu.cpp"
+
+GPU_ADD_STATIC_CODE(
+"#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable\n"
+"#pragma OPENCL EXTENSION cl_khr_global_int32_extended_atomics : enable\n"
+,extension_atomic_inc_pragma);
+
+typedef Vector3D<float> vec3;
+
+GPU_ADD_STATIC_CODE(
+"typedef struct {\n"
+"   float x; float y; float z;\n"
+"} vec3;\n"
+"typedef struct {\n"
+"	float x,y,z; // position\n"
+"	int color; // actually r,g,b color\n"
+"} GPU_particle;\n"
+,GPU_particle_struct);
+
+GPU_STRUCT(viewpoint3d,
+	float xo; /* x origin */
+	float yo; /* y origin */
+	vec3 x; /* dot with vectors to get x coordinate */
+	vec3 y; /* dot with vectors to get y coordinate */
+	int w; /* width of screen */
+	int h; /* height of screen */
+,/* C++-only */
+);
+
+GPU_FILLKERNEL_2D(int,zeroArray2d,(), {result=0;});
+
+GPU_FILLKERNEL(GPU_particle,
+renderParticles, (__global<int *> renderbuf, __constant<viewpoint3d *> vp),
+{
+	float fx=result.x*vp->x.x+result.y*vp->x.y+result.z*vp->x.z-vp->xo;
+	float fy=result.x*vp->y.x+result.y*vp->y.y+result.z*vp->y.z-vp->yo;
+	if (fx>=0 && fx<vp->w && fy>=0 && fy<vp->h) {
+		int dest_x=(int)(fx);
+		int dest_y=(int)(fy);
+		atom_max(&renderbuf[dest_x+vp->w*dest_y],result.color);
+	}
+}
+)
+
+
+class OpenCL_renderer : public image_particle_renderer
+{
+	int pass_count; /* number of "render" passes we've received so far */
+	std::vector<GPU_particle> particlesCPU; /* CPU-side data (only when !particlesOnGPU) */
+	
+	/* Handles for GPU objects (persistent from frame to frame) */
+	bool particlesOnGPU; // if true, the particlesGPU is fully populated
+	gpu_vector<GPU_particle> particlesGPU;
+	
+	/* Images are rendered here */
+	gpu_vector2d<int> renderGPU; /* GPU copy */
+	std::vector<int> renderCPUi; /* CPU copy, int version */
+	std::vector<unsigned char> renderCPUc; /* CPU copy, final char version */
+	
+public:
+	OpenCL_renderer() 
+		:particlesGPU(1), renderGPU(1,1)
+	{
+		pass_count=0;
+		particlesOnGPU=false;
+	}
+	~OpenCL_renderer() {
+		
+	}
+	
+	const unsigned char *getImageData(void) { return &renderCPUc[0]; }
+	
+	virtual void setup(MyVizRequest &req_,bool flush_cached)
+	{
+		if (req_.coloring!=req.coloring
+			|| req_.activeGroup!=req.activeGroup
+			|| req_.doSplatter!=req.doSplatter
+			|| flush_cached 
+			|| particlesOnGPU==false) 
+		{ // flush our particlesGPU cache
+			pass_count=0;
+			particlesOnGPU=false;
+			gpu_vector<GPU_particle> emptyGPU(1); /* erase the GPU particle list */
+			std::swap(particlesGPU,emptyGPU);
+		}
+		image_particle_renderer::setup(req_,flush_cached);
+	}
+	
+	virtual needs_t needs_what(void) {
+		pass_count++; 
+		switch (pass_count) {
+		case 1: 
+			timeit("Make list of particles");
+			particlesCPU.resize(0);
+			particlesOnGPU=false; 
+			return needs_render;
+		case 2: /* Allocate & map space for particlesGPU */
+		case 3:
+			pass_count=2; /* keep drawing existing particlesGPUfer until flushed */
+			return needs_nothing; /* copy particle data pass */
+		default:
+			CkAbort("ResolutionServer/particlelib.cpp::OPENCL_renderer::needs_particles logic error (pass_count)\n");
+		}
+		return needs_nothing;
+	}
+	
+	virtual void render(const Vector3D<float> &location3D,unsigned char color) {
+		if (pass_count!=1) CkAbort("Error!  ResolutionServer/particlelib.cpp: OPENCL_renderer::render called, but needs_particles is false!\n");
+		// else we're filling the particlesCPU vector
+		
+		GPU_particle p; 
+		p.pos=location3D;
+		p.r=color;
+		particlesCPU.push_back(p); 
+		
+		if (true) { /* Fisher-Yates shuffle: reduce contention, by reducing locality.
+			Upload is 3x slower (about 10 seconds).
+			Rendering is about 4x faster! (under 150ms)
+			*/
+			size_t last=particlesCPU.size()-1;
+			size_t src=rand()%(last+1);
+			std::swap(particlesCPU[src],particlesCPU[last]);
+		}
+	}
+	
+	virtual void finish(liveVizRequestMsg* m,ArrayElement *reducer) {
+	// Set up the particle data in the particlesGPU
+		if (!particlesOnGPU) { /* First time: must copy data from CPU to GPU */
+			timeit("Copying particle data to GPU");
+			gpu_vector<GPU_particle> newparticlesGPU(particlesCPU); /* upload to GPU */
+			std::swap(particlesGPU,newparticlesGPU);
+			particlesOnGPU=true;
+			particlesCPU.resize(0); /* throw out CPU copy, to save RAM */
+		}
+	
+	// Set up render area
+		if (wid!=renderGPU.w || ht!=renderGPU.h) {
+			timeit("Reallocating render");
+			gpu_vector2d<int> newGPU(wid,ht);
+			std::swap(renderGPU,newGPU);
+			renderCPUi.resize(wid*ht);
+			renderCPUc.resize(wid*ht);
+		}
+		CkPrintf("Rendering to area of size %d x %d\n",renderGPU.w,renderGPU.h);
+		
+	// Render into the texture
+		timeit("Clear background");
+		renderGPU=zeroArray2d();
+		
+		timeit("Render particles");
+		viewpoint3d vp;
+		vp.xo=xo; vp.x=xAxis; vp.w=renderGPU.w;
+		vp.yo=yo; vp.y=yAxis; vp.h=renderGPU.h;
+		particlesGPU=renderParticles(renderGPU,vp);
+		
+		
+	// Read back rendered pixels to CPU side
+		timeit("Read back to CPU");
+		renderGPU.read(&renderCPUi[0]);
+		for (unsigned int i=0;i<renderCPUi.size();i++) renderCPUc[i]=renderCPUi[i];
+	
+	// Send CPU-side data off to liveViz
+		timeit("Assemble via LiveViz");
+		image_particle_renderer::finish(m,reducer);
+		timeit(NULL);
+	}
+};
+
+
+
+typical_particle_renderer *start_GPU_render(MyVizRequest &req,bool doVolumeRender,bool flush_cached)
+{
+	if (doVolumeRender) return 0; /* we don't have the RAM to do 3D render as int */
+	static OpenCL_renderer *r=0;
+	if (r==0) r=new OpenCL_renderer; /* <- FIXME: should be Cpv on SMP version! */
+	r->setup(req,flush_cached);
+	return r;
+}
+#endif /* PARTICLELIB_TRY_OPENCL_RENDER */

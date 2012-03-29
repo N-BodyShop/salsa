@@ -30,7 +30,6 @@ Dr. Orion Lawlor, lawlor@alaska.edu, 2011-05-06 (Public Domain)
 /* Define a bunch of OpenCL keywords, so they kinda-sorta work in C++. */
 #ifndef EPGPU_NO_OPENCL_KEYWORDS
 
-#define __constant const
 #define __read_only const
 #define __read_write const
 #define __write_only /* empty */
@@ -45,6 +44,8 @@ typedef cl_mem image2d_t;
 
 /** Print an error message, and exit. This is our error handling strategy. */
 void ocdErrDie(int err,const char *code,const char *file,int line);
+void ocdErrDie(int err,std::string code,std::string file,int line)
+{	ocdErrDie(err,code.c_str(),file.c_str(),line); }
 
 /** This macro is used to check OpenCL return codes.  Typical usage:
 	ocdErr( clSomeFunction(way,too,many,arguments) );
@@ -141,13 +142,14 @@ public:
 	/** Return the cl_context currently in use. */
 	static cl_context &get_ctx(void) {
 		gpu_env &e=static_env();
-		if (e.clCTX==0) e.compile();
+		if (e.clCTX==0) e.init();
 		return e.clCTX;
 	}
+	
 	/** Return the cl_command_queue currently in use. */
 	static cl_command_queue &get_que(void) {
 		gpu_env &e=static_env();
-		if (e.clQUE==0) e.compile();
+		if (e.clQUE==0) e.init();
 		return e.clQUE;
 	}
 	
@@ -155,8 +157,9 @@ public:
 	
 private:
 	gpu_env(); /* call "static_env" above, not this! */
+	void init(); /* initializes OpenCL */
 	std::string m_all_code; /* all OpenCL encountered so far */
-	void compile(void);
+	void compile(); /* compiles OpenCL code */
 	cl_program m_all_compiled; /* compiled version of above */
 	
 	gpu_env(const gpu_env &b); /* do not copy or assign gpu_env */
@@ -178,9 +181,86 @@ public:
 	operator cl_mem () const {return pointer;}
 };
 
+/* Dereference a template type parameter.
+  This is used to get from __constant<someClass *> from 
+  	T=someClass *
+  to 
+    derefT=someClass  (without the pointer)
+*/
+template <typename T>
+class gpu_type_deref { public: typedef T derefT; };
+template <typename dT>
+class gpu_type_deref<dT *> { public: typedef dT derefT; };
+
+/** Constant memory access keyword, used in GPU argument lists.
+  In C++, this decays to a cl_mem reference. 
+  In OpenCL, the extra < and > are removed in precompile fixup.
+*/
+template <typename T>
+class __constant {
+public:
+	cl_mem pointer;
+	bool must_deallocate;
+	__constant() {pointer=0; must_deallocate=false;}
+	__constant(cl_mem m) {pointer=m; must_deallocate=false;}
+	
+	void operator=(cl_mem m) {pointer=m;}
+	operator cl_mem () const {return pointer;}
+	
+
+/* This makes a temporary buffer to store constant data. 
+   Ideally, the buffer would somehow get re-used if called repeatedly,
+   without permanently consuming the precious 48KB of constant space.
+*/
+	typedef typename gpu_type_deref<T>::derefT derefT;
+	__constant(const derefT *src) { makeFrom(src); }
+	__constant(const derefT &src) { makeFrom(&src); }
+	void makeFrom(const derefT *src) {
+		gpu_env &env=gpu_env::static_env();
+		cl_int errcode;
+		pointer = clCreateBuffer(env.get_ctx(), 
+				CL_MEM_READ_ONLY, 
+                sizeof(derefT), 0, &errcode); ocdErr(errcode);
+		must_deallocate=true;
+		ocdErr( clEnqueueWriteBuffer(env.clQUE, 
+		      pointer, CL_TRUE, 0, sizeof(derefT), 
+		      src, 0, NULL, NULL) );
+	}
+	__constant(const __constant<T> &other) {
+		pointer=other.pointer;
+		must_deallocate=other.must_deallocate;
+		if (must_deallocate)
+			clRetainMemObject(pointer);
+	}
+	__constant<T> & operator=(__constant<T> other) {
+		swapwith(other);
+		return *this;
+	}
+	void swapwith(__constant<T> &other) {
+		std::swap(pointer,other.pointer);
+		std::swap(must_deallocate,other.must_deallocate);
+	}
+	~__constant() {
+		if (must_deallocate) 
+			clReleaseMemObject(pointer);
+	}
+};
+/** This specialization converts __global parameters into cl_mem arguments */
+template <typename T>
+inline void ocdKernelArg(cl_kernel k,int number,const __global<T> &A) {
+	cl_mem m=A;
+	ocdErr( clSetKernelArg(k, number, sizeof(cl_mem), (void *)&m) );
+}
+/** This specialization converts __constant parameters into cl_mem arguments */
+template <typename T>
+inline void ocdKernelArg(cl_kernel k,int number,const __constant<T> &A) {
+	cl_mem m=A;
+	ocdErr( clSetKernelArg(k, number, sizeof(cl_mem), (void *)&m) );
+}
+
 
 /** Represents a block of on-GPU memory.  
-  You should use one of the array versions,
+  You should use one of the vector versions,
   not this class directly! */
 class gpu_buffer {
 	gpu_env &env; /* environment this buffer is associated with */
@@ -268,31 +348,38 @@ public:
 		std::swap(arr.bytes,bytes);
 	}
 private:
-	gpu_buffer(const gpu_buffer &b); /* do not copy or assign gpu_buffers */
+	gpu_buffer(const gpu_buffer &b); /* do not copy or assign gpu_buffers (fake with swaps) */
 	void operator=(const gpu_buffer &b);
 };
 namespace std
 {
-    void swap(gpu_buffer& lhs, gpu_buffer& rhs) { lhs.swapwith(rhs); }
+    inline void swap(gpu_buffer& lhs, gpu_buffer& rhs) { lhs.swapwith(rhs); }
 };
 
-/** An on-GPU 1D array.  This is where you want to store most of your data! */
+/** An on-GPU 1D array.  This is where you want to store most of your data! 
+  In 2011 this was called gpu_array; this version is basically identical.
+*/
 template <class T>
-class gpu_array : public gpu_buffer {
+class gpu_vector : public gpu_buffer {
+	unsigned int size_;
 public:
-	int size;
+	/* Return the current size of this vector */
+	unsigned int size(void) const {return size_;}
+	/* Mark the current size as this value.
+	   This is ONLY useful for shrinking the vector size--no data changes! */
+	void remark_size(unsigned int shorter_size) {size_=shorter_size;}
 	
-	/** Create a new gpu array with this size.
+	/** Create a new gpu vector with this size.
 	   If initial values are given, they are copied from CPU to GPU. */
-	gpu_array(int size_,const T *initial_values=0) 
-		:gpu_buffer(size_*sizeof(T),initial_values),
-		size(size_) {}
+	gpu_vector(int size,const T *initial_values=0) 
+		:gpu_buffer(size*sizeof(T),initial_values),
+		size_(size) {}
 	
 	
-	/** Create a new gpu array from this CPU vector. */
-	gpu_array(const std::vector<T> &initial_values) 
+	/** Create a new gpu vector from this CPU vector. */
+	gpu_vector(const std::vector<T> &initial_values) 
 		:gpu_buffer(initial_values.size()*sizeof(T),&initial_values[0]),
-		size(initial_values.size()) {}
+		size_(initial_values.size()) {}
 	
 	// Map data onto CPU space
 	T *map(cl_map_flags flags=CL_MAP_READ+CL_MAP_WRITE,size_t offset=0,size_t nbytes=0) {
@@ -301,12 +388,12 @@ public:
 	
 	// Read a contiguous number of T values, starting at this location.
 	void read(T *dest,size_t first=0,size_t n=0) const {
-		if (n==0) n=size;
+		if (n==0) n=size();
 		gpu_buffer::read((void *)dest,first*sizeof(T),n*sizeof(T));
 	}
 	// Write a contiguous number of T values, starting at this location.
 	void write(const T *src,size_t first=0,size_t n=0) const {
-		if (n==0) n=size;
+		if (n==0) n=size();
 		gpu_buffer::write((const void *)src,first*sizeof(T),n*sizeof(T));
 	}
 	
@@ -332,25 +419,32 @@ public:
 		T ret; read(&ret,i,1); return ret;
 	}
 	
-	// Allow gpu_arrays to decay to __global<T *> objects
+	// Allow gpu_vectors to decay to __global<T *> objects
 	operator __global<T *> (void) const {return device_ptr;}
 	
-	/* array=kernel(args); means "Run this kernel inside the dimensions of this array." */
+	/* vector=kernel(args); means "Run this kernel inside the dimensions of this vector." */
 	void operator=(gpu_kernelT<gpu_any_datatype,1>& src); // for ordinary kernels
 	void operator=(gpu_kernelT<T,1>& src); // for FILL kernels
+	
+	void swapwith(gpu_vector<T> &other) {
+		gpu_buffer::swapwith(other);
+		std::swap(size_,other.size_);
+	}
 };
 namespace std
 {
     template<class T>
-    void swap(gpu_array<T>& lhs, gpu_array<T>& rhs) { lhs.swapwith(rhs); }
+    void swap(gpu_vector<T>& lhs, gpu_vector<T>& rhs) { lhs.swapwith(rhs); }
 };
 
-/** An on-GPU row major 2D array */
+/** An on-GPU row major 2D vector  
+  In 2011 this was called gpu_array2d; this version is basically identical.
+*/
 template <class T>
-class gpu_array2d : public gpu_buffer {
+class gpu_vector2d : public gpu_buffer {
 public:
 	int w,h;
-	gpu_array2d(int w_,int h_,const T *initial_values=0) 
+	gpu_vector2d(int w_,int h_,const T *initial_values=0) 
 		:gpu_buffer(w_*h_*sizeof(T),initial_values),
 		 w(w_), h(h_) {}
 	
@@ -377,24 +471,24 @@ public:
 		T ret; read(&ret,x,y,1); return ret;
 	}
 	
-	// Allow gpu_array2ds to decay to __global<T *> objects
+	// Allow gpu_vector2ds to decay to __global<T *> objects
 	operator __global<T *> (void) const {return device_ptr;}
 	
-	/* array=kernel(args); means "Run this kernel inside the dimensions of this array." */
+	/* vector=kernel(args); means "Run this kernel inside the dimensions of this vector." */
 	void operator=(gpu_kernelT<gpu_any_datatype,2>& src); // for ordinary kernels
 	void operator=(gpu_kernelT<T,2>& src); // for FILL kernels
+	
+	void swapwith(gpu_vector2d<T> &other) {
+		gpu_buffer::swapwith(other);
+		std::swap(w,other.w);
+		std::swap(h,other.h);
+	}
 };
 namespace std
 {
     template<class T>
-    void swap(gpu_array2d<T>& lhs, gpu_array2d<T>& rhs) { lhs.swapwith(rhs); }
+    void swap(gpu_vector2d<T>& lhs, gpu_vector2d<T>& rhs) { lhs.swapwith(rhs); }
 };
-/** This specialization converts gpu_array parameters into cl_mem arguments */
-template <typename T>
-inline void ocdKernelArg(cl_kernel k,int number,const gpu_array2d<T> &A) {
-	cl_mem m=A;
-	ocdErr( clSetKernelArg(k, number, sizeof(cl_mem), (void *)&m) );
-}
 
 
 
@@ -432,7 +526,7 @@ public:
 			0,0,0));
 	}
 	
-	// Allow gpu_array2ds to decay to __global<T *> objects
+	// Allow gpu_vector2ds to decay to __global<T *> objects
 	operator __global<T *> (void) const {return device_ptr;}
 	// Allow gpu_buffers to decay to cl_mem objects
 	operator cl_mem (void) const {return device_ptr;}
@@ -530,7 +624,7 @@ private:
 };
 
 /* This is a thin wrapper around gpu_kernel to provide typechecking information.
-  This way, gpu_array below won't work on kernels of the wrong datatype or dimensions.
+  This way, gpu_vector below won't work on kernels of the wrong datatype or dimensions.
 */
 template <class dataType,int dimensions> 
 class gpu_kernelT : public gpu_kernel {
@@ -538,27 +632,27 @@ public:
 	gpu_kernelT(const std::string &name_) :gpu_kernel(name_) {}
 };
 
-/* array=kernel(args); means "Run this kernel inside the dimensions of this array." */
+/* vector=kernel(args); means "Run this kernel inside the dimensions of this vector." */
 template <class T>
-void gpu_array<T>::operator=(gpu_kernelT<gpu_any_datatype,1>& src) 
+void gpu_vector<T>::operator=(gpu_kernelT<gpu_any_datatype,1>& src) 
 { // for ordinary kernels
-	src.run(size); 
+	src.run(size()); 
 }
 template <class T>
-void gpu_array<T>::operator=(gpu_kernelT<T,1>& src) 
+void gpu_vector<T>::operator=(gpu_kernelT<T,1>& src) 
 { // for FILL kernels, which need several pre-parameters
 	cl_kernel k=src.get_kernel();
-	ocdKernelArg(k,0,size);
+	ocdKernelArg(k,0,size());
 	ocdKernelArg(k,1,device_ptr);
-	src.run(size); 
+	src.run(size()); 
 }
 template <class T>
-void gpu_array2d<T>::operator=(gpu_kernelT<gpu_any_datatype,2>& src) 
+void gpu_vector2d<T>::operator=(gpu_kernelT<gpu_any_datatype,2>& src) 
 { // for ordinary kernels
 	src.run(w,h); 
 }
 template <class T>
-void gpu_array2d<T>::operator=(gpu_kernelT<T,2>& src) 
+void gpu_vector2d<T>::operator=(gpu_kernelT<T,2>& src) 
 { // for FILL kernels, which need several pre-parameters
 	cl_kernel k=src.get_kernel();
 	ocdKernelArg(k,0,w);
@@ -583,7 +677,7 @@ void gpu_image2d<T>::operator=(gpu_kernelT<T,-2>& src) // for FILL kernels
 
 /** Converts C++ kernel parameters into OpenCL argument types.
  Currently, this is the identity, but it could be specialized for:
-     - Convert fancy_array_2d<T> into cl_mem
+     - Convert fancy_vector_2d<T> into cl_mem
 	 - Convert const .... into cl_mem with const magic
 	 - ??
 */
@@ -883,7 +977,7 @@ public: \
 
 
 /**
-	Define a "fill" style GPU kernel to write to every element of a 2D array.
+	Define a "fill" style GPU kernel to write to every element of a 2D vector.
 	In OpenCL, the name, arguments, and body code are concatenated in a string.
 	In C++, a gpu_kernel object is created to accept the arguments.
 */
@@ -912,7 +1006,7 @@ public: \
 /**
 	Define a "fill" style GPU kernel to write to every element of a 2D image.
 	
-	WARNING: unlike the array case, the initial value of "result" is zero for images.
+	WARNING: unlike the vector case, the initial value of "result" is zero for images.
 	
 	In OpenCL, the name, arguments, and body code are concatenated in a string.
 	In C++, a gpu_kernel object is created to accept the arguments.
@@ -944,8 +1038,8 @@ public: \
 /*
   FIXMEs!
      - Add C++ types for int2, int4, float2, float3, float4, ...
-	 - 3D arrays, images, and kernels.
-	 - Smarter array indexing in OpenCL (Fortran arr(i) syntax?  bounds check? more compiler-y work?)
+	 - 3D vectors, images, and kernels.
+	 - Smarter vector indexing in OpenCL (Fortran arr(i) syntax?  bounds check? more compiler-y work?)
 	 - Robustness testing
 */
 
