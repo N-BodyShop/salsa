@@ -812,6 +812,25 @@ void Main::getAttributeSum(int handle)
 	pythonReturn(handle, NULL);
 	return;
 	}
+    Worker* w = workers[0].ckLocal();
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Worker::GroupMap::iterator giter = w->groups.find(groupName);
+    if(giter == w->groups.end()) {
+	PyErr_SetString(PyExc_NameError, "No such group");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    Simulation::iterator simIter = w->sim->find(familyName);
+    if(simIter == w->sim->end()) {
+	PyErr_SetString(PyExc_NameError, "No such family");
+	pythonReturn(handle, NULL);
+	return;
+	}
+
     CkReductionMsg* mesg;
     double sum;
 
