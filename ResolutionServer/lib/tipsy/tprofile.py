@@ -301,8 +301,8 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
             mass_r += mass
             vel_radial = data[i][3] / mass
             vel_radial_sigma = data[i][4] / mass
-            if vel_radial_sigma > pow(vel_radial, 2) :
-                vel_radial_sigma = math.sqrt(vel_radial_sigma - pow(vel_radial, 2))
+            if vel_radial_sigma > vel_radial**2 :
+                vel_radial_sigma = math.sqrt(vel_radial_sigma - vel_radial**2)
             else :
                 vel_radial_sigma = 0.
             vel_tang_sigma = data[i][5] / mass
@@ -316,6 +316,10 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
             rho = mass / volume
             vel_circ = ang / r_mean
             c_vel = math.sqrt(mass_r / r_max)
+            if vel_tang_sigma > vel_circ**2 :
+                vel_tang_sigma = math.sqrt(vel_tang_sigma - vel_circ**2)
+            else :
+                vel_tang_sigma = 0.
             # star stuff
             lum_den = data[i][7] / volume
             # gas stuff
@@ -331,7 +335,9 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
                 entropy  = -config.HUGE
             data[i] = [r_max, number, rho, mass_r, c_vel, vel_radial, vel_radial_sigma, vel_circ, vel_tang_sigma, ang, ang_theta, ang_phi, density, temp, pressure, entropy, lum_den]
         else :
-            data[i] = [r_max, 0, 0., mass_r, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
+            c_vel = math.sqrt(mass_r / r_max)
+            data[i] = [r_max, 0, 0., mass_r, c_vel, 0., 0., 0., 0., 0., 0.,
+                       0., 0., 0., 0., 0., 0.]
     
     # build header row
     # may need to update the exact text used for clarity or for consistency with TIPSY
