@@ -79,7 +79,7 @@ public class SideBar extends JPanel implements ActionListener
 		JTP.addTab("Color", new ColoringManager(windowManager).getContentPane());
 		JTP.addTab("Attributes", new AttributeManager(windowManager).getContentPane());
 		JTP.addTab("Groups", new GroupManager(windowManager).getContentPane());
-		JTP.addTab("Rendering", new ToolBarPanel(windowManager,v));
+		JTP.addTab("Rendering", new RenderingPanel(windowManager,v));
 		this.add(JTP, BorderLayout.EAST);
 	}
 	

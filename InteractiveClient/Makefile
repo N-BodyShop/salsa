@@ -3,7 +3,7 @@ CLASSES = Vector3D.class \
 	SimulationViewGL.class \
 	ColorBarPanel.class ViewingPanel.class RightClickMenu.class \
 	WindowManager.class Manager.class NotifyingHashtable.class \
-	ToolBarPanel.class ViewListener.class ViewEvent.class \
+	RenderingPanel.class ViewListener.class ViewEvent.class \
 	AttributeManager.class RotateSlider.class ColoringManager.class \
 	SideBar.class SalsaRequests.class ChooseSimulationFrame.class \
 	Salsa.class DelimitedStringEnumeration.class GroupManager.class \
