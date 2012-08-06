@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 
 import javax.imageio.ImageIO;
 
-import com.sun.image.codec.jpeg.*;
+// import com.sun.image.codec.jpeg.*;
 
 
 public class SimulationView extends JPanel implements ActionListener, MouseInputListener, MouseMotionListener, MouseWheelListener, ComponentListener
@@ -889,8 +889,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 						startTime=System.currentTimeMillis();
 						DataBuffer db=null;
 						try {
-							JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
-							db=dec.decodeAsRaster().getDataBuffer();
+							// JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
+							// db=dec.decodeAsRaster().getDataBuffer();
+							BufferedImage imio = ImageIO.read(new ByteArrayInputStream(data));
+							db = imio.getData().getDataBuffer();
 						} catch (Exception e) {
 							System.out.println("Cannot read Image");
 						}
@@ -974,8 +976,10 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 						startTime=System.currentTimeMillis();
 						DataBuffer db=null;
 						try {
-							JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
-							db=dec.decodeAsRaster().getDataBuffer();
+							// JPEGImageDecoder dec=JPEGCodec.createJPEGDecoder(new ByteArrayInputStream(data));
+							// db=dec.decodeAsRaster().getDataBuffer();
+							BufferedImage imio = ImageIO.read(new ByteArrayInputStream(data));
+							db = imio.getData().getDataBuffer();
 						} catch (Exception e) {
 							System.out.println("Cannot read Image");
 						}
