@@ -308,8 +308,10 @@ void Worker::writeGroupTipsy(const std::string& groupName,
 			     const CkCallback& cb)
 {
     Tipsy::TipsyWriter w(fileName, tipsyHeader);
-    if(!w.seekParticleNum(nStartWrite))
+    if(!w.seekParticleNum(nStartWrite)) {
+	CkError("nStartWrite: %ld\n", nStartWrite);
 	CkAbort("bad seek");
+	}
     GroupMap::iterator gIter = groups.find(groupName);
 
     if (gIter != groups.end()) {
@@ -362,7 +364,8 @@ void Worker::writeGroupTipsy(const std::string& groupName,
 		}
 	    }
 	}
-    if(thisIndex+1 < CkNumPes()) {
+    if(nStartWrite < tipsyHeader.nbodies
+       && thisIndex+1 < CkNumPes()) {  // more stuff to write
 	CProxy_Worker workers(thisArrayID);
 	workers[thisIndex+1].writeGroupTipsy(groupName, familyName, fileName,
 					     tipsyHeader, nStartWrite, cb);
