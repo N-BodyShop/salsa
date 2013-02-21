@@ -398,8 +398,8 @@ void Main::getNumParticles(int handle) {
     Simulation::iterator iter = w->sim->find(familyName);
     
     if(iter == w->sim->end()) {
-	PyErr_SetString(PyExc_NameError, "No such family");
-	pythonReturn(handle, NULL);
+	// no family; return 0
+	pythonReturn(handle, Py_BuildValue("l", 0L));
 	return;
     }
     if(groupName == NULL) {	// Single argument version
