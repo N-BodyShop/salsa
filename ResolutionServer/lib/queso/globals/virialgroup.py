@@ -17,9 +17,9 @@ def getVirialGroup(group='All',center2='pot', virialGroup='virialGroup'):
     #===========================================================================
     def getGalDensity(center2, r) :
         charm.createGroupAttributeSphere(virialGroup, 'All', 'position', center[0], center[1], center[2], r)
-        totMass  = charm.getAttributeSum(virialGroup, 'dark', 'mass')
-        totMass += charm.getAttributeSum(virialGroup, 'gas',  'mass')
-        totMass += charm.getAttributeSum(virialGroup, 'star', 'mass')
+        totMass = 0.0
+        for fam in charm.getFamilies() :
+            totMass  += charm.getAttributeSum(virialGroup, fam, 'mass')
         v =  (4*math.pi/3.0)*r**3
         density=totMass/v
         return density 
