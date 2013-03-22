@@ -9,7 +9,7 @@ mainmodule ResolutionServer {
 	message StatusMsg;
 
 	mainchare [python] Main {
-		entry Main(); //creates interpreter, load Python binding to Main classes, expose this object to instance of interpreter
+		entry Main(CkArgMsg *); //creates interpreter, load Python binding to Main classes, expose this object to instance of interpreter
 		
 		entry void listSimulations(CkCcsRequestMsg* m);
 		entry void chooseSimulation(CkCcsRequestMsg* m);
