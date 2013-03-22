@@ -48,7 +48,7 @@ ResolutionServer.o: PythonInstance.h ../../utility/SimulationHandler/Group.h \
 Worker.o ResolutionServer.o MetaInformationHandler.o: ResolutionServer.h ../../utility/SimulationHandler/Simulation.h
 Worker.o: particlelib.h PixelDrawing.cpp ../../utility/SimulationHandler/Group.h \
 	../../utility/structures/TypeHandling.h ../../utility/structures/TypedArray.h Reductions.h \
-	PyObjectMarshal.h
+	PyObjectMarshal.h ResolutionServer.decl.h
 Reductions.o: PyObjectMarshal.h
 HighLevelPython.o: HighLevelPython.cpp config.h ResolutionServer.h \
   ../../utility/structures/TipsyParticles.h ../../utility/structures/Vector3D.h \
@@ -61,6 +61,9 @@ HighLevelPython.o: HighLevelPython.cpp config.h ResolutionServer.h \
   ../../utility/SimulationHandler/Simulation.h \
   ParticleStatistics.h ResolutionServer.decl.h PyObjectMarshal.h \
   Reductions.decl.h ../../utility/SimulationHandler/Group.h
+MetaInformationHandler.o: MetaInformationHandler.cpp ResolutionServer.h \
+  ResolutionServer.decl.h 
+particlelib.o: particlelib.cpp ResolutionServer.h ResolutionServer.decl.h
 ../../utility/SimulationHandler/SiXFormat.o: ../../utility/SimulationHandler/Simulation.h
 ../../utility/SimulationHandler/TipsyFormat.o: ../../utility/SimulationHandler/Simulation.h
 
