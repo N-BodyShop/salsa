@@ -116,7 +116,10 @@ def profile(group='All', center='pot', family='all', projection='sph', bin_type=
     for each in families :
         famgroup = group + 'FAM' + each
         charm.createGroup_Family(famgroup, group, each)
-        famgroups += [famgroup]
+	if charm.getNumParticles(famgroup, each) != 0 :
+            famgroups += [famgroup]
+    if len(famgroups) == 0 :
+        raise StandardError('No particles in group of selected type.')
     # validate other inputs
     if bin_type == 'linear' :
         bin_type = 'lin'
