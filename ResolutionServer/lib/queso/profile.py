@@ -6,7 +6,7 @@ def metalProfile(group,nbins=20,cent='pot', fam='bar'):
     group.  cent can be 'pot' or 'com'. fam can be 'bar' for baryons,
     'star', or 'gas'.  Binning is linear and goes to the group radius
     """
-    return metalProfile(group=group,nbins=nbins,center=cent, family=fam)
+    return metalprof.metalProfile(group=group,nbins=nbins,center=cent, family=fam)
 def sfrSurfaceProfile(minRadius=.1, numBins=50,tstep='00512'):
     """
     Computes the cylindrical star formation rate surface profile (in

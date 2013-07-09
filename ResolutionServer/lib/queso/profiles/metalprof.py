@@ -1,4 +1,4 @@
-import charm
+import charm, traceback
 from queso.globals import metals, getgroupradius, findcenter
 
 def metalProfile(group,nbins=20,center='pot', family='bar'):
@@ -32,6 +32,7 @@ def metalProfile(group,nbins=20,center='pot', family='bar'):
     
     if (family=='bar'):
         charm.createGroup_Family('groupMetGas',group , 'gas')
+        charm.createGroup_Family('groupMetStar',group, 'star')
         metalProfGas   = [[0,0]]*nbins
         metalProfStar  = [[0,0]]*nbins
         
