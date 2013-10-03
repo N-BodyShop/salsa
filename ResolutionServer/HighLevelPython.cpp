@@ -76,6 +76,50 @@ void Main::readTipsyArray(int handle) {
     pythonReturn(handle);
     }
 
+// usage: charm.readTipsyBinaryArray('filename', 'attribute'), where
+// attribute is the attribute to which the array values will be assigned
+
+void Main::readTipsyBinaryArray(int handle) {
+    PyObject *arg = PythonObject::pythonGetArg(handle);
+    Worker* w = this->workers[0].ckLocal();
+
+    if(w->sim == NULL) {
+	PyErr_SetString(PyExc_StandardError, "Simulation not loaded");
+	pythonReturn(handle);
+	return;
+	}
+    
+    char *fileName;
+    char *attributeName;
+    FILE *fp;
+
+    if(PyArg_ParseTuple(arg, "ss", &fileName, &attributeName) == false) {
+	PyErr_SetString(PyExc_TypeError,
+                        "Usage: readTipsyBinaryArray(file, attribute)");
+	pythonReturn(handle, NULL);
+	return;
+	}
+    if((fp = fopen(fileName, "r")) != NULL) { // Check if file exists
+	fclose(fp);
+	StatusMsg *mesg;
+	workers[0].readTipsyBinaryArray(fileName, attributeName, 0, 0,
+                                        CkCallbackPython((void *&)mesg));
+	if(mesg->status == 0) {	// I/O error
+	    PyErr_SetString(PyExc_IOError, "File read error");
+	    pythonReturn(handle, NULL);
+	    delete mesg;
+	    return;
+	    }
+	delete mesg;
+	}
+    else {
+	PyErr_SetString(PyExc_NameError, "No such file");
+	pythonReturn(handle);
+	return;
+	}
+    pythonReturn(handle);
+    }
+
 // usage: charm.readMark('filename', 'markattribute',
 // 'compare_attribute'), where mark_attribute gets set based on a
 // comparison of the numbers (which, e.g. are either indices or

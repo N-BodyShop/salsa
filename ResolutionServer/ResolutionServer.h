@@ -196,6 +196,7 @@ public:
 	void loadSimulation(int handle);
 	void saveSimulation(int handle);
 	void readTipsyArray(int handle);
+	void readTipsyBinaryArray(int handle);
 	void writeGroupTipsy(int handle);
 	void writeIndexes(int handle);
 	void writeGroupArray(int handle);
@@ -319,6 +320,9 @@ public:
 			     const std::string& fileName,
 			     const CkCallback& cb);
 	void readTipsyArray(const std::string& fileName,
+			    const std::string& attributeName,
+			    long off, int iType, const CkCallback& cb);
+	void readTipsyBinaryArray(const std::string& fileName,
 			    const std::string& attributeName,
 			    long off, int iType, const CkCallback& cb);
 	void readMark(const std::string& fileName,

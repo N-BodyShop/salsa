@@ -31,6 +31,8 @@ mainmodule ResolutionServer {
 		      void loadSimulation(int handle);
 		entry [python "Read attribute from tipsy array file"]
 			void readTipsyArray(int handle);
+		entry [python "Read attribute from tipsy binary array file"]
+			void readTipsyBinaryArray(int handle);
 		entry [python "return position with a group of the minimum value of an attribute"]
 			void findAttributeMin(int handle);
 		entry [python "return simulate time"]
@@ -90,6 +92,10 @@ mainmodule ResolutionServer {
 		entry void loadSimulation(const std::string& simulationName, const CkCallback& cb);
 		entry void saveSimulation(const std::string& path, const CkCallback& cb);
 		entry void readTipsyArray(const std::string& fileName,
+			    const std::string& attributeName,
+			    long off, int iType, const CkCallback& cb);
+		
+		entry void readTipsyBinaryArray(const std::string& fileName,
 			    const std::string& attributeName,
 			    long off, int iType, const CkCallback& cb);
 		

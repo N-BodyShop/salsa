@@ -46,6 +46,10 @@ public class MenuBar extends JMenuBar implements ActionListener{
                 item.setAccelerator(KeyStroke.getKeyStroke("control A"));
                 item.setActionCommand("readTipsyArray");
 		item.addActionListener(this);
+		item = new JMenuItem("Read Tipsy Binary Array",KeyEvent.VK_B);
+                item.setAccelerator(KeyStroke.getKeyStroke("control B"));
+                item.setActionCommand("readTipsyBinaryArray");
+		item.addActionListener(this);
 		menu.add(item);
 		item = new JMenuItem("New View",KeyEvent.VK_N);
                 item.setAccelerator(KeyStroke.getKeyStroke("control N"));
@@ -135,6 +139,17 @@ public class MenuBar extends JMenuBar implements ActionListener{
 		    int returnVal = chooser.showOpenDialog(MenuBar.this);
 		    if(returnVal == JFileChooser.APPROVE_OPTION) {
 			String strPy = "charm.readTipsyArray(\""
+			    + chooser.getSelectedFile() + "\", \"array\")\n";
+			System.out.println(strPy);
+			PythonExecute code = new PythonExecute(strPy, false,
+							       true, 0);
+			windowManager.ccs.addRequest(new ExecutePythonCode(code.pack()));
+			}
+		} else if(command.equals("readTipsyBinaryArray")){
+		    JFileChooser chooser = new JFileChooser(System.getProperty("user.dir"));
+		    int returnVal = chooser.showOpenDialog(MenuBar.this);
+		    if(returnVal == JFileChooser.APPROVE_OPTION) {
+			String strPy = "charm.readTipsyBinaryArray(\""
 			    + chooser.getSelectedFile() + "\", \"array\")\n";
 			System.out.println(strPy);
 			PythonExecute code = new PythonExecute(strPy, false,

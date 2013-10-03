@@ -300,6 +300,111 @@ void Worker::readTipsyArray(const std::string& fileName,
     fclose(fp);
     }
 
+static int readFamilyBinaryArray(FILE *fp,
+			    const std::string & attributeName,
+			    ParticleFamily &second) 
+{
+    XDR xdrs;
+    xdrstdio_create(&xdrs, fp, XDR_DECODE);
+    AttributeMap::iterator attrIter = second.attributes.find(attributeName);
+    if(attrIter == second.attributes.end()) {
+        // add attribute to family
+        float *array = new float[second.count.numParticles];
+        second.addAttribute(attributeName, array);
+        attrIter = second.attributes.find(attributeName);
+        }
+	
+    float* array = attrIter->second.getArray(Type2Type<float >());
+    for(unsigned int i = 0; i < second.count.numParticles; i++) {
+        if(!xdr_float(&xdrs, &array[i])) {
+            ckerr << "<Sorry, file format is wrong>\n" ;
+            xdr_destroy(&xdrs);
+            return 0;
+            }
+        }
+    xdr_destroy(&xdrs);
+    attrIter->second.calculateMinMax();
+    return 1;
+    }
+
+void Worker::readTipsyBinaryArray(const std::string& fileName,
+			    const std::string& attributeName,
+			    long off,
+			    int iType, // 0 -> gas, 1 -> dark, 2-> star
+			    const CkCallback& cb) {
+    FILE *fp = fopen(fileName.c_str(), "r");
+    StatusMsg *msg;
+    unsigned int nTotal;
+    XDR xdrs;
+
+    if((thisIndex == 0) && (iType == 0)) {
+	xdrstdio_create(&xdrs, fp, XDR_DECODE);
+        xdr_u_int(&xdrs, &nTotal);
+        xdr_destroy(&xdrs);
+	if(nTotal != sim->totalNumParticles()) {
+	    ckerr << "Wrong number of particles" << endl;
+	    ckerr << "Expected: " << sim->totalNumParticles() << ", got: "
+		  << nTotal << endl;
+	    msg = new StatusMsg(0);
+	    cb.send(msg);
+	    return;
+	    }
+	}
+    else {
+	fseek(fp, off, SEEK_SET);
+	}
+    
+    ckout << "[" << thisIndex << "]: reading Array ... ";
+
+    Simulation::iterator family;
+    switch(iType) {
+    case 0:
+	family = sim->find("gas");
+	break;
+    case 1:
+	family = sim->find("dark");
+	break;
+    case 2:
+	family = sim->find("star");
+	break;
+    default:
+	CkAssert("bad type");
+	}
+    
+    if(family != sim->end()) {
+	if(readFamilyBinaryArray(fp, attributeName, family->second) == 0) {
+	    msg = new StatusMsg(0);
+	    cb.send(msg);
+	    fclose(fp);
+	    return;
+	    }
+	}
+    
+    ckout << "Done\n";
+    if(thisIndex+1 < CkNumPes()) {
+	long offset = ftell(fp);
+	
+	CProxy_Worker workers(thisArrayID);
+	workers[thisIndex+1].readTipsyBinaryArray(fileName, attributeName,
+                                                  offset, iType, cb);
+	}
+    else {
+	if(iType < 2) { // Do next type
+	    long offset = ftell(fp);
+	    CProxy_Worker workers(thisArrayID);
+	    workers[0].readTipsyBinaryArray(fileName, attributeName, offset,
+                                            iType+1, cb);
+	    
+	    }
+	else{
+	    msg = new StatusMsg(1); // Success
+	    cb.send(msg);
+	    }
+	}
+    fclose(fp);
+    }
+
+
 void Worker::writeGroupTipsy(const std::string& groupName,
 			     const std::string& familyName,
 			     const std::string& fileName,
