@@ -46,6 +46,7 @@ public class MenuBar extends JMenuBar implements ActionListener{
                 item.setAccelerator(KeyStroke.getKeyStroke("control A"));
                 item.setActionCommand("readTipsyArray");
 		item.addActionListener(this);
+		menu.add(item);
 		item = new JMenuItem("Read Tipsy Binary Array",KeyEvent.VK_B);
                 item.setAccelerator(KeyStroke.getKeyStroke("control B"));
                 item.setActionCommand("readTipsyBinaryArray");
