@@ -404,6 +404,22 @@ void Worker::readTipsyBinaryArray(const std::string& fileName,
     fclose(fp);
     }
 
+static inline void loadAttribute(Simulation *sim,
+				 std::string const& attributeName)
+{
+	// loop over families
+	for(Simulation::iterator iterFam = sim->begin(); iterFam != sim->end();
+	    ++iterFam) {
+		ParticleFamily& family = iterFam->second;
+		AttributeMap::iterator attrIter = family.attributes.find(attributeName);
+		if(attrIter != family.attributes.end()
+		   && attrIter->second.data == 0) {
+			sim->loadAttribute(iterFam->first, attributeName,
+				family.count.numParticles,
+				family.count.startParticle);
+			}
+		}
+	}
 
 void Worker::writeGroupTipsy(const std::string& groupName,
 			     const std::string& familyName,
@@ -424,10 +440,29 @@ void Worker::writeGroupTipsy(const std::string& groupName,
         ParticleFamily& family = (*sim)[familyName];
 	GroupIterator iter = g->make_begin_iterator(familyName);
 	GroupIterator end = g->make_end_iterator(familyName);
+        loadAttribute(sim, "position");
+        loadAttribute(sim, "velocity");
+        loadAttribute(sim, "mass");
+        loadAttribute(sim, "softening");
+        loadAttribute(sim, "potential");
+        loadAttribute(sim, "density");
+        loadAttribute(sim, "temperature");
+        loadAttribute(sim, "metals");
+        loadAttribute(sim, "formationtime");
+        
 	Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
 	Vector3D<float>* velocity = family.getAttribute("velocity", Type2Type<Vector3D<float> >());
+        if(velocity == NULL) { // Try "vel" synonym
+            loadAttribute(sim, "vel");
+            velocity = family.getAttribute("vel", Type2Type<Vector3D<float> >());
+            }
+                
 	float* mass = family.getAttribute("mass", Type2Type<float>());
 	float* softening = family.getAttribute("softening", Type2Type<float>());
+        if(softening == NULL) { // Try "soft" synonym
+            loadAttribute(sim, "soft");
+            softening = family.getAttribute("soft", Type2Type<float>());
+            }
 	float* potential = family.getAttribute("potential", Type2Type<float>());
 	float* density = family.getAttribute("density", Type2Type<float>());
 	float* temperature = family.getAttribute("temperature", Type2Type<float>());
@@ -1861,23 +1896,6 @@ void Worker::createGroup_Family(std::string const& groupName, std::string const&
 	}
 	contribute(sizeof(result), &result, CkReduction::logical_and, cb);
 }
-
-static inline void loadAttribute(Simulation *sim,
-				 std::string const& attributeName)
-{
-	// loop over families
-	for(Simulation::iterator iterFam = sim->begin(); iterFam != sim->end();
-	    ++iterFam) {
-		ParticleFamily& family = iterFam->second;
-		AttributeMap::iterator attrIter = family.attributes.find(attributeName);
-		if(attrIter != family.attributes.end()
-		   && attrIter->second.data == 0) {
-			sim->loadAttribute(iterFam->first, attributeName,
-				family.count.numParticles,
-				family.count.startParticle);
-			}
-		}
-	}
 
 void Worker::createGroup_AttributeRange(std::string const& groupName, std::string const& parentGroupName, std::string const& attributeName, double minValue, double maxValue, CkCallback const& cb) {
 	int result = 0;
