@@ -325,11 +325,14 @@ void Main::writeGroupTipsy(int handle) {
 	    return;
 	    }
 	}
-    workers[0].writeGroupTipsy(groupName, "gas", path, tipsyHeader, 0,
+    if(nGas > 0)
+        workers[0].writeGroupTipsy(groupName, "gas", path, tipsyHeader, 0,
+                               CkCallbackPython());
+    if(nDark > 0)
+        workers[0].writeGroupTipsy(groupName, "dark", path, tipsyHeader, nGas,
 			       CkCallbackPython());
-    workers[0].writeGroupTipsy(groupName, "dark", path, tipsyHeader, nGas,
-			       CkCallbackPython());
-    workers[0].writeGroupTipsy(groupName, "star", path, tipsyHeader, nGas + nDark,
+    if(nStar > 0)
+        workers[0].writeGroupTipsy(groupName, "star", path, tipsyHeader, nGas + nDark,
 			       CkCallbackPython());
     pythonReturn(handle);
     return;
