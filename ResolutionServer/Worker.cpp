@@ -465,9 +465,37 @@ void Worker::writeGroupTipsy(const std::string& groupName,
             }
 	float* potential = family.getAttribute("potential", Type2Type<float>());
 	float* density = family.getAttribute("density", Type2Type<float>());
+        if(density == NULL) { // Try "GasDensity" synonym
+            loadAttribute(sim, "GasDensity");
+            density = family.getAttribute("GasDensity", Type2Type<float>());
+            }
 	float* temperature = family.getAttribute("temperature", Type2Type<float>());
 	float* metals = family.getAttribute("metals", Type2Type<float>());
 	float* formationtime = family.getAttribute("formationtime", Type2Type<float>());
+        if(formationtime == NULL) { // Try "tform" synonym
+            loadAttribute(sim, "tform");
+            formationtime = family.getAttribute("tform", Type2Type<float>());
+            }
+        if(formationtime == NULL) { // Try "timeform" synonym
+            loadAttribute(sim, "timeform");
+            formationtime = family.getAttribute("timeform", Type2Type<float>());
+            }
+        CkAssert(mass != NULL);
+        CkAssert(positions != NULL);
+        CkAssert(velocity != NULL);
+        CkAssert(softening != NULL);
+        CkAssert(potential != NULL);
+        if(familyName == "gas") {
+            CkAssert(density != NULL);
+            CkAssert(temperature != NULL);
+            CkAssert(metals != NULL);
+            }
+        
+        if(familyName == "star") {
+            CkAssert(formationtime != NULL);
+            CkAssert(metals != NULL);
+            }
+            
 	for(; *iter != *end; ++iter) {
 	    nStartWrite++;
 	    if(familyName == "gas") {
