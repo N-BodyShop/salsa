@@ -620,6 +620,7 @@ void Worker::writeGroupArray(const std::string& groupName,
     else {
 	fp.open(fileName.c_str(), fstream::out|fstream::app);
 	}
+    fp.precision(8); // Get at least full floating point.
     GroupMap::iterator gIter = groups.find(groupName);
     if (gIter != groups.end()) {
         shared_ptr<SimulationHandling::Group>& g = gIter->second;
