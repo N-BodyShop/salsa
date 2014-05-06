@@ -229,7 +229,7 @@ void Worker::readTipsyArray(const std::string& fileName,
     StatusMsg *msg;
     unsigned int nTotal;
     if((thisIndex == 0) && (iType == 0)) {
-	int count = fscanf(fp, "%d%*[, \t]%*d%*[, \t]%*d",&nTotal) ;
+	int count = fscanf(fp, "%d%*[^\n]", &nTotal) ;
 	if ( (count == EOF) || (count==0) ){
 	    ckerr << "<Sorry, file format is wrong>\n" ;
 	    fclose(fp);
