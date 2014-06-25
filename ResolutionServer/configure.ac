@@ -8,11 +8,11 @@ for python in python2.7 python2.6 python2.5 python2.4 python2.3 python2.2 python
    AC_CHECK_HEADER([$python/Python.h],
    	[[ax_python_header=/usr/include/$python]],
    	ax_python_header=no)
-   LDFLAGS="-L/usr/lib/$python/config -l$python"
+   LDFLAGS="$LDFLAGS -L/usr/lib/$python/config -l$python"
    AC_CHECK_LIB($python, main, ax_python_lib=$python, ax_python_lib=no)
    if test $ax_python_lib != no; then
      if test $ax_python_header != no; then
-	ax_python_lib="-L/usr/lib/$python/config -l$python"
+	ax_python_lib=$LDFLAGS
        break;
      fi
    fi
@@ -67,7 +67,7 @@ AC_CHECK_LIB([Tipsy], [main])
 
 # find boost
 ax_boost_header=no
-for boost in $BOOST_DIR/include /usr/include $PWD/../boost $PWD/../boost_1_36_0 $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 $PWD/../boost_1_33_1 ; do
+for boost in $BOOST_DIR/include $BOOST_ROOT/include /usr/include $PWD/../boost $PWD/../boost_1_36_0 $PWD/../boost_1_31_0 $PWD/../boost_1_32_0 $PWD/../boost_1_33_0 $PWD/../boost_1_33_1 ; do
    if test -f $boost/boost/shared_ptr.hpp ; then
        ax_boost_header=yes
        BOOST_PATH=$boost
