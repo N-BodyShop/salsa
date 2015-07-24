@@ -267,3 +267,25 @@ def writemark(group, filename) :
     charm.writeIndexes(group, 'dark', filename)
     charm.writeIndexes(group, 'star', filename)
 
+def catbox(group1, group2, group3) :
+    """Concatenate two groups to make a third group. Side effect:
+    creates a new attribute to define the third group."""
+    import charm
+    tmpAttr = 'cat_'+group1+group2;
+    for fam in ['gas', 'dark', 'star'] :
+        charm.createScalarAttribute(fam, tmpAttr)
+    charm.runLocalParticleCodeGroup('All', zeroTmp, tmpAttr)
+    charm.runLocalParticleCodeGroup(group1, assignTmp, tmpAttr)
+    charm.runLocalParticleCodeGroup(group2, assignTmp, tmpAttr)
+    charm.createGroup_AttributeRange(group3, 'All', tmpAttr, 0.5, 2.0)
+
+zeroTmp = """def localparticle(p):
+    tmpAttr = p._param
+    setattr(p, tmpAttr, 0.0)
+    return
+"""
+assignTmp = """def localparticle(p):
+    tmpAttr = p._param
+    setattr(p, tmpAttr, 1.0)
+    return
+"""
