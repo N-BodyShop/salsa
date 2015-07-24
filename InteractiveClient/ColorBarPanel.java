@@ -148,6 +148,10 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
             item.setActionCommand("rainbow");
             item.addActionListener(this);
             add(item);
+            item = new JMenuItem("Greyscale gradient");
+            item.setActionCommand("grey");
+            item.addActionListener(this);
+            add(item);
             item = new JMenuItem("Swap Background Black/White");
             item.setActionCommand("swapBackground");
             item.addActionListener(this);
@@ -162,6 +166,8 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
                 invertCM();
             else if(command.equals("rainbow"))
                 setColorModelRainbow();
+            else if(command.equals("grey"))
+                setColorModelGrey();
             else if(command.equals("swapBackground"))
                 swapBackground();
 
@@ -314,6 +320,28 @@ public class ColorBarPanel extends JLabel implements MouseInputListener, MouseWh
 		}
 		
 
+	colorModel = new IndexColorModel(8, tableSize, cm_red, cm_green, cm_blue);
+    }
+
+    /*
+    * sets the colormap to Greyscale
+    */
+    private void setColorModelGrey() {
+		// Copy in the default colors
+        for (int i = 0; i < tableSize; i++) {
+            cm_red[i] = puke_red[i];
+            cm_green[i] = puke_green[i];
+            cm_blue[i] = puke_blue[i];
+        }
+
+        float hue = 0;
+        float delta = 255.0f / attrSize;
+        for(int i = startColor; i <= endColor; ++i, hue += delta) {
+                cm_red[i] = (byte) (hue);
+                cm_green[i] = (byte) (hue);
+                cm_blue[i] = (byte) (hue);
+        }
+		
 	colorModel = new IndexColorModel(8, tableSize, cm_red, cm_green, cm_blue);
     }
 	
