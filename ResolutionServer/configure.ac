@@ -4,7 +4,8 @@
 AC_DEFUN([AX_PYTHON],
 [AC_MSG_CHECKING(for python build information)
 AC_MSG_RESULT([])
-for python in python2.7 python2.6 python2.5 python2.4 python2.3 python2.2 python2.1 python; do
+PYTHON_VERSION=`python -V 2>&1 | awk {'print $''2'} | awk -F. {'print $''1"."$''2'}`
+   python=python$PYTHON_VERSION
    AC_CHECK_HEADER([$python/Python.h],
    	[[ax_python_header=/usr/include/$python]],
    	ax_python_header=no)
@@ -13,10 +14,8 @@ for python in python2.7 python2.6 python2.5 python2.4 python2.3 python2.2 python
    if test $ax_python_lib != no; then
      if test $ax_python_header != no; then
 	ax_python_lib=$LDFLAGS
-       break;
      fi
    fi
-done
 if test x$ax_python_header = x; then
    ax_python_header=no
 fi

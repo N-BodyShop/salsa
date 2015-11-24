@@ -3999,7 +3999,8 @@ done
 $as_echo_n "checking for python build information... " >&6; }
 { $as_echo "$as_me:$LINENO: result: " >&5
 $as_echo "" >&6; }
-for python in python2.7 python2.6 python2.5 python2.4 python2.3 python2.2 python2.1 python; do
+PYTHON_VERSION=`python -V 2>&1 | awk {'print $''2'} | awk -F. {'print $''1"."$''2'}`
+   python=python$PYTHON_VERSION
    as_ac_Header=`$as_echo "ac_cv_header_$python/Python.h" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
   { $as_echo "$as_me:$LINENO: checking for $python/Python.h" >&5
@@ -4220,10 +4221,8 @@ fi
    if test $ax_python_lib != no; then
      if test $ax_python_header != no; then
 	ax_python_lib=$LDFLAGS
-       break;
      fi
    fi
-done
 if test x$ax_python_header = x; then
    ax_python_header=no
 fi
