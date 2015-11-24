@@ -436,7 +436,7 @@ void Worker::writeGroupTipsy(const std::string& groupName,
     GroupMap::iterator gIter = groups.find(groupName);
 
     if (gIter != groups.end()) {
-        shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
         ParticleFamily& family = (*sim)[familyName];
 	GroupIterator iter = g->make_begin_iterator(familyName);
 	GroupIterator end = g->make_end_iterator(familyName);
@@ -557,7 +557,7 @@ void Worker::writeIndexes(const std::string& groupName,
     StatusMsg *msg;
     
     if (gIter != groups.end()) {
-        shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 	    // write out index values
         ParticleFamily& family = (*sim)[familyName];
 		AttributeMap::iterator attrIter = family.attributes.find("index");
@@ -623,7 +623,7 @@ void Worker::writeGroupArray(const std::string& groupName,
     fp.precision(8); // Get at least full floating point.
     GroupMap::iterator gIter = groups.find(groupName);
     if (gIter != groups.end()) {
-        shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
     
 	for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin();
 	    famIter != g->families.end(); ++famIter) {
@@ -1472,7 +1472,7 @@ void Worker::getNumParticlesGroup(const std::string &groupName,
     int64_t i = 0;
 
     if(gIter != groups.end()) {
-	shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 	GroupIterator iter = g->make_begin_iterator(familyName);
 	GroupIterator end = g->make_end_iterator(familyName);
 	for(i = 0; *iter < *end; iter++)
@@ -1509,7 +1509,7 @@ void Worker::findAttributeMin(const string& groupName, const string& attributeNa
     
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+            boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 		    double min = HUGE_VAL;
 		    u_int64_t itGMin;
@@ -1665,7 +1665,7 @@ void Worker::getAttributeRangeGroup(const std::string& groupName,
     double minmax[2] = {HUGE, -HUGE};
     GroupMap::iterator gIter = groups.find(groupName);
     if(gIter != groups.end()) {
-	shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 	Simulation::iterator famIter = sim->find(familyName);
 	if(famIter != sim->end()) {
 	    TypedArray& arr = famIter->second.attributes[attributeName];
@@ -1719,7 +1719,7 @@ void Worker::getVecAttributeRangeGroup(const std::string& groupName,
     OrientedBox<double> bounds = OrientedBox<double>();
     GroupMap::iterator gIter = groups.find(groupName);
     if(gIter != groups.end()) {
-	shared_ptr<SimulationHandling::Group>& g = gIter->second;
+        boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 	Simulation::iterator famIter = sim->find(familyName);
 	if(famIter != sim->end()) {
 	    TypedArray& arr = famIter->second.attributes[attributeName];
@@ -1767,7 +1767,7 @@ void Worker::getAttributeSum(const string& groupName,
 	double sum = 0;
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+            boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		Simulation::iterator famIter = sim->find(familyName);
 		if(famIter != sim->end()) {
 		    TypedArray& arr = famIter->second.attributes[attributeName];
@@ -1813,7 +1813,7 @@ void Worker::getCenterOfMass(const string& groupName, const CkCallback& cb) {
 	pair<double, Vector3D<double> > compair;
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+            boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 			ParticleFamily& family = (*sim)[*famIter];
 			Vector3D<float>* positions = family.getAttribute("position", Type2Type<Vector3D<float> >());
@@ -1995,7 +1995,7 @@ void Worker::markParticlesGroup(const std::string& groupName, const CkCallback& 
 
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+            boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 		        ParticleFamily& family = (*sim)[*famIter];
 			AttributeMap::iterator attrIter = family.attributes.find("mark");
@@ -2016,7 +2016,7 @@ void Worker::unmarkParticlesGroup(const std::string& groupName, const CkCallback
 
 	GroupMap::iterator gIter = groups.find(groupName);
 	if(gIter != groups.end()) {
-		shared_ptr<SimulationHandling::Group>& g = gIter->second;
+            boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
 		for(SimulationHandling::Group::GroupFamilies::iterator famIter = g->families.begin(); famIter != g->families.end(); ++famIter) {
 		        ParticleFamily& family = (*sim)[*famIter];
 			AttributeMap::iterator attrIter = family.attributes.find("mark");

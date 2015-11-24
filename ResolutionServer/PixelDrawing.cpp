@@ -129,7 +129,7 @@ void initializeProjectedKernel(const int N) {
 	pts.reserve(N);
 	
 	SplineKernel kernel;
-	transform(xs.begin(), xs.end(), back_inserter(pts), bind(&SplineKernel::evaluateProjection, ref(kernel), _1, 1.0));
+        transform(xs.begin(), xs.end(), back_inserter(pts), bind(&SplineKernel::evaluateProjection, boost::ref(kernel), _1, 1.0));
 	
 	projectedKernel = SplineInterpolator<double>(xs.begin(), xs.end(), pts.begin(), pts.end(), 0, 0);
 }
