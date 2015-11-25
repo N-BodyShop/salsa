@@ -412,6 +412,21 @@ void Main::writeGroupArray(int handle) {
 	    pythonReturn(handle, NULL);
 	    return;
 	}
+    bool found = false;
+    for(Simulation::iterator famIter = w->sim->begin();
+        famIter != w->sim->end(); ++famIter) {
+        AttributeMap::iterator attrIter = famIter->second.attributes.find(attributeName);
+        if(attrIter != famIter->second.attributes.end()) {
+            found = true;
+            break;
+            }
+        }
+    
+    if(!found) {
+        PyErr_SetString(PyExc_NameError, "No such attribute");
+        pythonReturn(handle, NULL);
+        return;
+	}
     // The writing is done as a domino scheme.  Call the head node
     // and it calls all the other workers in sequence.
     this->workers[0].writeGroupArray(groupName, attributeName, fileName,
