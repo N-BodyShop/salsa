@@ -631,6 +631,10 @@ void Worker::writeGroupArray(const std::string& groupName,
 	    GroupIterator end = g->make_end_iterator(*famIter);
 	    ParticleFamily& family = (*sim)[*famIter];
 	    TypedArray& tarray = family.attributes[attributeName];
+            if(tarray.data == 0)
+                sim->loadAttribute(*famIter, attributeName,
+                                   family.count.numParticles,
+                                   family.count.startParticle);
 	    
 	    if(tarray.dimensions == 1) {
 		switch(tarray.code) {
