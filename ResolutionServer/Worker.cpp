@@ -2044,7 +2044,7 @@ public:
     SimulationHandling::Simulation* sim;
     boost::shared_ptr<SimulationHandling::Group> localPartG;
     SimulationHandling::Group::GroupFamilies::iterator localPartFamIter;
-    SimulationHandling::ParticleFamily family;
+    SimulationHandling::ParticleFamily* family;
     SimulationHandling::GroupIterator localPartIter;
     SimulationHandling::GroupIterator localPartEnd;
 
@@ -2196,15 +2196,16 @@ int PythonLocalParticle::buildIterator(PyObject *&arg, void *iter) {
 	localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
 	}
 
-    family = (*sim)[*localPartFamIter];
+    family = &(*sim)[*localPartFamIter];
     
-    for(AttributeMap::iterator attrIter = family.attributes.begin();
-	attrIter != family.attributes.end(); attrIter++) {
+    for(AttributeMap::iterator attrIter = family->attributes.begin();
+	attrIter != family->attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
 	if(arr.data == 0) //attribute not loaded
 	    sim->loadAttribute(*localPartFamIter, attrIter->first,
-			       family.count.numParticles,
-			       family.count.startParticle);
+			       family->count.numParticles,
+			       family->count.startParticle);
+	CkAssert(arr.data != NULL);
 	if(arr.dimensions == 1) {
 	    switch(arr.code) {
 	    case TypeHandling::int32:
@@ -2253,8 +2254,8 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
     // Copy out from Python object
     u_int64_t index = *localPartIter; // Optimize dereference
 
-    for(AttributeMap::iterator attrIter = family.attributes.begin();
-	attrIter != family.attributes.end(); attrIter++) {
+    for(AttributeMap::iterator attrIter = family->attributes.begin();
+	attrIter != family->attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
 	if(arr.dimensions == 1) {
 	    long lvalue; // Python only does longs
@@ -2329,12 +2330,12 @@ int PythonLocalParticle::nextIteratorUpdate(PyObject *&arg, PyObject *result, vo
 	    }
 	localPartIter = localPartG->make_begin_iterator(*localPartFamIter);
 	localPartEnd = localPartG->make_end_iterator(*localPartFamIter);
-	family = (*sim)[*localPartFamIter];
+	family = &(*sim)[*localPartFamIter];
 	}
     index = *localPartIter; // Optimize dereference
 
-    for(AttributeMap::iterator attrIter = family.attributes.begin();
-	attrIter != family.attributes.end(); attrIter++) {
+    for(AttributeMap::iterator attrIter = family->attributes.begin();
+	attrIter != family->attributes.end(); attrIter++) {
 	TypedArray& arr = attrIter->second;
 	if(arr.dimensions == 1) {
 	    switch(arr.code) {
