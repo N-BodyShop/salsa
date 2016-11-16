@@ -31,7 +31,7 @@ int main (int argc, char** argv) {
   read_history(".taco_history");
   
   while(1) {
-      char *prompt = "Yes, master?";
+      const char *prompt = "Yes, master?";
       
       /* Get a line from the user. */
       char *my_gets_line = readline (prompt);
