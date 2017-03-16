@@ -1073,7 +1073,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 
 	/* Set up a CCS request structure ("MyVizRequest" on server) for a 2D render */
 	private byte[] encodeRequest2D(double renderzoomfactor) {
-    	ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream(200);
     	try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			// These fields go into the liveVizRequest
@@ -1106,7 +1106,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeDouble(coord.origin.z);
 			dos.writeInt(centeringMethod);
 			//dos.writeInt(activeGroup);
-			dos.writeInt(activeGroup.length());
+			dos.writeLong(activeGroup.length());
 			dos.writeBytes(activeGroup);
 			dos.writeDouble(minMass);
 			dos.writeDouble(maxMass);
@@ -1119,7 +1119,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 	}
 
 	private byte[] encodeRequest3D() {
-    	ByteArrayOutputStream baos = new ByteArrayOutputStream(136);
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream(200);
     	try {
 			DataOutputStream dos = new DataOutputStream(baos);
 			// These fields go into the liveVizRequest
@@ -1152,7 +1152,7 @@ public class SimulationView extends JPanel implements ActionListener, MouseInput
 			dos.writeDouble(coord.origin.z);
 			dos.writeInt(centeringMethod);
 			//dos.writeInt(activeGroup);
-			dos.writeInt(activeGroup.length());
+			dos.writeLong(activeGroup.length());
 			dos.writeBytes(activeGroup);
 			dos.writeDouble(minMass);
 			dos.writeDouble(maxMass);
