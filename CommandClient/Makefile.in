@@ -8,7 +8,7 @@ LIBS = @LIBS@ -lm
 all: taco
 
 taco: taco.C $(CHARMDIR)/tmp/libs/ck-libs/pythonCCS/PythonCCS-client.C
-	g++ -Wall -g $(INCLC) -o $@ $^ $(LIBS)
+	g++ -DCMK_NOT_USE_CONVERSE -g $(INCLC) -o $@ $^ $(LIBS)
 
 clean:
 	rm -f *.decl.h *.def.h *.o taco *~
