@@ -24,7 +24,7 @@ int main (int argc, char** argv) {
   assert(ret != -1);
   if(argc > 3) {
       CcsSendRequest (&server, "ChooseSimulation", 0, strlen(argv[3]), argv[3]);
-      CcsRecvResponse (&server, 4, &ret, 1000);
+      CcsRecvResponse (&server, 4, &ret, 3000);
       }
 
   int interpreterHandle = 0;
@@ -68,7 +68,7 @@ int main (int argc, char** argv) {
       char *buffer;
       int msg_size;
       
-      int len = CcsRecvResponseMsg(&server, &msg_size, (void **) &buffer, 1000);
+      int len = CcsRecvResponseMsg(&server, &msg_size, (void **) &buffer, 3000);
       if(len != -1) {
 	  buffer = (char *) realloc((void *)buffer, len+1);
 	  buffer[len] = 0;
