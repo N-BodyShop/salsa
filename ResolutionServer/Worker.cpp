@@ -39,7 +39,7 @@ template <typename T>
 bool extract(const std::string& s, T& value) {
 	std::istringstream iss(s);
 	iss >> value;
-	return iss;
+	return !(iss.fail());
 }
 
 std::list<std::string> splitString(const std::string& s, const char c = ',') {
@@ -2086,7 +2086,7 @@ void Worker::localParticleCode(std::string const &s, const CkCallback &cb)
 
 void Worker::localParticleCodeGroup(std::string const &g, // Group
 				    std::string const &s, // Code
-				    PyObjectMarshal &global, // Globals
+				    PyObjectMarshal const &global, // Globals
 				    const CkCallback &cb)
 {
 	particles_changed=true;
@@ -2117,7 +2117,7 @@ void Worker::localParticleCodeGroup(std::string const &g, // Group
 void Worker::reduceParticle(std::string const &g, // Group
 			    std::string const &sParticleCode, // Map code
 			    std::string const &sReduceCode, // Reduce code
-			    PyObjectMarshal &global,
+			    PyObjectMarshal const &global,
 			    const CkCallback &cb)
 {
     GroupMap::iterator gIter = groups.find(g);

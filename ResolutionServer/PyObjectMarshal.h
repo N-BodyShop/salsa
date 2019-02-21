@@ -19,7 +19,7 @@ class PyObjectMarshal {
 	}
     PyObjectMarshal(PyObject *obj);
     ~PyObjectMarshal() { if(buf != NULL) delete [] buf; }
-    PyObject *getObj();
+    PyObject *getObj() const;
     friend void operator|(PUP::er& p, PyObjectMarshal& objM);
     };
 
@@ -48,7 +48,7 @@ inline PyObjectMarshal::PyObjectMarshal(PyObject *obj) {
     PyErr_Clear();
 }
 
-inline PyObject *PyObjectMarshal::getObj() {
+inline PyObject *PyObjectMarshal::getObj() const {
     PyObject *obj;
     
     CkAssert(Py_IsInitialized());

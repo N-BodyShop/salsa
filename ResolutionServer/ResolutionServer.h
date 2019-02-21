@@ -394,11 +394,11 @@ public:
 	
 	void localParticleCode(std::string const &s, const CkCallback &cb);
 	void localParticleCodeGroup(std::string const &g, std::string const &s,
-				    PyObjectMarshal &obj, const CkCallback &cb);
+				    PyObjectMarshal const &obj, const CkCallback &cb);
 	void reduceParticle(std::string const &g,
 			    std::string const &sParticleCode,
 			    std::string const &sReduceCode,
-			    PyObjectMarshal &global,
+			    PyObjectMarshal const &global,
 			    const CkCallback &cb);
 	void markParticlesGroup(const std::string& groupName, const CkCallback& cb);
 	void unmarkParticlesGroup(const std::string& groupName, const CkCallback& cb);

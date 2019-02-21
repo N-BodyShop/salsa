@@ -174,12 +174,12 @@ mainmodule ResolutionServer {
 		entry void localParticleCode(std::string const &s, const CkCallback &cb);
 		entry void localParticleCodeGroup(std::string const &g,
 						std::string const &s,
-		      	   		          PyObjectMarshal &obj,
+						PyObjectMarshal const &obj,
 						  const CkCallback &cb);
 		entry void reduceParticle(std::string const &g,
 		      	    std::string const &sParticleCode,
 			    std::string const &sReduceCode,
-			    PyObjectMarshal &global,
+			    PyObjectMarshal const &global,
 			    const CkCallback &cb);
 		entry void markParticlesGroup(std::string const& groupName, CkCallback const& cb);
 		entry void unmarkParticlesGroup(std::string const& groupName, CkCallback const& cb);
