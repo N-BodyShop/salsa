@@ -99,7 +99,7 @@ done
 fi
 # try version 3
 if test $ax_xercesc_header != yes; then
-for xercesc in $PWD/../xercesc $PWD/../xerces-c-3.0.0 ; do
+for xercesc in $XERCESCROOT $PWD/../xercesc $PWD/../xerces-c-3.0.0 ; do
    if test -f $xercesc/src/xercesc/sax2/DefaultHandler.hpp ; then
        ax_xercesc_header=yes
        XERCESCROOT=$xercesc
