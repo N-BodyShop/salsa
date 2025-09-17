@@ -1666,7 +1666,7 @@ void Worker::getAttributeRangeGroup(const std::string& groupName,
 				    const std::string& attributeName,
 				    const CkCallback& cb)
 {
-    double minmax[2] = {HUGE, -HUGE};
+    double minmax[2] = {HUGE_VAL, -HUGE_VAL};
     GroupMap::iterator gIter = groups.find(groupName);
     if(gIter != groups.end()) {
         boost::shared_ptr<SimulationHandling::Group>& g = gIter->second;
